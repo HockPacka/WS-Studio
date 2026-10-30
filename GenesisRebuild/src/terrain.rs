@@ -11,6 +11,7 @@ pub fn terrain_mesh(area:&RawArea, preview:usize, layer:usize)->Result<(Mesh,Vec
     let mut positions=Vec::with_capacity(257*257);
     let mut normals=Vec::with_capacity(257*257);
     let mut colors=Vec::with_capacity(257*257);
+    let mut uvs=Vec::with_capacity(257*257);
     let center_height=grid.heights[128*257+128];
     let visual_mid=if grid.present[128*257+128]{center_height}
                    else {(grid.min+grid.max)*0.5};
@@ -19,6 +20,9 @@ pub fn terrain_mesh(area:&RawArea, preview:usize, layer:usize)->Result<(Mesh,Vec
             let i=z*257+x;
             let h=grid.heights[i];
             positions.push([x as f32*2.0-256.0,h,z as f32*2.0-256.0]);
+            // Full-tile UV; the baked 16x16-cell albedo atlas shares this
+            // exact coordinate grid, so borders remain spatially aligned.
+            uvs.push([x as f32/256.,z as f32/256.]);
             let normal=normal_at(&grid,x,z);
             normals.push(normal.to_array());
             let amount=if grid.max>grid.min {
@@ -75,6 +79,7 @@ pub fn terrain_mesh(area:&RawArea, preview:usize, layer:usize)->Result<(Mesh,Vec
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION,positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL,normals);
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR,colors);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0,uvs);
     mesh.insert_indices(Indices::U32(indices));
     Ok((mesh,Vec3::new(0.0,visual_mid,0.0)))
 }

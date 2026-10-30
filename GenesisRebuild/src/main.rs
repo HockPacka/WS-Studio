@@ -5,7 +5,8 @@ mod terrain;
 use bevy::prelude::*;
 use bevy::camera::Viewport;
 use std::path::Path;
-use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
+use bevy_egui::{egui, EguiContexts, EguiGlobalSettings, EguiPlugin,
+               EguiPrimaryContextPass, PrimaryEguiContext};
 
 const PANEL: egui::Color32 = egui::Color32::from_rgb(228, 221, 205);
 const PAPER: egui::Color32 = egui::Color32::from_rgb(243, 236, 222);
@@ -98,9 +99,26 @@ impl Default for OrbitCamera {
     }
 }
 fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>) {
+    // Keep egui on a separate full-window camera, not on the terrain camera.
+    // Bevy-egui 0.43 automatically selects the first camera unless disabled.
+    // The 3D camera later receives a restricted viewport, which would otherwise
+    // clip BOTH the interface and its mouse interaction region.
+    commands.spawn((
+        Camera2d,
+        Camera {
+            order: 1,
+            clear_color: ClearColorConfig::None,
+            ..default()
+        },
+        PrimaryEguiContext,
+    ));
     commands.spawn((
         GenesisCamera,
         Camera3d::default(),
+        Camera {
+            order: 0,
+            ..default()
+        },
         Transform::from_xyz(450.,500.,550.).looking_at(Vec3::ZERO,Vec3::Y),
     ));
     commands.spawn((
@@ -195,6 +213,11 @@ fn main() {
         .insert_resource(GenesisState::default())
         .insert_resource(LoadedArea::default())
         .insert_resource(OrbitCamera::default())
+        // Explicitly attach PrimaryEguiContext to the full-window 2D camera.
+        .insert_resource(EguiGlobalSettings {
+            auto_create_primary_context: false,
+            ..default()
+        })
         .insert_resource(ClearColor(Color::srgb(0.12, 0.09, 0.16)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {

@@ -1,6 +1,7 @@
 //! Visual-only reconstruction of the classic WildStar Genesis editor in Bevy.
 //! Screenshots under WILDSTAREDITOR remain the visual references. No world edits yet.
 use wildstar_formats::area;
+mod area_ui;
 mod terrain;
 use bevy::prelude::*;
 use bevy::camera::Viewport;
@@ -83,6 +84,8 @@ struct GenesisCamera;
 struct LoadedArea {
     tile: Option<area::RawArea>,
     mesh_entity: Option<Entity>,
+    props: Vec<area::AreaProp>,
+    prop_issue: Option<String>,
 }
 #[derive(Resource)]
 struct OrbitCamera {
@@ -168,9 +171,12 @@ fn load_raw_area(
                     orbit.focus=focus;
                     orbit.distance=730.;
                     state.raw_view=true;
+                    let decoded_props=tile.prop_placements();
+                    loaded.prop_issue=decoded_props.as_ref().err().cloned();
+                    loaded.props=decoded_props.unwrap_or_default();
                     state.status=format!(
                         "AREA RAW | {} cells | {} top chunks | {} props | {}",
-                        tile.cell_count(),tile.chunks.len(),tile.prop_count(),path
+                        tile.cell_count(),tile.chunks.len(),loaded.props.len(),path
                     );
                     loaded.tile=Some(tile);
                 }
@@ -725,117 +731,30 @@ fn row_slider(ui: &mut egui::Ui, label: &str, value: &mut f32,
 /// Read-only inspection of the original binary AREA data.
 //// The parser keeps the raw bytes and unknown blocks for future editing support.
 fn area_inspector_panel(
-    ctx: &egui::Context,
-    state: &mut GenesisState,
-    loaded: &LoadedArea,
-) {
-    if !state.area_inspector {
-        return;
-    }
-    let mut is_open = true;
+    ctx:&egui::Context,
+    state:&mut GenesisState,
+    loaded:&LoadedArea,
+){
+    if !state.area_inspector{return;}
+    let mut opened=true;
     egui::Window::new("AREA Inspector")
         .id(egui::Id::new("genesis-area-inspector"))
-        .default_pos(egui::pos2(24.0, 155.0))
-        .default_size(egui::vec2(340.0, 410.0))
-        .open(&mut is_open)
-        .collapsible(true)
+        .default_pos(egui::pos2(24.,155.))
+        .default_size(egui::vec2(385.,510.))
+        .open(&mut opened)
         .resizable(true)
         .frame(panel_frame())
-        .show(ctx, |ui| {
-            let Some(area) = loaded.tile.as_ref() else {
-                ui.label("No .area tile loaded. Use File -> Open AREA...");
-                return;
-            };
-
-            ui.label(egui::RichText::new("Original AREA binary").strong());
-            egui::Grid::new("area-file-details").num_columns(2).show(ui, |ui| {
-                ui.label("Version");
-                ui.monospace(area.version.to_string());
-                ui.end_row();
-                ui.label("Variant");
-                ui.monospace(if area.compressed { "AERA / zlib" } else { "area / raw" });
-                ui.end_row();
-                ui.label("Raw file size");
-                ui.monospace(format!("{} bytes", area.original.len()));
-                ui.end_row();
-                ui.label("LOD prefix");
-                ui.monospace(match &area.lod_prefix {
-                    Some(bytes) => format!("{} bytes", bytes.len()),
-                    None => "none".to_string(),
+        .show(ctx,|ui|{
+            if let Some(area)=loaded.tile.as_ref(){
+                egui::ScrollArea::vertical().show(ui,|ui|{
+                    area_ui::show(ui,&mut state.selected_cell,area,
+                        &loaded.props,loaded.prop_issue.as_deref());
                 });
-                ui.end_row();
-                ui.label("Terrain cells");
-                ui.monospace(area.cell_count().to_string());
-                ui.end_row();
-            });
-            ui.separator();
-            ui.collapsing(format!("Top-level chunks ({})", area.chunks.len()), |ui| {
-                egui::ScrollArea::vertical().max_height(135.0).show(ui, |ui| {
-                    for (index, chunk) in area.chunks.iter().enumerate() {
-                        let tag = String::from_utf8_lossy(&chunk.id);
-                        ui.monospace(format!(
-                            "{index:02} {tag:<4} @ 0x{:08X} | {} bytes",
-                            chunk.file_offset,
-                            chunk.data.len()
-                        ));
-                    }
-                });
-            });
-            ui.separator();
-            ui.horizontal(|ui| {
-                ui.label("Cell index:");
-                ui.add(egui::Slider::new(&mut state.selected_cell, 0..=255).show_value(true));
-            });
-            match area.cells[state.selected_cell].as_ref() {
-                Some(cell) => {
-                    egui::Grid::new("area-cell-details").num_columns(2).show(ui, |ui| {
-                        ui.label("Coordinates");
-                        ui.monospace(format!(
-                            "x={} y={}", cell.index % 16, cell.index / 16
-                        ));
-                        ui.end_row();
-                        ui.label("Flags");
-                        ui.monospace(format!("0x{:08X}", cell.flags));
-                        ui.end_row();
-                        ui.label("WorldLayer IDs");
-                        ui.monospace(format!("{:?}", cell.layers().unwrap_or([0; 4])));
-                        ui.end_row();
-                        ui.label("WorldZone IDs");
-                        ui.monospace(format!("{:?}", cell.zones().unwrap_or([0; 4])));
-                        ui.end_row();
-                        ui.label("Center height");
-                        ui.monospace(match cell.height(8, 8) {
-                            Some(metres) => format!("{metres:.3} m"),
-                            None => "not present".to_string(),
-                        });
-                        ui.end_row();
-                    });
-                    let set_bits: Vec<_> = (0..32)
-                        .filter(|bit| cell.block(*bit).is_some())
-                        .collect();
-                    ui.label(format!("Present blocks: {set_bits:?}"));
-                    ui.collapsing(
-                        format!("Cell subchunks ({})", cell.subchunks.len()),
-                        |ui| {
-                            for sub in &cell.subchunks {
-                                let name = String::from_utf8_lossy(&sub.id);
-                                ui.monospace(format!(
-                                    "{name:<4} @ cell+0x{:X} | {} bytes",
-                                    sub.file_offset,
-                                    sub.data.len()
-                                ));
-                            }
-                        },
-                    );
-                }
-                None => {
-                    ui.label("Cell absent from source tile");
-                }
+            } else {
+                ui.label("No AREA tile loaded. File -> Open AREA...");
             }
-            ui.separator();
-            ui.label(egui::RichText::new("Read-only: unknown data is preserved").small());
         });
-    state.area_inspector = is_open;
+    state.area_inspector=opened;
 }
 
 // A resizable dock replaces fixed-position floating tools in the default layout.
@@ -1037,47 +956,14 @@ fn dock_world(ui:&mut egui::Ui,state:&mut GenesisState) {
         ui.label(egui::RichText::new("World streaming: placeholder").size(9.).color(EDGE));
     });
 }
-fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea) {
-    ui.label(egui::RichText::new("AREA Inspector").strong().size(10.));
-    let Some(area)=loaded.tile.as_ref() else {
+fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea){
+    if let Some(area)=loaded.tile.as_ref(){
+        area_ui::show(ui,&mut state.selected_cell,area,
+            &loaded.props,loaded.prop_issue.as_deref());
+    }else{
         ui.label("No AREA tile loaded.");
         if ui.button("Open AREA...").clicked(){command(state,"Open AREA...");}
-        return;
-    };
-    ui.monospace(format!("Version: {}",area.version));
-    ui.monospace(format!("Binary: {} bytes",area.original.len()));
-    ui.monospace(format!("Cells: {}",area.cell_count()));
-    ui.monospace(format!("Chunks: {}",area.chunks.len()));
-    ui.monospace(format!("Compression: {}",area.compressed));
-    ui.separator();
-    ui.label("Cell:");
-    ui.add(egui::Slider::new(&mut state.selected_cell,0..=255));
-    if let Some(cell)=area.cells[state.selected_cell].as_ref(){
-        ui.monospace(format!("Index: {}",cell.index));
-        ui.monospace(format!("Flags: {:08X}",cell.flags));
-        ui.monospace(format!("Layers: {:?}",cell.layers()));
-        ui.monospace(format!("Zones: {:?}",cell.zones()));
-        if let Some(h)=cell.height(8,8) {
-            ui.monospace(format!("Height: {h:.3} m"));
-        }
-        for (bit,block) in cell.blocks.iter().enumerate() {
-            if let Some(data)=block {
-                ui.label(egui::RichText::new(format!(
-                    "bit {bit:02} | {} bytes",data.len())).size(8.));
-            }
-        }
-    } else {
-        ui.label("Cell absent");
     }
-    ui.separator();
-    ui.collapsing("Top-level chunks",|ui|{
-        for chunk in &area.chunks {
-            ui.monospace(format!("{} +0x{:X} ({} bytes)",
-                String::from_utf8_lossy(&chunk.id),
-                chunk.file_offset,chunk.data.len()));
-        }
-    });
-    ui.label(egui::RichText::new("Read-only raw AREA data").size(9.).color(EDGE));
 }
 
 fn floating_panels(ctx: &egui::Context, state: &mut GenesisState) {

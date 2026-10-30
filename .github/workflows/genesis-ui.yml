@@ -11,6 +11,9 @@ on:
     paths:
       - 'GenesisRebuild/**'
       - '.github/workflows/genesis-ui.yml'
+concurrency:
+  group: genesis-validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   check:
     runs-on: windows-latest
@@ -20,9 +23,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Cargo check (no graphics runtime)
-        run: cargo check
-      - name: Test standalone AREA formats library
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: GenesisRebuild
+      - name: Test AREA format crate (does not require Bevy)
         run: cargo test -p wildstar_formats
-      - name: Test raw AREA binary reader
-        run: cargo test --bin genesis --no-default-features
+      - name: Cargo check Genesis (no graphics runtime)
+        run: cargo check -p genesis

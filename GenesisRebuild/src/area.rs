@@ -69,9 +69,9 @@ impl RawArea {
     pub fn from_bytes(original:Vec<u8>)->Result<Self,String>{
         if original.len()<8 { return Err("AREA: truncated header".into()); }
         let compressed=match &original[0..4] {
-            b"aera"=>false,
+            b"aera" | b"area" | b"AREA"=>false,
             b"AERA"=>true,
-            _=>return Err("AREA: bad magic (expected aera or AERA)".into())
+            _=>return Err("AREA: bad magic (expected area/aera/AERA)".into())
         };
         let version=read_u32(&original,4)?;
         let mut cells=vec![None;256];

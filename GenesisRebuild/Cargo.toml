@@ -8,7 +8,7 @@ description = "WildStar Genesis visual UI replica in Bevy"
 bevy = "0.20.1"
 bevy_egui = "0.43.1"
 image = { version = "0.25", default-features = false, features = ["png"] }
-flate2 = "1.1"
+wildstar_formats = { path = "crates/wildstar_formats" }
 
 # Fast local iteration: optimize only the application crate for compile/link time.
 # Cargo reuses the ordinary target/debug artifacts for both cargo run and cargo fast.
@@ -17,3 +17,7 @@ flate2 = "1.1"
 opt-level = 0
 debug = 0
 codegen-units = 256
+
+[workspace]
+members = ["crates/wildstar_formats"]
+resolver = "3"

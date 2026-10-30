@@ -258,7 +258,7 @@ fn refresh_terrain_view(
     let preview=if target.0==5 && loaded.terrain_albedo.is_none(){0}else{target.0};
     let Ok((mesh,_))=terrain::terrain_mesh(tile,preview,target.1) else{return;};
     if let Ok((mut component,material))=mesh_components.get_mut(entity) {
-        if let Some(standard)=materials.get_mut(&material.0){
+        if let Some(mut standard)=materials.get_mut(&material.0){
             standard.base_color_texture=if target.0==5{
                 loaded.terrain_albedo.clone()
             }else{None};

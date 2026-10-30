@@ -44,6 +44,7 @@ struct GenesisState {
     bottom_tab: usize,
     ribbon_tab: usize,
     time_of_day: f32,
+    terrain_view: usize,
 }
 impl Default for GenesisState {
     fn default() -> Self {
@@ -71,6 +72,7 @@ impl Default for GenesisState {
             bottom_tab: 0,
             ribbon_tab: 0,
             time_of_day: 12.0,
+            terrain_view: 0,
         }
     }
 }
@@ -86,6 +88,7 @@ struct LoadedArea {
     mesh_entity: Option<Entity>,
     props: Vec<area::AreaProp>,
     prop_issue: Option<String>,
+    last_preview: (usize, usize),
 }
 #[derive(Resource)]
 struct OrbitCamera {
@@ -153,7 +156,7 @@ fn load_raw_area(
     let Some(path)=state.pending_load.take() else {return;};
     match area::RawArea::from_path(Path::new(&path)) {
         Ok(tile)=>{
-            match terrain::terrain_mesh(&tile) {
+            match terrain::terrain_mesh(&tile,state.terrain_view,state.texture_index) {
                 Ok((mesh,focus))=>{
                     if let Some(old)=loaded.mesh_entity.take(){
                         commands.entity(old).despawn();
@@ -178,6 +181,7 @@ fn load_raw_area(
                         "AREA RAW | {} cells | {} top chunks | {} props | {}",
                         tile.cell_count(),tile.chunks.len(),loaded.props.len(),path
                     );
+                    loaded.last_preview=(state.terrain_view,state.texture_index);
                     loaded.tile=Some(tile);
                 }
                 Err(e)=>state.status=format!("AREA mesh: {e}"),
@@ -186,6 +190,24 @@ fn load_raw_area(
         Err(e)=>state.status=format!("AREA read: {e}"),
     }
 }
+/// Replace only the mesh asset when an AREA debug-view option changes.
+fn refresh_terrain_view(
+    state:Res<GenesisState>,
+    mut loaded:ResMut<LoadedArea>,
+    mut meshes:ResMut<Assets<Mesh>>,
+    mut mesh_components:Query<&mut Mesh3d>,
+){
+    let target=(state.terrain_view,state.texture_index);
+    if loaded.last_preview==target{return;}
+    let Some(tile)=loaded.tile.as_ref() else{return;};
+    let Some(entity)=loaded.mesh_entity else{return;};
+    let Ok((mesh,_))=terrain::terrain_mesh(tile,target.0,target.1) else{return;};
+    if let Ok(mut component)=mesh_components.get_mut(entity) {
+        component.0=meshes.add(mesh);
+        loaded.last_preview=target;
+    }
+}
+
 fn update_camera(
     orbit: Res<OrbitCamera>,
     state: Res<GenesisState>,
@@ -236,7 +258,7 @@ fn main() {
         }))
         .add_plugins(EguiPlugin::default())
         .add_systems(Startup, setup_scene)
-        .add_systems(Update, (load_raw_area, update_camera).chain())
+        .add_systems(Update, (load_raw_area, refresh_terrain_view, update_camera).chain())
         .add_systems(EguiPrimaryContextPass, editor_ui)
         .run();
 }
@@ -957,6 +979,18 @@ fn dock_world(ui:&mut egui::Ui,state:&mut GenesisState) {
     });
 }
 fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea){
+    ui.label("Terrain preview");
+    ui.horizontal_wrapped(|ui|{
+        for (i,name) in ["Height","RGB565","Layer IDs","Zone IDs","Blend"].iter().enumerate(){
+            ui.selectable_value(&mut state.terrain_view,i,*name);
+        }
+    });
+    if state.terrain_view>=2 && state.terrain_view!=3{
+        ui.horizontal(|ui|{
+            ui.label("Layer slot");
+            ui.add(egui::Slider::new(&mut state.texture_index,0..=3));
+        });
+    }
     if let Some(area)=loaded.tile.as_ref(){
         area_ui::show(ui,&mut state.selected_cell,area,
             &loaded.props,loaded.prop_issue.as_deref());

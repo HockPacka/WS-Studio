@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use super::super::*;
+    use super::*;
     fn sample_cell() -> AreaCell {
         let mut blocks=vec![None;32];
         blocks[1]=Some([11u32,12,13,14].into_iter().flat_map(u32::to_le_bytes).collect());

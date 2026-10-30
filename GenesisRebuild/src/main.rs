@@ -1,6 +1,10 @@
 //! Visual-only reconstruction of the classic WildStar Genesis editor in Bevy.
 //! Screenshots under WILDSTAREDITOR remain the visual references. No world edits yet.
+mod area;
+mod terrain;
 use bevy::prelude::*;
+use bevy::camera::Viewport;
+use std::path::Path;
 use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 
 const PANEL: egui::Color32 = egui::Color32::from_rgb(228, 221, 205);
@@ -23,6 +27,10 @@ struct GenesisState {
     grid: bool, palette_index: usize, texture_index: usize,
     search: String,
     status: String,
+    raw_view: bool,
+    open_area_dialog: bool,
+    area_path: String,
+    pending_load: Option<String>,
 }
 impl Default for GenesisState {
     fn default() -> Self {
@@ -34,16 +42,135 @@ impl Default for GenesisState {
             clutter_panel: false, prop_panel: false, object_list: false,
             zone_panel: false, grid: false, palette_index: 0, texture_index: 0,
             search: String::new(),
-            status: "World Editor - Genesis | Visual UI placeholders".to_string(),
+            status: "3D AREA Preview: right drag orbit, middle drag pan, wheel zoom".to_string(),
+            raw_view: true,
+            open_area_dialog: false,
+            area_path: String::new(),
+            pending_load: None,
         }
     }
 }
 #[derive(Default)]
 struct Viewports { textures: Vec<egui::TextureHandle> }
 
+#[derive(Component)]
+struct GenesisCamera;
+
+#[derive(Resource,Default)]
+struct LoadedArea {
+    tile: Option<area::RawArea>,
+    mesh_entity: Option<Entity>,
+}
+#[derive(Resource)]
+struct OrbitCamera {
+    focus: Vec3,
+    distance: f32,
+    yaw: f32,
+    pitch: f32,
+    rect: Option<[f32;4]>,
+}
+impl Default for OrbitCamera {
+    fn default()->Self {
+        Self{focus:Vec3::ZERO,distance:730.0,yaw:0.55,pitch:0.74,rect:None}
+    }
+}
+fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>) {
+    commands.spawn((
+        GenesisCamera,
+        Camera3d::default(),
+        Transform::from_xyz(450.,500.,550.).looking_at(Vec3::ZERO,Vec3::Y),
+    ));
+    commands.spawn((
+        DirectionalLight {
+            illuminance: 8500.0,
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(100.,650.,150.).looking_at(Vec3::ZERO,Vec3::Y),
+    ));
+    let args:Vec<String>=std::env::args().skip(1).collect();
+    let sample=Path::new("../WildStarModelStudio/demo/Hills.area");
+    if let Some(path)=args.first().filter(|x|x.ends_with(".area")){
+        state.area_path=path.to_string();
+        state.pending_load=Some(path.to_string());
+    } else if sample.exists() {
+        state.area_path=sample.to_string_lossy().into_owned();
+        state.pending_load=Some(state.area_path.clone());
+    }
+}
+fn load_raw_area(
+    mut state: ResMut<GenesisState>,
+    mut loaded: ResMut<LoadedArea>,
+    mut orbit: ResMut<OrbitCamera>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let Some(path)=state.pending_load.take() else {return;};
+    match area::RawArea::from_path(Path::new(&path)) {
+        Ok(tile)=>{
+            match terrain::terrain_mesh(&tile) {
+                Ok((mesh,focus))=>{
+                    if let Some(old)=loaded.mesh_entity.take(){
+                        commands.entity(old).despawn();
+                    }
+                    loaded.mesh_entity=Some(commands.spawn((
+                        Mesh3d(meshes.add(mesh)),
+                        MeshMaterial3d(materials.add(StandardMaterial {
+                            base_color:Color::WHITE,
+                            perceptual_roughness:1.0,
+                            cull_mode:None,
+                            ..default()
+                        })),
+                        Transform::default(),
+                    )).id());
+                    orbit.focus=focus;
+                    orbit.distance=730.;
+                    state.raw_view=true;
+                    state.status=format!(
+                        "AREA RAW | {} cells | {} top chunks | {} props | {}",
+                        tile.cell_count(),tile.chunks.len(),tile.prop_count(),path
+                    );
+                    loaded.tile=Some(tile);
+                }
+                Err(e)=>state.status=format!("AREA mesh: {e}"),
+            }
+        }
+        Err(e)=>state.status=format!("AREA read: {e}"),
+    }
+}
+fn update_camera(
+    orbit: Res<OrbitCamera>,
+    state: Res<GenesisState>,
+    windows: Query<&Window>,
+    mut camera: Query<(&mut Camera,&mut Transform),With<GenesisCamera>>,
+) {
+    let Ok((mut view,mut transform))=camera.single_mut() else{return;};
+    view.is_active=state.raw_view;
+    if !view.is_active {return;}
+    let p=orbit.pitch.clamp(0.05,1.52);
+    let direction=Vec3::new(orbit.yaw.sin()*p.cos(),p.sin(),orbit.yaw.cos()*p.cos());
+    *transform=Transform::from_translation(orbit.focus+direction*orbit.distance)
+        .looking_at(orbit.focus,Vec3::Y);
+    let Ok(window)=windows.single() else{return;};
+    if let Some([left,top,right,bottom])=orbit.rect {
+        let scale=window.resolution.scale_factor();
+        let width=window.resolution.physical_width();
+        let height=window.resolution.physical_height();
+        let x=((left*scale).max(0.) as u32).min(width.saturating_sub(1));
+        let y=((top*scale).max(0.) as u32).min(height.saturating_sub(1));
+        let w=(((right-left)*scale).max(1.) as u32).min(width.saturating_sub(x));
+        let h=(((bottom-top)*scale).max(1.) as u32).min(height.saturating_sub(y));
+        view.viewport=Some(Viewport{physical_position:UVec2::new(x,y),
+            physical_size:UVec2::new(w.max(1),h.max(1)),..default()});
+    }
+}
+
 fn main() {
     App::new()
         .insert_resource(GenesisState::default())
+        .insert_resource(LoadedArea::default())
+        .insert_resource(OrbitCamera::default())
         .insert_resource(ClearColor(Color::srgb(0.12, 0.09, 0.16)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -55,7 +182,8 @@ fn main() {
             ..default()
         }))
         .add_plugins(EguiPlugin::default())
-        .add_systems(Startup, |mut commands: Commands| { commands.spawn(Camera2d); })
+        .add_systems(Startup, setup_scene)
+        .add_systems(Update, (load_raw_area, update_camera).chain())
         .add_systems(EguiPrimaryContextPass, editor_ui)
         .run();
 }
@@ -68,7 +196,8 @@ fn classic_visuals(ctx: &egui::Context) {
             .insert(0, "GenesisTahoma".into());
         ctx.set_fonts(fonts);
     }
-    let mut style = (*ctx.style()).clone();
+    ctx.set_theme(egui::Theme::Light);
+    let mut style = (*ctx.style_of(egui::Theme::Light)).clone();
     style.visuals = egui::Visuals::light();
     style.visuals.window_fill = PANEL;
     style.visuals.panel_fill = PANEL;
@@ -88,7 +217,7 @@ fn classic_visuals(ctx: &egui::Context) {
     style.text_styles.insert(egui::TextStyle::Button, egui::FontId::proportional(10.0));
     style.text_styles.insert(egui::TextStyle::Small, egui::FontId::proportional(9.0));
     style.text_styles.insert(egui::TextStyle::Heading, egui::FontId::proportional(11.0));
-    ctx.set_style(style);
+    ctx.set_style_of(egui::Theme::Light,style);
 }
 fn load_scenes(ctx: &egui::Context, previews: &mut Viewports) {
     // The source image is cropped to the original level viewport at startup.
@@ -110,14 +239,37 @@ fn load_scenes(ctx: &egui::Context, previews: &mut Viewports) {
     }
 }
 fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
-             mut previews: Local<Viewports>, mut initialized: Local<bool>) -> Result {
+             mut previews: Local<Viewports>, mut initialized: Local<bool>,
+             mut orbit: ResMut<OrbitCamera>, loaded: Res<LoadedArea>) -> Result {
     let ctx = contexts.ctx_mut()?;
     if !*initialized { classic_visuals(ctx); *initialized = true; }
     if previews.textures.is_empty() { load_scenes(ctx, &mut previews); }
-    menu_and_toolbars(ctx, &mut state);
-    bottom_strip(ctx, &mut state);
-    viewport(ctx, &state, &previews);
+    egui::Area::new(egui::Id::new("genesis-main-root"))
+        .fixed_pos(egui::Pos2::ZERO)
+        .order(egui::Order::Background)
+        .show(ctx, |ui| {
+            ui.set_min_size(ctx.content_rect().size());
+            menu_and_toolbars(ui, &mut state);
+            bottom_strip(ui, &mut state);
+            viewport(ui, &mut state, &previews, &mut orbit, &loaded);
+        });
     floating_panels(ctx, &mut state);
+    if state.open_area_dialog {
+        let mut open=true;
+        egui::Window::new("Open WildStar AREA")
+            .collapsible(false).resizable(false)
+            .default_pos(egui::pos2(220.,190.)).open(&mut open)
+            .show(ctx, |ui| {
+                ui.label("Original .area path (raw binary):");
+                ui.add(egui::TextEdit::singleline(&mut state.area_path).desired_width(485.));
+                if ui.button("Load AREA").clicked() {
+                    state.pending_load=Some(state.area_path.clone());
+                    state.open_area_dialog=false;
+                }
+                ui.label("Input remains unchanged; meshes are rebuilt in memory.");
+            });
+        if !open {state.open_area_dialog=false;}
+    }
     Ok(())
 }
 fn command(state: &mut GenesisState, name: &'static str) {
@@ -132,9 +284,11 @@ fn command(state: &mut GenesisState, name: &'static str) {
         "Object List" => state.object_list = true,
         "Zones" | "Named Region Editor" => state.zone_panel = true,
         "Land Chunk Grid" => state.grid = !state.grid,
-        "Grimvault Preview" => state.scene = 0,
-        "Aurora Preview" => state.scene = 1,
-        "Blue Forest Preview" => state.scene = 2,
+        "3D AREA View" => state.raw_view = true,
+        "Open AREA..." => state.open_area_dialog = true,
+        "Grimvault Preview" => { state.scene = 0; state.raw_view=false; },
+        "Aurora Preview" => { state.scene = 1; state.raw_view=false; },
+        "Blue Forest Preview" => { state.scene = 2; state.raw_view=false; },
         _ => {}
     }
 }
@@ -197,16 +351,16 @@ fn small_commands(ui: &mut egui::Ui, state: &mut GenesisState, tag: &str,
             });
         });
 }
-fn menu_and_toolbars(ctx: &egui::Context, state: &mut GenesisState) {
-    egui::TopBottomPanel::top("genesis-menu-and-ribbon")
+fn menu_and_toolbars(ui_root: &mut egui::Ui, state: &mut GenesisState) {
+    egui::Panel::top("genesis-menu-and-ribbon")
         .frame(egui::Frame::default().fill(PAPER)
                .inner_margin(egui::Margin::symmetric(4,2)))
-        .show(ctx, |ui| {
+        .show(ui_root, |ui| {
             ui.horizontal(|ui| {
                 for (title, entries) in [
-                    ("File",&["New","Open","Save","Save As","Exit"][..]),
+                    ("File",&["New","Open","Open AREA...","Save","Save As","Exit"][..]),
                     ("Edit",&["Undo","Redo","Cut","Copy","Paste","Delete"][..]),
-                    ("View",&["Land Wireframe","Land Chunk Grid","Land Edges","Slope",
+                    ("View",&["3D AREA View","Land Wireframe","Land Chunk Grid","Land Edges","Slope",
                               "Grimvault Preview","Aurora Preview","Blue Forest Preview"][..]),
                     ("Tools",&["Height Brush","Texture Brush","Color Brush","Clutter","Prop Models"][..]),
                     ("Window",&["Color Brush Properties","Color Palette","Texture Brush Properties",
@@ -256,11 +410,11 @@ fn menu_and_toolbars(ctx: &egui::Context, state: &mut GenesisState) {
             ]);
         });
 }
-fn bottom_strip(ctx: &egui::Context, state: &mut GenesisState) {
-    egui::TopBottomPanel::bottom("bottom-occlusion-strip")
+fn bottom_strip(ui_root: &mut egui::Ui, state: &mut GenesisState) {
+    egui::Panel::bottom("bottom-occlusion-strip")
         .frame(egui::Frame::default().fill(PAPER)
                .inner_margin(egui::Margin::symmetric(5,2)))
-        .show(ctx, |ui| {
+        .show(ui_root, |ui| {
             ui.horizontal(|ui| {
                 for item in ["Occlusion","Land Occlusion Lines","Land Occlusion Nodes",
                              "Occlusion Editor","Land Occlusion Curtains"] {
@@ -272,28 +426,81 @@ fn bottom_strip(ctx: &egui::Context, state: &mut GenesisState) {
             });
         });
 }
-fn viewport(ctx: &egui::Context, state: &GenesisState, previews: &Viewports) {
+fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
+            previews:&Viewports,orbit:&mut OrbitCamera,loaded:&LoadedArea) {
     egui::CentralPanel::default()
-        .frame(egui::Frame::default().fill(egui::Color32::from_rgb(37,24,49)))
-        .show(ctx, |ui| {
+        .frame(egui::Frame::default().fill(if state.raw_view {
+            egui::Color32::TRANSPARENT
+        } else { egui::Color32::from_rgb(37,24,49) }))
+        .show(ui_root, |ui| {
             let rect = ui.available_rect_before_wrap();
-            if let Some(tex) = previews.textures.get(state.scene) {
-                ui.painter().image(tex.id(),rect,
-                    egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.,1.)),
-                    egui::Color32::WHITE);
+            if state.raw_view {
+                orbit.rect=Some([rect.left(),rect.top(),rect.right(),rect.bottom()]);
+                let response=ui.allocate_rect(rect,egui::Sense::click_and_drag());
+                if response.dragged_by(egui::PointerButton::Secondary) {
+                    let delta=ui.input(|i|i.pointer.delta());
+                    orbit.yaw-=delta.x*0.006;
+                    orbit.pitch=(orbit.pitch+delta.y*0.006).clamp(0.05,1.52);
+                }
+                if response.dragged_by(egui::PointerButton::Middle) {
+                    let delta=ui.input(|i|i.pointer.delta());
+                    let factor=orbit.distance*0.002;
+                    let right=Vec3::new(orbit.yaw.cos(),0.,-orbit.yaw.sin());
+                    orbit.focus+=right*delta.x*factor
+                        +Vec3::new(0.,1.,0.)*delta.y*factor;
+                }
+                if response.hovered() {
+                    let scroll=ui.input(|i|i.smooth_scroll_delta.y);
+                    orbit.distance=(orbit.distance*(-scroll*0.0015).exp()).clamp(3.,5000.);
+                    let (up,down,left,right,shift)=ui.input(|i|(
+                        i.key_down(egui::Key::W),
+                        i.key_down(egui::Key::S),
+                        i.key_down(egui::Key::A),
+                        i.key_down(egui::Key::D),
+                        i.modifiers.shift,
+                    ));
+                    let speed=orbit.distance*if shift {0.017} else {0.004};
+                    let forward=Vec3::new(-orbit.yaw.sin(),0.,-orbit.yaw.cos());
+                    let side=Vec3::new(orbit.yaw.cos(),0.,-orbit.yaw.sin());
+                    if up {orbit.focus+=forward*speed;}
+                    if down {orbit.focus-=forward*speed;}
+                    if left {orbit.focus-=side*speed;}
+                    if right {orbit.focus+=side*speed;}
+                }
+                if loaded.tile.is_none() {
+                    ui.painter().text(rect.center(),egui::Align2::CENTER_CENTER,
+                        "Open AREA...  (File menu) | Raw binary 3D preview",
+                        egui::FontId::proportional(15.),
+                        egui::Color32::from_rgb(243,236,222));
+                } else {
+                    ui.painter().text(rect.min+egui::vec2(8.,8.),
+                        egui::Align2::LEFT_TOP,
+                        "RAW AREA  |  RMB: Orbit  MMB: Pan  Wheel: Zoom  WASD: Move",
+                        egui::FontId::proportional(10.),
+                        egui::Color32::from_rgb(238,233,219));
+                }
+            } else {
+                orbit.rect=None;
+                if let Some(tex)=previews.textures.get(state.scene) {
+                    ui.painter().image(tex.id(),rect,
+                        egui::Rect::from_min_max(egui::Pos2::ZERO,egui::pos2(1.,1.)),
+                        egui::Color32::WHITE);
+                }
             }
             if state.grid {
-                let mut x = rect.left();
-                while x < rect.right() {
-                    ui.painter().line_segment([egui::pos2(x,rect.top()),egui::pos2(x,rect.bottom())],
-                        egui::Stroke::new(0.6, egui::Color32::from_rgba_unmultiplied(232,194,113,70)));
-                    x += 64.0;
+                let mut x=rect.left();
+                while x<rect.right(){
+                    ui.painter().line_segment(
+                        [egui::pos2(x,rect.top()),egui::pos2(x,rect.bottom())],
+                        egui::Stroke::new(0.6,egui::Color32::from_rgba_unmultiplied(232,194,113,70)));
+                    x+=64.;
                 }
-                let mut y = rect.top();
-                while y < rect.bottom() {
-                    ui.painter().line_segment([egui::pos2(rect.left(),y),egui::pos2(rect.right(),y)],
-                        egui::Stroke::new(0.6, egui::Color32::from_rgba_unmultiplied(232,194,113,70)));
-                    y += 64.0;
+                let mut y=rect.top();
+                while y<rect.bottom(){
+                    ui.painter().line_segment(
+                        [egui::pos2(rect.left(),y),egui::pos2(rect.right(),y)],
+                        egui::Stroke::new(0.6,egui::Color32::from_rgba_unmultiplied(232,194,113,70)));
+                    y+=64.;
                 }
             }
         });

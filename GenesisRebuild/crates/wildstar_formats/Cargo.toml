@@ -1,0 +1,8 @@
+[package]
+name = "wildstar_formats"
+version = "0.1.0"
+edition = "2024"
+description = "Native read-only WildStar AREA binary decoding shared by Genesis Editor"
+
+[dependencies]
+flate2 = "1.1"

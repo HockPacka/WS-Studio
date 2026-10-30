@@ -98,8 +98,14 @@ impl Table {
                         // Field's value is 8-byte aligned within its row.
                         if (pos-start)%8!=0{pos=add(pos,4)?;}
                         let offset=u64_at(b,pos)?;pos+=8;
-                        let str_at=relative(rows_start,offset)?;
-                        Value::Text(utf16_string(b,str_at,4096)?)
+                        // A zero string pointer represents an empty optional
+                        // field in client tables (for example unused normal maps).
+                        if offset==0{
+                            Value::Text(String::new())
+                        }else{
+                            let str_at=relative(rows_start,offset)?;
+                            Value::Text(utf16_string(b,str_at,4096)?)
+                        }
                     },
                     other=>return Err(format!("TBL: unsupported field type {other}")),
                 };

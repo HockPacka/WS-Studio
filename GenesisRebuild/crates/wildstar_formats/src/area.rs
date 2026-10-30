@@ -2,6 +2,8 @@
 //! No conversion to ADT, JSON or external formats is required.
 use flate2::{Decompress, FlushDecompress, Status};
 use std::path::Path;
+pub mod metadata;
+pub use metadata::{AreaProp, ZoneSummary, block_description, block_expected_bytes};
 
 const BLOCK_SIZES: [usize;32] = [
     722,16,8450,8450,8450,4,64,16,4225,2178,4,578,1,4624,2312,8450,
@@ -229,7 +231,7 @@ mod tests{
     }
     #[test]
     fn real_raw_demo_hills(){
-        let data=include_bytes!("../../WildStarModelStudio/demo/Hills.area").to_vec();
+        let data=include_bytes!("../../../../WildStarModelStudio/demo/Hills.area").to_vec();
         let area=RawArea::from_bytes(data).unwrap();
         assert_eq!(area.version,0);
         assert_eq!(area.cell_count(),256);

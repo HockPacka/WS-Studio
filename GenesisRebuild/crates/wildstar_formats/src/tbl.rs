@@ -149,6 +149,46 @@ mod tests{
         assert!(Table::from_bytes(&data).is_err());
     }
     #[test]
+    fn decodes_synthetic_lbtd_with_inline_utf16_names_and_row_string() {
+        const H:usize=96;
+        let mut data=vec![0u8;512];
+        data[..4].copy_from_slice(b"LBTD");
+        // Field descriptors at H+0x30; two 24-byte records.
+        data[24..32].copy_from_slice(&16u64.to_le_bytes()); // record size
+        data[32..40].copy_from_slice(&2u64.to_le_bytes());  // field count
+        data[40..48].copy_from_slice(&48u64.to_le_bytes()); // descriptors
+        data[48..56].copy_from_slice(&1u64.to_le_bytes());  // rows
+        data[64..72].copy_from_slice(&160u64.to_le_bytes());// row offset
+        let field_start=H+48;
+        let names_start=192;
+        let names=["ID","ColorMapPath"];
+        let mut next=0usize;
+        for (i,name) in names.iter().enumerate(){
+            let p=field_start+i*24;
+            data[p..p+4].copy_from_slice(&((name.len()+1) as u32).to_le_bytes());
+            data[p+8..p+16].copy_from_slice(&(next as u64).to_le_bytes());
+            let kind=if i==0{3u16}else{130u16};
+            data[p+16..p+18].copy_from_slice(&kind.to_le_bytes());
+            for c in name.encode_utf16().chain(std::iter::once(0)){
+                data[names_start+next..names_start+next+2].copy_from_slice(&c.to_le_bytes());
+                next+=2;
+            }
+        }
+        let start=H+160;
+        data[start..start+4].copy_from_slice(&77i32.to_le_bytes());
+        data[start+8..start+16].copy_from_slice(&32u64.to_le_bytes());
+        let value="Art/Terrain/Sample.tex";
+        let mut p=start+32;
+        for c in value.encode_utf16().chain(std::iter::once(0)){
+            data[p..p+2].copy_from_slice(&c.to_le_bytes());
+            p+=2;
+        }
+        let table=Table::from_bytes(&data).unwrap();
+        assert_eq!(table.columns,vec!["ID","ColorMapPath"]);
+        let layers=world_layers(&table).unwrap();
+        assert_eq!(layers[&77].color_map,value);
+    }
+    #[test]
     fn extracts_world_layer_metadata(){
         let table=Table{columns:vec!["ID".into(),"ColorMapPath".into(),
             "NormalMapPath".into(),"MetersPerTextureTile".into()],rows:vec![

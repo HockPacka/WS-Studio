@@ -536,7 +536,13 @@ fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAr
                 if ui.small_button(if state.bottom_visible {"▾"} else {"▴"}).clicked() {
                     state.bottom_visible=!state.bottom_visible;
                 }
-                ui.label(egui::RichText::new(&state.status).size(9.));
+                let max_chars=(ui.available_width()/6.0).floor().clamp(24.0,110.0) as usize;
+                let short_status=if state.status.chars().count()>max_chars {
+                    format!("{}…",state.status.chars().take(max_chars.saturating_sub(1))
+                        .collect::<String>())
+                } else {state.status.clone()};
+                ui.label(egui::RichText::new(short_status).size(9.))
+                    .on_hover_text(&state.status);
                 if ui.available_width()>210.0 {
                     ui.separator();
                     ui.label(egui::RichText::new(format!(
@@ -566,7 +572,7 @@ fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAr
                 if ui.small_button("Hide").clicked(){state.bottom_visible=false;}
             });
             ui.separator();
-            egui::ScrollArea::vertical().show(ui,|ui| {
+            egui::ScrollArea::vertical().auto_shrink([false,false]).show(ui,|ui| {
                 ui.horizontal_wrapped(|ui| {
                     let commands:&[&'static str]=match state.bottom_tab {
                         0=>&["Occlusion","Land Occlusion Lines","Land Occlusion Nodes",

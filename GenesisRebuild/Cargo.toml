@@ -2,6 +2,9 @@
 name = "genesis"
 version = "0.1.0"
 edition = "2024"
+description = "WildStar Genesis visual UI replica in Bevy"
 
 [dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy.git", branch = "main" }
+bevy = "0.20.0"
+bevy_egui = "0.43.1"
+image = { version = "0.25", default-features = false, features = ["png"] }

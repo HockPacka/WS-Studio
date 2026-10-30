@@ -1,0 +1,23 @@
+name: Genesis Bevy UI - Windows check
+on:
+  push:
+    branches:
+      - feature/genesis-bevy-ui-replica
+    paths:
+      - 'GenesisRebuild/**'
+      - '.github/workflows/genesis-ui.yml'
+  pull_request:
+    paths:
+      - 'GenesisRebuild/**'
+      - '.github/workflows/genesis-ui.yml'
+jobs:
+  check:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: GenesisRebuild
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cargo check (no graphics runtime)
+        run: cargo check

@@ -36,9 +36,18 @@ impl AssetRoots {
     /// or either ClientData directory itself. Search directory names up to 3
     /// levels down; never descend into the millions of game files here.
     pub fn discover(selected:&Path)->Result<Self,String>{
-        let selected=selected.canonicalize().map_err(|e|format!(
-            "Cannot open root {}: {e}",selected.display()))?;
-        if !selected.is_dir(){return Err("Selected path is not a directory".into());}
+        // Preserve the normal Windows Explorer path spelling (not \\?\-extended
+        // canonical paths). Make relative paths absolute for persistence.
+        let selected=if selected.is_absolute(){
+            selected.to_path_buf()
+        }else{
+            std::env::current_dir().map_err(|e|format!("Current directory: {e}"))?
+                .join(selected)
+        };
+        if !selected.is_dir(){
+            return Err(format!("Client root is not an accessible directory: {}",
+                selected.display()));
+        }
         let (client_data,client_data_en)=if has_name(&selected,"ClientData"){
             let parent=selected.parent().ok_or("ClientData has no parent")?;
             (selected.clone(),child_dir(parent,"ClientDataEN"))

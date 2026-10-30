@@ -5,6 +5,7 @@ edition = "2024"
 description = "WildStar Genesis visual UI replica in Bevy"
 
 [dependencies]
-bevy = "0.20.0"
+bevy = "0.20.1"
 bevy_egui = "0.43.1"
 image = { version = "0.25", default-features = false, features = ["png"] }
+flate2 = "1.1"

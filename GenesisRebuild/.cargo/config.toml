@@ -1,10 +1,11 @@
-# Optional fast iterative Bevy builds, WITHOUT changing normal cargo run / CI.
-# Run from GenesisRebuild:
-#   cargo fast -- "../WildStarModelStudio/demo/Hills.area"
+# Genesis local iteration (Bevy 0.20.1)
 #
-# First invocation builds Bevy's shared library in target/fast-dev.
-# Subsequent edits mostly rebuild/link only the application crate.
-# Do not enable the Windows rust-lld linker globally here unless installed.
+# `bevy/dynamic_linking` currently requires bevy_dylib 0.20.1,
+# which is not available on crates.io. Do NOT enable it.
+#
+# Keep the default `dev` profile so `cargo fast` and `cargo run`
+# reuse the SAME target/debug cache instead of compiling Bevy twice.
+# Compilation still runs for changed Genesis source files.
 [alias]
-fast = "run --profile fast-dev --features bevy/dynamic_linking"
-fast-check = "check --profile fast-dev --features bevy/dynamic_linking"
+fast = "run"
+fast-check = "check"

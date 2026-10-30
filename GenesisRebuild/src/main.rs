@@ -83,7 +83,7 @@ fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>) {
     commands.spawn((
         DirectionalLight {
             illuminance: 8500.0,
-            shadows_enabled: false,
+            shadow_maps_enabled: false,
             ..default()
         },
         Transform::from_xyz(100.,650.,150.).looking_at(Vec3::ZERO,Vec3::Y),

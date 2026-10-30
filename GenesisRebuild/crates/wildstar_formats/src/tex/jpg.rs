@@ -302,6 +302,27 @@ pub fn decode_jpg_tex(bytes:&[u8],limit:usize)->Result<RgbaImage,String>{
 mod tests {
     use super::*;
     #[test]
+    fn decodes_type2_real_huffman_entropy_with_zero_dct_blocks(){
+        // Standard JPEG canonical Huffman: Luma DC category 0 = '00',
+        // AC end-of-block = '1010'. One (DC0,EOB) per channel, 4 channels.
+        // TYPE2 ("LLLL") yields RGBA 128/128/128/128 after the IDCT.
+        let mut bytes=vec![0u8;112];
+        bytes[..4].copy_from_slice(b"\0GFX");
+        bytes[4..8].copy_from_slice(&3u32.to_le_bytes());
+        bytes[8..12].copy_from_slice(&8u32.to_le_bytes());
+        bytes[12..16].copy_from_slice(&8u32.to_le_bytes());
+        bytes[32..36].copy_from_slice(&1u32.to_le_bytes());
+        bytes[36..40].copy_from_slice(&1u32.to_le_bytes());
+        bytes[52..56].copy_from_slice(&1u32.to_le_bytes());
+        bytes[56..60].copy_from_slice(&3u32.to_le_bytes());
+        for c in 0..4{bytes[40+3*c]=50;}
+        bytes.extend_from_slice(&[0b00101000,0b10100010,0b10001010]);
+        let decoded=decode_jpg_tex(&bytes,256).unwrap();
+        assert_eq!((decoded.width,decoded.height),(8,8));
+        assert_eq!(decoded.rgba[0..4],[128,128,128,128]);
+        assert!(decoded.rgba.chunks_exact(4).all(|p|p==[128,128,128,128]));
+    }
+    #[test]
     fn decodes_default_channel_type1_and_type2_mips(){
         for kind in 0..3u32 {
             let mut bytes=vec![0u8;112];

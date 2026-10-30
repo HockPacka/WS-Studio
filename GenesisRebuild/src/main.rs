@@ -268,23 +268,27 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
     let ctx = contexts.ctx_mut()?;
     if !*initialized { classic_visuals(ctx); *initialized = true; }
     if previews.textures.is_empty() { load_scenes(ctx, &mut previews); }
-    // Use the actual top-level frame instead of a fixed-position egui::Area.
-    // Nested panels reserve space; the 3D camera viewport tracks the remainder.
+    // Reserve the dynamically measured window area before arranging nested panels.
     if (ctx.zoom_factor() - state.ui_zoom).abs() > 0.001 {
         ctx.set_zoom_factor(state.ui_zoom);
     }
     orbit.ui_pixels_per_point = ctx.pixels_per_point();
-    egui::CentralPanel::default()
-        .frame(egui::Frame::default()
-            .fill(egui::Color32::TRANSPARENT)
-            .inner_margin(egui::Margin::same(0)))
-        .show(ctx, |ui| {
-            menu_and_toolbars(ui, &mut state);
-            bottom_strip(ui, &mut state, &loaded, &orbit);
-            if state.dock_visible && !state.floating_mode {
-                dock_panels(ui, &mut state, &loaded);
-            }
-            viewport(ui, &mut state, &previews, &mut orbit, &loaded);
+    // egui 0.36 panels operate within Ui. The outer area is remeasured
+    // each frame from the current logical window rect; the inner panels
+    // consume top/right/bottom space before the terrain viewport.
+    egui::Area::new(egui::Id::new("genesis-main-root"))
+        .fixed_pos(ctx.content_rect().min)
+        .order(egui::Order::Background)
+        .show(ctx, |root| {
+            root.set_min_size(ctx.content_rect().size());
+            egui::CentralPanel::no_frame().show(root, |ui| {
+                menu_and_toolbars(ui, &mut state);
+                bottom_strip(ui, &mut state, &loaded, &orbit);
+                if state.dock_visible && !state.floating_mode {
+                    dock_panels(ui, &mut state, &loaded);
+                }
+                viewport(ui, &mut state, &previews, &mut orbit, &loaded);
+            });
         });
     if state.floating_mode { floating_panels(ctx, &mut state); }
     area_inspector_panel(ctx, &mut state, &loaded);

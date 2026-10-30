@@ -9,6 +9,7 @@ bevy = "0.20.1"
 bevy_egui = "0.43.1"
 image = { version = "0.25", default-features = false, features = ["png"] }
 wildstar_formats = { path = "crates/wildstar_formats" }
+rfd = "0.17.2"
 
 # Fast local iteration: optimize only the application crate for compile/link time.
 # Cargo reuses the ordinary target/debug artifacts for both cargo run and cargo fast.

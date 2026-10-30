@@ -797,6 +797,248 @@ fn area_inspector_panel(
     state.area_inspector = is_open;
 }
 
+// A resizable dock replaces fixed-position floating tools in the default layout.
+// Classic floating property windows can still be enabled from Window > Float Properties.
+fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedArea) {
+    if ui_root.available_width()<610.0 {
+        // Keep the entire center visible on small windows. Open floating mode if needed.
+        return;
+    }
+    egui::Panel::right("genesis-properties-dock")
+        .resizable(true)
+        .default_width(232.0)
+        .width_range(188.0..=440.0)
+        .frame(panel_frame())
+        .show(ui_root,|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new("Genesis").strong().size(10.));
+                if ui.small_button("Float").clicked() {
+                    state.floating_mode=true;
+                    state.dock_visible=false;
+                }
+                if ui.small_button("×").clicked(){state.dock_visible=false;}
+            });
+            ui.separator();
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().item_spacing.x=3.;
+                for (i,title) in ["Brush","Palette","Texture","Clutter",
+                    "Objects","World","AREA"].iter().enumerate() {
+                    if ui.selectable_label(state.dock_tab==i,
+                        egui::RichText::new(*title).size(9.)).clicked() {
+                        state.dock_tab=i;
+                    }
+                }
+            });
+            ui.separator();
+            egui::ScrollArea::vertical()
+                .id_salt("genesis-property-dock-scroll")
+                .auto_shrink([false,false])
+                .show(ui,|ui| {
+                    match state.dock_tab {
+                        0=>dock_brush(ui,state),
+                        1=>dock_palette(ui,state),
+                        2=>dock_texture(ui,state),
+                        3=>dock_clutter(ui,state),
+                        4=>dock_objects(ui,state),
+                        5=>dock_world(ui,state),
+                        _=>dock_area(ui,state,loaded),
+                    }
+                });
+        });
+}
+fn dock_brush(ui:&mut egui::Ui,state:&mut GenesisState) {
+    ui.label(egui::RichText::new("Color Brush Properties").strong().size(10.));
+    ui.separator();
+    row_slider(ui,"Size",&mut state.brush_size,0.01..=2.);
+    row_slider(ui,"Power",&mut state.power,0.0..=2.);
+    row_slider(ui,"F/O",&mut state.falloff,0.0..=1.);
+    ui.horizontal_wrapped(|ui| {
+        for (i,title) in ["Circle","Chunk","Selection"].iter().enumerate() {
+            ui.radio_value(&mut state.circle,i,*title);
+        }
+    });
+    ui.checkbox(&mut state.restricted,"Restrict to Selection");
+    ui.horizontal(|ui| {
+        ui.radio_value(&mut state.custom_tip,false,"Normal Tip");
+        ui.radio_value(&mut state.custom_tip,true,"Custom Tip");
+    });
+    ui.separator();
+    ui.label(egui::RichText::new("Advanced Settings").strong().size(9.));
+    for (i,title) in [
+        "Normal","Burn Tool","Dodge Tool","Overlay","Saturate Sponge",
+        "Desaturate Sponge","Color"].iter().enumerate() {
+        ui.radio_value(&mut state.mode,i,*title);
+    }
+    ui.separator();
+    if ui.button("Clear Selection").clicked(){command(state,"Clear Selection");}
+    ui.label(egui::RichText::new("Brush functions are UI placeholders").size(9.).color(EDGE));
+}
+fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState) {
+    ui.label(egui::RichText::new("Color Palette").strong().size(10.));
+    ui.horizontal_wrapped(|ui| {
+        for name in ["Grimvault Chrs","Grimvault Idealized","Grimvault"] {
+            ui.add(egui::Button::new(egui::RichText::new(name).size(8.)));
+        }
+    });
+    ui.add(egui::TextEdit::singleline(&mut state.search)
+        .hint_text("Name").desired_width(ui.available_width().max(70.)));
+    let swatches:[([u8;3],&str);14]=[
+        ([220,130,172],"GRASS (CORRUPTED)"),
+        ([208,124,174],"Grass_LIGHT_01"),
+        ([227,169,185],"Grass_LIGHT_03"),
+        ([215,154,132],"Grass_MID_01"),
+        ([127,121,170],"Grass_MID_02"),
+        ([112,108,178],"Grass_SHADOW_01"),
+        ([93,77,165],"Grass_SHADOW_02"),
+        ([172,93,158],"GRASS (IDEALIZED TRANSITION)"),
+        ([122,99,154],"Corrupted_Ground_01"),
+        ([122,109,180],"Rock_Moss_01"),
+        ([159,125,165],"Boulder_Dark_01"),
+        ([106,102,148],"Eldan_Surface_01"),
+        ([194,108,161],"Flora_Pink_01"),
+        ([81,110,139],"Dirt_Blue_02"),
+    ];
+    for (i,(rgb,label)) in swatches.iter().enumerate() {
+        if !state.search.is_empty() &&
+            !label.to_lowercase().contains(&state.search.to_lowercase()) {
+            continue;
+        }
+        ui.horizontal(|ui| {
+            let (rect,response)=ui.allocate_exact_size(
+                egui::vec2(24.,27.),egui::Sense::click());
+            ui.painter().rect_filled(rect,0.,
+                egui::Color32::from_rgb(rgb[0],rgb[1],rgb[2]));
+            if response.clicked(){state.palette_index=i;}
+            ui.vertical(|ui| {
+                if ui.selectable_label(state.palette_index==i,
+                    egui::RichText::new(*label).size(9.)).clicked(){
+                    state.palette_index=i;
+                }
+                ui.label(egui::RichText::new("Category: Favorite").size(8.).color(INK));
+            });
+        });
+        ui.separator();
+    }
+}
+fn dock_texture(ui:&mut egui::Ui,state:&mut GenesisState) {
+    ui.label(egui::RichText::new("Texture Brush Properties").strong().size(10.));
+    row_slider(ui,"Size",&mut state.brush_size,0.01..=2.);
+    row_slider(ui,"Power",&mut state.power,0.0..=2.);
+    row_slider(ui,"F/O",&mut state.falloff,0.0..=1.);
+    ui.separator();
+    ui.label("Land Texture Layers");
+    for i in 0..4 {
+        ui.radio_value(&mut state.texture_index,i,format!("WorldLayer slot {i}"));
+    }
+    ui.checkbox(&mut state.restricted,"Restrict to Selection");
+    ui.separator();
+    ui.label(egui::RichText::new("Height-based blending: placeholder")
+        .color(EDGE).size(9.));
+}
+fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState) {
+    ui.label(egui::RichText::new("Clutter Preset").strong().size(10.));
+    for name in [
+        "Aurora_Grass_Shrubs","Aurora_Grass_Tall",
+        "Grimvault_Grass_01","Grimvault_Grass_02",
+        "Grimvault_Crystal","Grimvault_Rocks","Grimvault_Shrubs"
+    ] {
+        if ui.selectable_label(state.active==name,name).clicked() {
+            command(state,name);
+        }
+    }
+    ui.separator();
+    ui.label("Density");
+    ui.add(egui::Slider::new(&mut state.power,0.0..=2.0));
+}
+fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState) {
+    ui.label(egui::RichText::new("Object List / Snap Points").strong().size(10.));
+    for name in ["World","Land","Props","Clutter","Zones","Water","Lights","FX"] {
+        ui.collapsing(name,|ui| {
+            if ui.selectable_label(false,format!("{name} (placeholder)")).clicked(){
+                state.status=format!("{name}: selection placeholder");
+            }
+        });
+    }
+    ui.separator();
+    ui.label("Transform");
+    for name in ["Position  0.000  0.000  0.000",
+        "Rotation  0.000  0.000  0.000","Scale  1.000  1.000  1.000"] {
+        ui.label(egui::RichText::new(name).monospace().size(9.));
+    }
+    if ui.button("Align Selection").clicked(){command(state,"Align Selection");}
+    if ui.button("Snap Points Properties").clicked(){
+        command(state,"Snap Points Properties");
+    }
+}
+fn dock_world(ui:&mut egui::Ui,state:&mut GenesisState) {
+    ui.label(egui::RichText::new("World / Environment").strong().size(10.));
+    ui.collapsing("Zones / Regions",|ui| {
+        for name in ["Zones","Named Region Editor","Navigation Window"] {
+            if ui.button(name).clicked(){command(state,name);}
+        }
+    });
+    ui.collapsing("Sky / Lighting",|ui| {
+        ui.label("Time of Day");
+        ui.add(egui::Slider::new(&mut state.time_of_day,0.0..=24.0));
+        for name in ["Sky","Sky Editor","Fog","Lights","God Rays",
+            "Cloud Shadows","Dynamic Shadows"]{
+            if ui.button(name).clicked(){command(state,name);}
+        }
+    });
+    ui.collapsing("Water",|ui| {
+        for name in ["Water","Simple Water","Water Sphere","Water Grid"] {
+            if ui.button(name).clicked(){command(state,name);}
+        }
+    });
+    ui.collapsing("Streaming",|ui| {
+        ui.label("Chunk: 32 m");
+        ui.label("AREA tile: 512 m");
+        ui.label(egui::RichText::new("World streaming: placeholder").size(9.).color(EDGE));
+    });
+}
+fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea) {
+    ui.label(egui::RichText::new("AREA Inspector").strong().size(10.));
+    let Some(area)=loaded.tile.as_ref() else {
+        ui.label("No AREA tile loaded.");
+        if ui.button("Open AREA...").clicked(){command(state,"Open AREA...");}
+        return;
+    };
+    ui.monospace(format!("Version: {}",area.version));
+    ui.monospace(format!("Binary: {} bytes",area.original.len()));
+    ui.monospace(format!("Cells: {}",area.cell_count()));
+    ui.monospace(format!("Chunks: {}",area.chunks.len()));
+    ui.monospace(format!("Compression: {}",area.compressed));
+    ui.separator();
+    ui.label("Cell:");
+    ui.add(egui::Slider::new(&mut state.selected_cell,0..=255));
+    if let Some(cell)=area.cells[state.selected_cell].as_ref(){
+        ui.monospace(format!("Index: {}",cell.index));
+        ui.monospace(format!("Flags: {:08X}",cell.flags));
+        ui.monospace(format!("Layers: {:?}",cell.layers()));
+        ui.monospace(format!("Zones: {:?}",cell.zones()));
+        if let Some(h)=cell.height(8,8) {
+            ui.monospace(format!("Height: {h:.3} m"));
+        }
+        for (bit,block) in cell.blocks.iter().enumerate() {
+            if let Some(data)=block {
+                ui.label(egui::RichText::new(format!(
+                    "bit {bit:02} | {} bytes",data.len())).size(8.));
+            }
+        }
+    } else {
+        ui.label("Cell absent");
+    }
+    ui.separator();
+    ui.collapsing("Top-level chunks",|ui|{
+        for chunk in &area.chunks {
+            ui.monospace(format!("{} +0x{:X} ({} bytes)",
+                String::from_utf8_lossy(&chunk.id),
+                chunk.file_offset,chunk.data.len()));
+        }
+    });
+    ui.label(egui::RichText::new("Read-only raw AREA data").size(9.).color(EDGE));
+}
+
 fn floating_panels(ctx: &egui::Context, state: &mut GenesisState) {
     let right = ctx.content_rect().right() - 193.0;
     if state.color_panel {

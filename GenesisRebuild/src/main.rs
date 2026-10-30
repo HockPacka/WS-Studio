@@ -280,7 +280,9 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
         .fixed_pos(ctx.content_rect().min)
         .order(egui::Order::Background)
         .show(ctx, |root| {
-            root.set_min_size(ctx.content_rect().size());
+            // Clamp the root to the CURRENT frame, including when shrinking a window.
+            root.set_width(ctx.content_rect().width());
+            root.set_height(ctx.content_rect().height());
             egui::CentralPanel::no_frame().show(root, |ui| {
                 menu_and_toolbars(ui, &mut state);
                 bottom_strip(ui, &mut state, &loaded, &orbit);

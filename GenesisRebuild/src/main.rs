@@ -659,7 +659,13 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             } else {
                 orbit.rect=None;
                 if let Some(tex)=previews.textures.get(state.scene) {
-                    ui.painter().image(tex.id(),rect,
+                    // Keep reference screenshot proportions intact on resize.
+                    let image_size=tex.size_vec2();
+                    let scale=(rect.width()/image_size.x)
+                        .min(rect.height()/image_size.y).max(0.0);
+                    let target=egui::Rect::from_center_size(
+                        rect.center(),image_size*scale);
+                    ui.painter().image(tex.id(),target,
                         egui::Rect::from_min_max(egui::Pos2::ZERO,egui::pos2(1.,1.)),
                         egui::Color32::WHITE);
                 }

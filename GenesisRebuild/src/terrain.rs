@@ -3,7 +3,7 @@ use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
-use crate::area::{HeightGrid, RawArea, tile_heights};
+use wildstar_formats::area::{HeightGrid, RawArea, tile_heights};
 
 pub fn terrain_mesh(area:&RawArea)->Result<(Mesh,Vec3),String>{
     let grid=tile_heights(area);

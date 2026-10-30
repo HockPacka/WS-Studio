@@ -1,6 +1,6 @@
-mod jpg;
 //! Native WildStar TEX preview decoder, verified layout from WS-Tools.
 //! Supports uncompressed, BC1/BC2/BC3 and proprietary JPG-like TYPE1/2/3.
+mod jpg;
 #[derive(Debug,Clone)]
 pub struct RgbaImage {
     pub width:usize,

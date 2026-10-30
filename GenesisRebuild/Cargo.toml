@@ -10,28 +10,10 @@ bevy_egui = "0.43.1"
 image = { version = "0.25", default-features = false, features = ["png"] }
 flate2 = "1.1"
 
-# The edited application crate is linked every time its Rust source changes.
-# Keep full debug data for Bevy dependencies, but shorten Genesis' own build.
-# This affects the package 'genesis' only (not the dependency graph).
+# Fast local iteration: optimize only the application crate for compile/link time.
+# Cargo reuses the ordinary target/debug artifacts for both cargo run and cargo fast.
+# Debug assertions remain enabled; no extra Bevy features or DLLs are required.
 [profile.dev.package.genesis]
 opt-level = 0
-debug = 1
+debug = 0
 codegen-units = 256
-
-# Optional opt-in profile: "cargo fast -- <area-file>"
-# On Windows, dynamic Bevy needs optimized dependencies to avoid
-# excessively large symbol exports. Its first build uses a separate cache.
-# Release and the normal "cargo run" remain fully independent.
-[profile.fast-dev]
-inherits = "dev"
-opt-level = 1
-debug = 1
-incremental = true
-
-[profile.fast-dev.package."*"]
-opt-level = 3
-debug = 1
-
-[profile.fast-dev.package.genesis]
-opt-level = 1
-debug = 1

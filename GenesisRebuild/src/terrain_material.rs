@@ -86,9 +86,9 @@ pub fn bake(area:&RawArea,index:&AssetIndex)->Result<AtlasResult,String>{
     let layers=decode_layers(index)?;
     let (images,unresolved,layer_count)=collect_textures(area,index,&layers);
     if images.is_empty(){
+        let detail=unresolved.iter().take(5).cloned().collect::<Vec<_>>().join(" | ");
         return Err(format!(
-            "No supported terrain TEX images found for {} used WorldLayer IDs",
-            layer_count
+            "0/{layer_count} terrain textures decoded. {detail}"
         ));
     }
     // Each AREA tile has 16x16 independent 32m cells. 64x64 pixels/cell
@@ -134,7 +134,7 @@ pub fn bake(area:&RawArea,index:&AssetIndex)->Result<AtlasResult,String>{
             "CPU-composited real TEX albedo atlas, not the WildStar GPU shader".into(),
             "65x65 bit29 weights; bit2 fallback if bit29 is absent".into(),
             "Missing layer assets fallback to original AREA RGB565 color".into(),
-            "Normal maps, compressed BC weight corrections and JPEG-like TEX are not rendered".into(),
+            "Normal maps and compressed BC weight corrections are not rendered yet".into(),
         ]
     })
 }

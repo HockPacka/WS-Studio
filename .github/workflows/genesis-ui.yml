@@ -22,5 +22,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Cargo check (no graphics runtime)
         run: cargo check
+      - name: Test standalone AREA formats library
+        run: cargo test -p wildstar_formats
       - name: Test raw AREA binary reader
         run: cargo test --bin genesis --no-default-features

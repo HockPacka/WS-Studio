@@ -15,6 +15,50 @@ impl RgbaImage {
         let p=(y*self.width+x)*4;
         self.rgba[p..p+4].try_into().unwrap()
     }
+    #[inline]
+    pub fn sample_bilinear(&self, u: f32, v: f32) -> [u8; 4] {
+        if self.width == 0 || self.height == 0 { return [255, 0, 255, 255]; }
+        let u_norm = u - u.floor();
+        let v_norm = v - v.floor();
+        let fx = u_norm * self.width as f32 - 0.5;
+        let fy = v_norm * self.height as f32 - 0.5;
+        let x0 = fx.floor();
+        let y0 = fy.floor();
+        let s = fx - x0;
+        let t = fy - y0;
+        let w = self.width as isize;
+        let h = self.height as isize;
+        let ix0 = (x0 as isize).rem_euclid(w) as usize;
+        let iy0 = (y0 as isize).rem_euclid(h) as usize;
+        let ix1 = if ix0 + 1 < self.width { ix0 + 1 } else { 0 };
+        let iy1 = if iy0 + 1 < self.height { iy0 + 1 } else { 0 };
+
+        let p00 = (iy0 * self.width + ix0) * 4;
+        let p10 = (iy0 * self.width + ix1) * 4;
+        let p01 = (iy1 * self.width + ix0) * 4;
+        let p11 = (iy1 * self.width + ix1) * 4;
+
+        if p11 + 3 >= self.rgba.len() {
+            return [255, 0, 255, 255];
+        }
+
+        let one_minus_s = 1.0 - s;
+        let one_minus_t = 1.0 - t;
+        let w00 = one_minus_s * one_minus_t;
+        let w10 = s * one_minus_t;
+        let w01 = one_minus_s * t;
+        let w11 = s * t;
+
+        let mut out = [0u8; 4];
+        for c in 0..4 {
+            let val = self.rgba[p00 + c] as f32 * w00
+                + self.rgba[p10 + c] as f32 * w10
+                + self.rgba[p01 + c] as f32 * w01
+                + self.rgba[p11 + c] as f32 * w11;
+            out[c] = val.round().clamp(0.0, 255.0) as u8;
+        }
+        out
+    }
 }
 fn number(data:&[u8],at:usize)->Result<usize,String>{
     Ok(u32::from_le_bytes(data.get(at..at+4).ok_or("TEX: truncated header")?

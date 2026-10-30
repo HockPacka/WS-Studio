@@ -82,6 +82,8 @@ pub fn terrain_mesh(area:&RawArea, preview:usize, layer:usize)->Result<(Mesh,Vec
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL,normals);
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR,colors);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0,uvs);
+    let tangents = vec![[1.0f32, 0.0f32, 0.0f32, 1.0f32]; 257 * 257];
+    mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
     mesh.insert_indices(Indices::U32(indices));
     Ok((mesh,Vec3::new(0.0,visual_mid,0.0)))
 }

@@ -1,10 +1,14 @@
 //! Visual-only reconstruction of the classic WildStar Genesis editor in Bevy.
 //! Screenshots under WILDSTAREDITOR remain the visual references. No world edits yet.
 use wildstar_formats::area;
+use wildstar_formats::zone::{MapDiscovery, ZoneTileCoords};
 mod area_ui;
 mod client_data;
+mod props;
+mod streaming;
 mod terrain;
 mod terrain_material;
+mod water;
 use bevy::prelude::*;
 use bevy::camera::Viewport;
 use std::path::Path;
@@ -34,6 +38,7 @@ struct GenesisState {
     raw_view: bool,
     open_area_dialog: bool,
     open_area_path_dialog: bool,
+    open_zone_dialog: bool,
     change_client_root: bool,
     area_path: String,
     pending_load: Option<String>,
@@ -64,6 +69,7 @@ impl Default for GenesisState {
             raw_view: true,
             open_area_dialog: false,
             open_area_path_dialog: false,
+            open_zone_dialog: false,
             change_client_root: false,
             area_path: String::new(),
             pending_load: None,
@@ -93,25 +99,67 @@ struct LoadedArea {
     tile: Option<area::RawArea>,
     mesh_entity: Option<Entity>,
     props: Vec<area::AreaProp>,
+    prop_entities: Vec<Entity>,
     prop_issue: Option<String>,
     last_preview: (usize, usize),
     terrain_albedo: Option<Handle<Image>>,
+    terrain_normal: Option<Handle<Image>>,
+    water_entity: Option<Entity>,
+    water_count: usize,
     layer_status: String,
     layer_notes: Vec<String>,
     missing_textures: Vec<String>,
 }
 #[derive(Resource)]
-struct OrbitCamera {
-    focus: Vec3,
-    distance: f32,
-    yaw: f32,
-    pitch: f32,
-    rect: Option<[f32;4]>,
-    ui_pixels_per_point: f32,
+pub struct OrbitCamera {
+    pub eye: Vec3,
+    pub focus: Vec3,
+    pub distance: f32,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub fly_speed: f32,
+    pub is_first_person: bool,
+    pub rect: Option<[f32; 4]>,
+    pub ui_pixels_per_point: f32,
+}
+impl OrbitCamera {
+    /// Returns the world origin position where rendering and world streaming are centered.
+    pub fn origin(&self) -> Vec3 {
+        if self.is_first_person {
+            self.eye
+        } else {
+            self.focus
+        }
+    }
+
+    /// Normalized forward direction vector of the camera.
+    pub fn forward_direction(&self) -> Vec3 {
+        let p = if self.is_first_person {
+            self.pitch.clamp(-1.54, 1.54)
+        } else {
+            self.pitch.clamp(0.05, 1.52)
+        };
+        let cos_p = p.cos();
+        Vec3::new(
+            -self.yaw.sin() * cos_p,
+            p.sin(),
+            -self.yaw.cos() * cos_p,
+        ).normalize()
+    }
 }
 impl Default for OrbitCamera {
-    fn default()->Self {
-        Self{focus:Vec3::ZERO,distance:730.0,yaw:0.55,pitch:0.74,rect:None,ui_pixels_per_point:1.0}
+    fn default() -> Self {
+        Self {
+            eye: Vec3::new(0.0, 100.0, 0.0),
+            focus: Vec3::ZERO,
+            distance: 730.0,
+            yaw: 0.0,
+            pitch: -0.2,
+            fly_speed: 80.0,
+            is_first_person: true,
+            rect: None,
+            ui_pixels_per_point: 1.0,
+        }
     }
 }
 fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>,
@@ -172,6 +220,7 @@ fn load_raw_area(
     client: Res<client_data::ClientFiles>,
     mut loaded: ResMut<LoadedArea>,
     mut orbit: ResMut<OrbitCamera>,
+    mut streaming: ResMut<streaming::WorldStreaming>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -180,66 +229,138 @@ fn load_raw_area(
     // Never load an AREA before its WildStar client asset root is indexed.
     if !client.ready(){return;}
     let Some(path)=state.pending_load.take() else {return;};
+    let path_buf = Path::new(&path);
+    let tile_coords = ZoneTileCoords::from_path_or_name(&path);
+
+    // If this file belongs to a known Map folder, initiate WorldStreaming focused on this tile
+    let is_map_folder = path_buf.parent().and_then(|p| {
+        p.file_name().and_then(|n| n.to_str()).map(|name| (p, name.to_string()))
+    });
+
+    let mut is_streaming = false;
+    if let Some((parent, map_name)) = is_map_folder {
+        if let Some(client_dir) = client.client_data_dir() {
+            if parent.starts_with(client_dir.join("Map")) {
+                if let Ok(()) = streaming.open_map(&map_name, &client, &mut orbit, &mut commands) {
+                    if let Some(coords) = tile_coords {
+                        let center = coords.world_center();
+                        orbit.eye = Vec3::new(center[0], 120.0, center[2] + 40.0);
+                        orbit.focus = Vec3::new(center[0], 0.0, center[2]);
+                    }
+                    is_streaming = true;
+                }
+            }
+        }
+    }
+
     match area::RawArea::from_path(Path::new(&path)) {
         Ok(tile)=>{
-            // Resolve only WorldLayer textures referenced by this AREA.
-            // Real TEX images are CPU-composited and sent as a GPU albedo atlas.
-            loaded.terrain_albedo=None;
-            loaded.layer_notes.clear();
-            loaded.missing_textures.clear();
-            loaded.layer_status=String::from("WorldLayer material unavailable");
-            let atlas=client.index.as_ref().and_then(|index|{
-                match terrain_material::bake(&tile,index){
-                    Ok(atlas)=>Some(atlas),
-                    Err(error)=>{
-                        loaded.layer_status=format!("WorldLayer preview unavailable: {error}");
-                        None
-                    }
-                }
-            });
-            if let Some(atlas)=atlas{
-                loaded.layer_status=format!(
-                    "WorldLayer: {} IDs, {} decoded textures ({} unresolved)",
-                    atlas.layers,atlas.textures,atlas.unresolved.len()
-                );
-                loaded.missing_textures=atlas.unresolved;
-                loaded.layer_notes=atlas.notes;
-                loaded.terrain_albedo=Some(images.add(atlas.image));
-            }
+            let water_bodies=tile.all_water_bodies();
+            loaded.water_count=water_bodies.len();
+            let decoded_props=tile.prop_placements();
+            loaded.prop_issue=decoded_props.as_ref().err().cloned();
+            loaded.props=decoded_props.unwrap_or_default();
+            loaded.tile=Some(tile.clone());
+
+            // Compute accurate world center from filename or infer from first prop
+            let world_center = tile_coords
+                .or_else(|| {
+                    loaded.props.first().map(|pr| ZoneTileCoords::from_world_pos(pr.position_xyz[0], pr.position_xyz[2]))
+                })
+                .map(|c| c.world_center())
+                .unwrap_or([0.0, 0.0, 0.0]);
+
             let preview=if state.terrain_view==5 && loaded.terrain_albedo.is_none(){
                 1
             }else{state.terrain_view};
+
             match terrain::terrain_mesh(&tile,preview,state.texture_index) {
                 Ok((mesh,focus))=>{
+                    orbit.eye = Vec3::new(world_center[0], focus.y + 40.0, world_center[2] + 60.0);
+                    orbit.focus = Vec3::new(world_center[0], focus.y, world_center[2]);
+                    orbit.distance = 730.;
+                    state.raw_view = true;
+
+                    // Despawn any standalone entities
                     if let Some(old)=loaded.mesh_entity.take(){
                         commands.entity(old).despawn();
                     }
-                    loaded.mesh_entity=Some(commands.spawn((
-                        Mesh3d(meshes.add(mesh)),
-                        MeshMaterial3d(materials.add(StandardMaterial {
-                            base_color:Color::WHITE,
-                            base_color_texture:if state.terrain_view==5 {
-                                loaded.terrain_albedo.clone()
-                            }else{None},
-                            perceptual_roughness:1.0,
-                            cull_mode:None,
-                            ..default()
-                        })),
-                        Transform::default(),
-                    )).id());
-                    orbit.focus=focus;
-                    orbit.distance=730.;
-                    state.raw_view=true;
-                    let decoded_props=tile.prop_placements();
-                    loaded.prop_issue=decoded_props.as_ref().err().cloned();
-                    loaded.props=decoded_props.unwrap_or_default();
-                    state.status=format!(
-                        "AREA | {} cells | {} props | {} | {}",
-                        tile.cell_count(),loaded.props.len(),loaded.layer_status,path
-                    );
-                    // Expose the diagnostic for a regular UI launch; otherwise
-                    // the default Brush dock hides all texture-loading errors.
-                    state.dock_tab=6;
+                    if let Some(old_water)=loaded.water_entity.take(){
+                        commands.entity(old_water).despawn();
+                    }
+                    for old_prop in loaded.prop_entities.drain(..) {
+                        commands.entity(old_prop).despawn();
+                    }
+
+                    if is_streaming {
+                        // WorldStreaming is actively streaming around camera focus!
+                        state.status = format!(
+                            "Streaming zone around tile {} | {} cells | {} props | {}",
+                            tile_coords.map(|c| c.to_hex()).unwrap_or_default(),
+                            tile.cell_count(), loaded.props.len(), path
+                        );
+                        state.dock_tab = 5; // World tab with radar
+                    } else {
+                        // Standalone single-tile mode: spawn terrain at world_center, water and props
+                        loaded.terrain_albedo=None;
+                        loaded.layer_notes.clear();
+                        loaded.missing_textures.clear();
+                        loaded.layer_status=String::from("WorldLayer material unavailable");
+                        let atlas=client.index.as_ref().and_then(|index|{
+                            match terrain_material::bake(&tile,index){
+                                Ok(atlas)=>Some(atlas),
+                                Err(error)=>{
+                                    loaded.layer_status=format!("WorldLayer preview unavailable: {error}");
+                                    None
+                                }
+                            }
+                        });
+                        if let Some(atlas)=atlas{
+                            loaded.layer_status=format!(
+                                "WorldLayer: {} IDs, {} decoded textures ({} unresolved)",
+                                atlas.layers,atlas.textures,atlas.unresolved.len()
+                            );
+                            loaded.missing_textures=atlas.unresolved;
+                            loaded.layer_notes=atlas.notes;
+                            loaded.terrain_albedo=Some(images.add(atlas.albedo_image));
+                            loaded.terrain_normal=atlas.normal_image.map(|img| images.add(img));
+                        }
+
+                        loaded.mesh_entity=Some(commands.spawn((
+                            Mesh3d(meshes.add(mesh)),
+                            MeshMaterial3d(materials.add(StandardMaterial {
+                                base_color:Color::WHITE,
+                                base_color_texture:if state.terrain_view==5 {
+                                    loaded.terrain_albedo.clone()
+                                }else{None},
+                                normal_map_texture:if state.terrain_view==5 {
+                                    loaded.terrain_normal.clone()
+                                }else{None},
+                                perceptual_roughness:0.85,
+                                reflectance:0.2,
+                                cull_mode:None,
+                                ..default()
+                            })),
+                            Transform::from_xyz(world_center[0], 0.0, world_center[2]),
+                        )).id());
+
+                        if let Some(wmesh)=water::water_mesh(&water_bodies){
+                            let water_ent=commands.spawn((
+                                Mesh3d(meshes.add(wmesh)),
+                                MeshMaterial3d(materials.add(water::water_material())),
+                                Transform::default(),
+                            )).id();
+                            loaded.water_entity=Some(water_ent);
+                        }
+
+                        loaded.prop_entities=props::spawn_props(&mut commands, &loaded.props, &mut meshes, &mut materials);
+
+                        state.status=format!(
+                            "AREA | {} cells | {} props | {} water | {} | {}",
+                            tile.cell_count(),loaded.props.len(),loaded.water_count,loaded.layer_status,path
+                        );
+                        state.dock_tab=6;
+                    }
                     if loaded.terrain_albedo.is_none(){
                         eprintln!("Genesis TEXTURE: {}",loaded.layer_status);
                     }
@@ -274,6 +395,9 @@ fn refresh_terrain_view(
             standard.base_color_texture=if target.0==5{
                 loaded.terrain_albedo.clone()
             }else{None};
+            standard.normal_map_texture=if target.0==5{
+                loaded.terrain_normal.clone()
+            }else{None};
         }
         component.0=meshes.add(mesh);
         loaded.last_preview=target;
@@ -289,10 +413,17 @@ fn update_camera(
     let Ok((mut view,mut transform))=camera.single_mut() else{return;};
     view.is_active=state.raw_view;
     if !view.is_active {return;}
-    let p=orbit.pitch.clamp(0.05,1.52);
-    let direction=Vec3::new(orbit.yaw.sin()*p.cos(),p.sin(),orbit.yaw.cos()*p.cos());
-    *transform=Transform::from_translation(orbit.focus+direction*orbit.distance)
-        .looking_at(orbit.focus,Vec3::Y);
+
+    if orbit.is_first_person {
+        let forward = orbit.forward_direction();
+        *transform = Transform::from_translation(orbit.eye)
+            .looking_at(orbit.eye + forward, Vec3::Y);
+    } else {
+        let p=orbit.pitch.clamp(0.05,1.52);
+        let direction=Vec3::new(orbit.yaw.sin()*p.cos(),p.sin(),orbit.yaw.cos()*p.cos());
+        *transform=Transform::from_translation(orbit.focus+direction*orbit.distance)
+            .looking_at(orbit.focus,Vec3::Y);
+    }
     let Ok(window)=windows.single() else{return;};
     if let Some([left,top,right,bottom])=orbit.rect {
         // Egui coordinates are logical points: include its user-selected zoom factor.
@@ -314,6 +445,7 @@ fn main() {
         .insert_resource(LoadedArea::default())
         .insert_resource(OrbitCamera::default())
         .insert_resource(client_data::ClientFiles::default())
+        .insert_resource(streaming::WorldStreaming::default())
         // Explicitly attach PrimaryEguiContext to the full-window 2D camera.
         .insert_resource(EguiGlobalSettings {
             auto_create_primary_context: false,
@@ -332,6 +464,7 @@ fn main() {
         .add_plugins(EguiPlugin::default())
         .add_systems(Startup, setup_scene)
         .add_systems(Update, (client_data::poll_system, load_raw_area,
+            streaming::update_world_streaming,
             refresh_terrain_view, update_camera).chain())
         .add_systems(EguiPrimaryContextPass, editor_ui)
         .run();
@@ -390,6 +523,8 @@ fn load_scenes(ctx: &egui::Context, previews: &mut Viewports) {
 fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
              mut previews: Local<Viewports>, mut initialized: Local<bool>,
              mut orbit: ResMut<OrbitCamera>, loaded: Res<LoadedArea>,
+             mut streaming: ResMut<streaming::WorldStreaming>,
+             mut commands: Commands,
              mut client: ResMut<client_data::ClientFiles>) -> Result {
     let ctx = contexts.ctx_mut()?;
     if !*initialized { classic_visuals(ctx); *initialized = true; }
@@ -411,11 +546,11 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
             root.set_height(ctx.content_rect().height());
             egui::CentralPanel::no_frame().show(root, |ui| {
                 menu_and_toolbars(ui, &mut state);
-                bottom_strip(ui, &mut state, &loaded, &orbit);
+                bottom_strip(ui, &mut state, &loaded, orbit.as_mut(), streaming.as_ref());
                 if state.dock_visible && !state.floating_mode {
-                    dock_panels(ui, &mut state, &loaded, &client);
+                    dock_panels(ui, &mut state, &loaded, &client, streaming.as_mut(), orbit.as_mut(), &mut commands);
                 }
-                viewport(ui, &mut state, &previews, &mut orbit, &loaded);
+                viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref());
             });
         });
     if state.floating_mode { floating_panels(ctx, &mut state); }
@@ -457,6 +592,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
             });
         if !open{state.open_area_path_dialog=false;}
     }
+    zone_browser_dialog(ctx, &mut state, streaming.as_mut(), &client, orbit.as_mut(), &mut commands);
     client_data::startup_prompt(ctx,&mut client);
     Ok(())
 }
@@ -483,6 +619,9 @@ fn command(state: &mut GenesisState, name: &'static str) {
         "Zones" | "Named Region Editor" => { state.zone_panel = true; state.dock_tab = 5; },
         "Land Chunk Grid" => state.grid = !state.grid,
         "3D AREA View" => state.raw_view = true,
+        "Open Zone..." | "Open Zone (World Streaming)..." => {
+            state.open_zone_dialog = true;
+        }
         "Open AREA..." => state.open_area_dialog = true,
         "Open AREA by path..." => state.open_area_path_dialog = true,
         "Choose Client Root..." => state.change_client_root = true,
@@ -562,7 +701,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing.x=5.0;
                 for (title, entries) in [
-                    ("File",&["New","Open AREA...","Open AREA by path...","Choose Client Root...",
+                    ("File",&["New","Open Zone (World Streaming)...","Open AREA...","Open AREA by path...","Choose Client Root...",
                         "Save","Save As","Save Package","Exit"][..]),
                     ("Edit",&["Undo","Redo","Cut","Copy","Paste","Delete","Select","Align Selection"][..]),
                     ("View",&["3D AREA View","Land Wireframe","Object Wireframe","Land Chunk Grid",
@@ -609,6 +748,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                 ui.add_sized([83.,17.],egui::Button::new("NewCentral").frame(true));
                 ui.label(egui::RichText::new("Map").size(9.).strong());
                 ui.add_sized([52.,17.],egui::Button::new("Area 106").frame(true));
+                if ui.button("Open Zone...").clicked() {command(state,"Open Zone...");}
                 if ui.button("Open AREA...").clicked() {command(state,"Open AREA...");}
                 if ui.button("3D View").clicked() {command(state,"3D AREA View");}
                 ui.separator();
@@ -683,7 +823,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
 }
 
 fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedArea,
-                orbit:&OrbitCamera) {
+                orbit:&mut OrbitCamera, streaming:&streaming::WorldStreaming) {
     // The status bar is always visible, while the workspace can be collapsed.
     egui::Panel::bottom("genesis-bottom-status")
         .frame(egui::Frame::default().fill(PAPER)
@@ -702,12 +842,24 @@ fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAr
                     .on_hover_text(&state.status);
                 if ui.available_width()>210.0 {
                     ui.separator();
+                    let origin = orbit.origin();
                     ui.label(egui::RichText::new(format!(
                         "XYZ {:>5.1} / {:>5.1} / {:>5.1}",
-                        orbit.focus.x,orbit.focus.y,orbit.focus.z)).size(9.));
-                    ui.label(egui::RichText::new(format!(
-                        "{} cells",loaded.tile.as_ref().map(|t|t.cell_count()).unwrap_or(0)))
-                        .size(9.));
+                        origin.x, origin.y, origin.z)).size(9.));
+                    if ui.button(egui::RichText::new(if orbit.is_first_person { "FlyCam" } else { "Orbit" }).size(9.)).clicked() {
+                        orbit.is_first_person = !orbit.is_first_person;
+                    }
+                    ui.label(egui::RichText::new(format!("{:.0} m/s", orbit.fly_speed)).size(9.));
+                    if let Some(map) = streaming.active_map.as_ref() {
+                        ui.label(egui::RichText::new(format!(
+                            "ZONE {} ({}/{} tiles)",
+                            map.name, streaming.loaded_tiles.len(), map.tiles.len()
+                        )).size(9.).strong().color(egui::Color32::from_rgb(100, 210, 130)));
+                    } else {
+                        ui.label(egui::RichText::new(format!(
+                            "{} cells",loaded.tile.as_ref().map(|t|t.cell_count()).unwrap_or(0)))
+                            .size(9.));
+                    }
                 }
             });
         });
@@ -755,7 +907,8 @@ fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAr
 }
 
 fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
-            previews:&Viewports,orbit:&mut OrbitCamera,loaded:&LoadedArea) {
+            previews:&Viewports,orbit:&mut OrbitCamera,loaded:&LoadedArea,
+            streaming:&streaming::WorldStreaming) {
     egui::CentralPanel::default()
         .frame(egui::Frame::default().fill(if state.raw_view {
             egui::Color32::TRANSPARENT
@@ -782,45 +935,115 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                 }
                 if response.dragged_by(egui::PointerButton::Secondary) {
                     let delta=ui.input(|i|i.pointer.delta());
-                    orbit.yaw-=delta.x*0.006;
-                    orbit.pitch=(orbit.pitch+delta.y*0.006).clamp(0.05,1.52);
+                    orbit.yaw -= delta.x * 0.003;
+                    if orbit.is_first_person {
+                        orbit.pitch = (orbit.pitch - delta.y * 0.003).clamp(-1.54, 1.54);
+                    } else {
+                        orbit.pitch = (orbit.pitch + delta.y * 0.006).clamp(0.05, 1.52);
+                    }
                 }
                 if response.dragged_by(egui::PointerButton::Middle) {
                     let delta=ui.input(|i|i.pointer.delta());
-                    let factor=orbit.distance*0.002;
-                    let right=Vec3::new(orbit.yaw.cos(),0.,-orbit.yaw.sin());
-                    orbit.focus+=right*delta.x*factor
-                        +Vec3::new(0.,1.,0.)*delta.y*factor;
+                    if orbit.is_first_person {
+                        let factor = orbit.fly_speed * 0.015;
+                        let right = Vec3::new(orbit.yaw.cos(), 0.0, -orbit.yaw.sin());
+                        orbit.eye -= right * delta.x * factor;
+                        orbit.eye += Vec3::Y * delta.y * factor;
+                    } else {
+                        let factor=orbit.distance*0.002;
+                        let right=Vec3::new(orbit.yaw.cos(),0.,-orbit.yaw.sin());
+                        orbit.focus+=right*delta.x*factor
+                            +Vec3::new(0.,1.,0.)*delta.y*factor;
+                    }
                 }
-                if response.hovered() {
+                if response.hovered() || response.dragged_by(egui::PointerButton::Secondary) || response.dragged_by(egui::PointerButton::Middle) {
                     let scroll=ui.input(|i|i.smooth_scroll_delta.y);
-                    orbit.distance=(orbit.distance*(-scroll*0.0015).exp()).clamp(3.,5000.);
-                    let (up,down,left,right,shift)=ui.input(|i|(
-                        i.key_down(egui::Key::W),
-                        i.key_down(egui::Key::S),
-                        i.key_down(egui::Key::A),
-                        i.key_down(egui::Key::D),
-                        i.modifiers.shift,
-                    ));
-                    let speed=orbit.distance*if shift {0.017} else {0.004};
-                    let forward=Vec3::new(-orbit.yaw.sin(),0.,-orbit.yaw.cos());
-                    let side=Vec3::new(orbit.yaw.cos(),0.,-orbit.yaw.sin());
-                    if up {orbit.focus+=forward*speed;}
-                    if down {orbit.focus-=forward*speed;}
-                    if left {orbit.focus-=side*speed;}
-                    if right {orbit.focus+=side*speed;}
+                    if scroll.abs() > 0.1 {
+                        if orbit.is_first_person {
+                            let speed_factor = (scroll * 0.002).exp();
+                            orbit.fly_speed = (orbit.fly_speed * speed_factor).clamp(5.0, 2500.0);
+                        } else {
+                            orbit.distance=(orbit.distance*(-scroll*0.0015).exp()).clamp(3.,5000.);
+                        }
+                    }
+                    if !ui.ctx().egui_wants_keyboard_input() {
+                        let dt = ui.input(|i| i.stable_dt).clamp(0.001, 0.1);
+                        let (up,down,left,right,space,c_key,q_key,e_key,shift,ctrl)=ui.input(|i|(
+                            i.key_down(egui::Key::W),
+                            i.key_down(egui::Key::S),
+                            i.key_down(egui::Key::A),
+                            i.key_down(egui::Key::D),
+                            i.key_down(egui::Key::Space),
+                            i.key_down(egui::Key::C),
+                            i.key_down(egui::Key::Q),
+                            i.key_down(egui::Key::E),
+                            i.modifiers.shift,
+                            i.modifiers.ctrl,
+                        ));
+
+                        let mut speed = orbit.fly_speed;
+                        if shift { speed *= 3.5; }
+                        if ctrl { speed *= 0.25; }
+                        let dist = speed * dt;
+
+                        let forward = orbit.forward_direction();
+                        let side = Vec3::new(orbit.yaw.cos(), 0.0, -orbit.yaw.sin());
+
+                        if orbit.is_first_person {
+                            if up { orbit.eye += forward * dist; }
+                            if down { orbit.eye -= forward * dist; }
+                            if left { orbit.eye -= side * dist; }
+                            if right { orbit.eye += side * dist; }
+                            if space || e_key { orbit.eye += Vec3::Y * dist; }
+                            if c_key || q_key { orbit.eye -= Vec3::Y * dist; }
+                            orbit.focus = orbit.eye + forward * 100.0;
+                        } else {
+                            let orbit_speed = orbit.distance * if shift { 0.017 } else { 0.004 };
+                            let flat_forward = Vec3::new(-orbit.yaw.sin(), 0.0, -orbit.yaw.cos());
+                            if up { orbit.focus += flat_forward * orbit_speed; }
+                            if down { orbit.focus -= flat_forward * orbit_speed; }
+                            if left { orbit.focus -= side * orbit_speed; }
+                            if right { orbit.focus += side * orbit_speed; }
+                            if space || e_key { orbit.focus += Vec3::Y * orbit_speed; }
+                            if c_key || q_key { orbit.focus -= Vec3::Y * orbit_speed; }
+                            orbit.eye = orbit.focus - forward * orbit.distance;
+                        }
+                    }
                 }
-                if loaded.tile.is_none() {
+                if let Some(map) = streaming.active_map.as_ref() {
+                    let mode_str = if orbit.is_first_person { "FlyCam" } else { "Orbit" };
+                    let overlay = format!(
+                        "STREAMING: {} | {}/{} tiles | Origin: [{:.0}, {:.0}, {:.0}] | {} | WASD/Space/C: Fly | RMB: Look | Spd: {:.0}m/s (Wheel)",
+                        map.name, streaming.loaded_tiles.len(), map.tiles.len(),
+                        orbit.origin().x, orbit.origin().y, orbit.origin().z,
+                        mode_str, orbit.fly_speed
+                    );
+                    let box_rect = egui::Rect::from_min_size(rect.min + egui::vec2(8., 8.),
+                        egui::vec2((rect.width() - 16.).clamp(40., 740.), 26.));
+                    ui.painter().rect_filled(box_rect, 3.,
+                        egui::Color32::from_rgba_unmultiplied(20, 20, 27, 210));
+                    ui.painter().text(box_rect.left_center() + egui::vec2(9., 0.),
+                        egui::Align2::LEFT_CENTER, overlay,
+                        egui::FontId::proportional(11.), egui::Color32::from_rgb(120, 230, 160));
+                } else if loaded.tile.is_none() {
                     ui.painter().text(rect.center(),egui::Align2::CENTER_CENTER,
-                        "Open AREA...  (File menu) | Raw binary 3D preview",
+                        "Open Zone... or Open AREA... (File menu) | WildStar World Streaming",
                         egui::FontId::proportional(15.),
                         egui::Color32::from_rgb(243,236,222));
                 } else {
-                    ui.painter().text(rect.min+egui::vec2(8.,8.),
-                        egui::Align2::LEFT_TOP,
-                        "RAW AREA  |  RMB: Orbit  MMB: Pan  Wheel: Zoom  WASD: Move",
-                        egui::FontId::proportional(10.),
-                        egui::Color32::from_rgb(238,233,219));
+                    let mode_str = if orbit.is_first_person { "FlyCam" } else { "Orbit" };
+                    let overlay = format!(
+                        "RAW AREA | Origin: [{:.0}, {:.0}, {:.0}] | {} | WASD/Space/C: Fly | RMB: Look | Spd: {:.0}m/s (Wheel)",
+                        orbit.origin().x, orbit.origin().y, orbit.origin().z,
+                        mode_str, orbit.fly_speed
+                    );
+                    let box_rect = egui::Rect::from_min_size(rect.min + egui::vec2(8., 8.),
+                        egui::vec2((rect.width() - 16.).clamp(40., 680.), 26.));
+                    ui.painter().rect_filled(box_rect, 3.,
+                        egui::Color32::from_rgba_unmultiplied(20, 20, 27, 210));
+                    ui.painter().text(box_rect.left_center() + egui::vec2(9., 0.),
+                        egui::Align2::LEFT_CENTER, overlay,
+                        egui::FontId::proportional(11.), egui::Color32::from_rgb(238, 233, 219));
                 }
             } else {
                 orbit.rect=None;
@@ -897,7 +1120,10 @@ fn area_inspector_panel(
 // A resizable dock replaces fixed-position floating tools in the default layout.
 // Classic floating property windows can still be enabled from Window > Float Properties.
 fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState,
-              loaded:&LoadedArea,client:&client_data::ClientFiles) {
+              loaded:&LoadedArea,client:&client_data::ClientFiles,
+              streaming:&mut streaming::WorldStreaming,
+              orbit:&mut OrbitCamera,
+              commands:&mut Commands) {
     if ui_root.available_width()<610.0 {
         // Keep the entire center visible on small windows. Open floating mode if needed.
         return;
@@ -938,7 +1164,7 @@ fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState,
                         2=>dock_texture(ui,state),
                         3=>dock_clutter(ui,state),
                         4=>dock_objects(ui,state,loaded),
-                        5=>dock_world(ui,state,loaded),
+                        5=>dock_world(ui,state,loaded,streaming,orbit,commands),
                         6=>dock_area(ui,state,loaded),
                         _=>{
                             if ui.button("Choose Client Root...").clicked(){
@@ -1088,55 +1314,282 @@ fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea) {
         command(state,"Snap Points Properties");
     }
 }
-fn dock_world(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea) {
-    ui.label(egui::RichText::new("World / Environment").strong().size(10.));
-    if let Some(area)=loaded.tile.as_ref(){
-        ui.collapsing("AREA WorldZone IDs",|ui|{
-            let mut ids=std::collections::BTreeSet::new();
-            for cell in area.cells.iter().flatten(){
-                if let Some(zone_ids)=cell.zones(){
-                    for id in zone_ids{if id!=0{ids.insert(id);}}
+fn dock_world(
+    ui: &mut egui::Ui,
+    state: &mut GenesisState,
+    loaded: &LoadedArea,
+    streaming: &mut streaming::WorldStreaming,
+    orbit: &mut OrbitCamera,
+    commands: &mut Commands,
+) {
+    ui.label(egui::RichText::new("World / Zone Streaming").strong().size(10.));
+    ui.separator();
+
+    ui.group(|ui| {
+        ui.label(egui::RichText::new("World Streaming").strong().size(10.));
+        ui.horizontal(|ui| {
+            if ui.button("Open Zone...").clicked() {
+                state.open_zone_dialog = true;
+            }
+            if streaming.active_map.is_some() {
+                if ui.button("Unload Zone").clicked() {
+                    streaming.clear_all(commands);
+                    streaming.active_map = None;
                 }
             }
-            for id in ids.iter().take(64){ui.monospace(format!("WorldZone {id}"));}
-            if ids.is_empty(){ui.label("No decoded WorldZone IDs");}
         });
-        ui.collapsing("AREA WorldSky IDs",|ui|{
-            let mut ids=std::collections::BTreeSet::new();
-            for cell in area.cells.iter().flatten(){
-                if let Some(corners)=cell.sky_ids(){
-                    for corner in corners{
-                        for id in corner{if id!=0{ids.insert(id);}}
+
+        if let Some(map) = streaming.active_map.as_ref() {
+            ui.label(egui::RichText::new(format!("Active Map: {}", map.name)).size(9.).strong());
+            ui.label(egui::RichText::new(format!(
+                "Loaded: {} / {} tiles ({} loading)",
+                streaming.loaded_tiles.len(),
+                map.tiles.len(),
+                streaming.in_flight.len()
+            )).size(9.));
+
+            ui.add(egui::Slider::new(&mut streaming.streaming_radius, 1..=3).text("Radius"));
+            let desc = match streaming.streaming_radius {
+                1 => "3x3 tiles (1.5 km²)",
+                2 => "5x5 tiles (2.5 km²)",
+                _ => "7x7 tiles (3.5 km²)",
+            };
+            ui.label(egui::RichText::new(desc).size(8.).color(EDGE));
+
+            ui.separator();
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new("Cam Mode:").size(9.));
+                if ui.selectable_label(orbit.is_first_person, "FlyCam").clicked() {
+                    orbit.is_first_person = true;
+                }
+                if ui.selectable_label(!orbit.is_first_person, "Orbit").clicked() {
+                    orbit.is_first_person = false;
+                }
+            });
+            ui.add(egui::Slider::new(&mut orbit.fly_speed, 5.0..=1500.0).logarithmic(true).text("Fly Speed"));
+
+            if let Some(cam) = streaming.camera_tile {
+                ui.label(egui::RichText::new(format!(
+                    "Camera Tile: [0x{:02x}, 0x{:02x}] ({})",
+                    cam.z, cam.x, cam.to_hex()
+                )).size(9.));
+                let origin = cam.world_origin();
+                ui.label(egui::RichText::new(format!(
+                    "Tile Origin: X={:.0}, Z={:.0}", origin[0], origin[1]
+                )).size(8.).color(EDGE));
+            }
+
+            ui.separator();
+            ui.label(egui::RichText::new("Zone Radar (Click to Teleport)").size(9.).strong());
+            render_zone_radar(ui, map, streaming, orbit);
+        } else {
+            ui.label(egui::RichText::new("No active map streaming.").size(9.).color(EDGE));
+            ui.label(egui::RichText::new("Open a zone or .area file to start streaming.").size(8.).color(EDGE));
+        }
+    });
+
+    if let Some(area) = loaded.tile.as_ref() {
+        ui.collapsing("Focused AREA WorldZone IDs", |ui| {
+            let mut ids = std::collections::BTreeSet::new();
+            for cell in area.cells.iter().flatten() {
+                if let Some(zone_ids) = cell.zones() {
+                    for id in zone_ids { if id != 0 { ids.insert(id); } }
+                }
+            }
+            for id in ids.iter().take(64) { ui.monospace(format!("WorldZone {id}")); }
+            if ids.is_empty() { ui.label("No decoded WorldZone IDs"); }
+        });
+        ui.collapsing("Focused AREA WorldSky IDs", |ui| {
+            let mut ids = std::collections::BTreeSet::new();
+            for cell in area.cells.iter().flatten() {
+                if let Some(corners) = cell.sky_ids() {
+                    for corner in corners {
+                        for id in corner { if id != 0 { ids.insert(id); } }
                     }
                 }
             }
-            for id in ids.iter().take(64){ui.monospace(format!("WorldSky {id}"));}
-            if ids.is_empty(){ui.label("No decoded WorldSky IDs");}
+            for id in ids.iter().take(64) { ui.monospace(format!("WorldSky {id}")); }
+            if ids.is_empty() { ui.label("No decoded WorldSky IDs"); }
         });
     }
-    ui.collapsing("Zones / Regions",|ui| {
-        for name in ["Zones","Named Region Editor","Navigation Window"] {
-            if ui.button(name).clicked(){command(state,name);}
+    ui.collapsing("Zones / Regions", |ui| {
+        for name in ["Zones", "Named Region Editor", "Navigation Window"] {
+            if ui.button(name).clicked() { command(state, name); }
         }
     });
-    ui.collapsing("Sky / Lighting",|ui| {
+    ui.collapsing("Sky / Lighting", |ui| {
         ui.label("Time of Day");
-        ui.add(egui::Slider::new(&mut state.time_of_day,0.0..=24.0));
-        for name in ["Sky","Sky Editor","Fog","Lights","God Rays",
-            "Cloud Shadows","Dynamic Shadows"]{
-            if ui.button(name).clicked(){command(state,name);}
+        ui.add(egui::Slider::new(&mut state.time_of_day, 0.0..=24.0));
+        for name in ["Sky", "Sky Editor", "Fog", "Lights", "God Rays", "Cloud Shadows", "Dynamic Shadows"] {
+            if ui.button(name).clicked() { command(state, name); }
         }
     });
-    ui.collapsing("Water",|ui| {
-        for name in ["Water","Simple Water","Water Sphere","Water Grid"] {
-            if ui.button(name).clicked(){command(state,name);}
+    ui.collapsing("Water", |ui| {
+        for name in ["Water", "Simple Water", "Water Sphere", "Water Grid"] {
+            if ui.button(name).clicked() { command(state, name); }
         }
     });
-    ui.collapsing("Streaming",|ui| {
-        ui.label("Chunk: 32 m");
-        ui.label("AREA tile: 512 m");
-        ui.label(egui::RichText::new("World streaming: placeholder").size(9.).color(EDGE));
-    });
+}
+
+fn render_zone_radar(
+    ui: &mut egui::Ui,
+    map: &MapDiscovery,
+    streaming: &streaming::WorldStreaming,
+    orbit: &mut OrbitCamera,
+) {
+    let span_x = (map.max_x as i32 - map.min_x as i32 + 1).max(1) as f32;
+    let span_z = (map.max_z as i32 - map.min_z as i32 + 1).max(1) as f32;
+
+    let available_w = (ui.available_width() - 8.0).clamp(100.0, 220.0);
+    let tile_size = (available_w / span_x.max(span_z)).clamp(2.0, 18.0);
+    let radar_w = span_x * tile_size;
+    let radar_h = span_z * tile_size;
+
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(radar_w, radar_h), egui::Sense::click());
+    ui.painter().rect_filled(rect, 2.0, egui::Color32::from_rgb(25, 25, 30));
+
+    // Teleport on click
+    if response.clicked() {
+        if let Some(pos) = response.interact_pointer_pos() {
+            let rel_x = ((pos.x - rect.left()) / tile_size).floor() as i32;
+            let rel_z = ((pos.y - rect.top()) / tile_size).floor() as i32;
+            let target_x = (map.min_x as i32 + rel_x).clamp(0, 255) as u8;
+            let target_z = (map.min_z as i32 + rel_z).clamp(0, 255) as u8;
+            let target_coords = ZoneTileCoords::new(target_z, target_x);
+            if map.tiles.contains_key(&target_coords) {
+                let center = target_coords.world_center();
+                orbit.eye.x = center[0];
+                orbit.eye.z = center[2];
+                orbit.focus = Vec3::new(center[0], orbit.eye.y, center[2]);
+            }
+        }
+    }
+
+    // Draw tiles
+    for (&coords, _) in &map.tiles {
+        let tx = (coords.x as i32 - map.min_x as i32) as f32 * tile_size;
+        let tz = (coords.z as i32 - map.min_z as i32) as f32 * tile_size;
+        let tile_rect = egui::Rect::from_min_size(
+            rect.min + egui::vec2(tx, tz),
+            egui::vec2((tile_size - 0.5).max(1.0), (tile_size - 0.5).max(1.0)),
+        );
+
+        let color = if streaming.loaded_tiles.contains_key(&coords) {
+            egui::Color32::from_rgb(50, 200, 120)
+        } else if streaming.in_flight.contains(&coords) {
+            egui::Color32::from_rgb(230, 160, 40)
+        } else {
+            egui::Color32::from_rgb(60, 60, 75)
+        };
+
+        ui.painter().rect_filled(tile_rect, 0.5, color);
+    }
+
+    // Draw camera position and heading
+    if let Some(cam) = streaming.camera_tile {
+        if cam.x >= map.min_x && cam.x <= map.max_x && cam.z >= map.min_z && cam.z <= map.max_z {
+            let cx = (cam.x as i32 - map.min_x as i32) as f32 * tile_size + tile_size * 0.5;
+            let cz = (cam.z as i32 - map.min_z as i32) as f32 * tile_size + tile_size * 0.5;
+            let center_pt = rect.min + egui::vec2(cx, cz);
+            ui.painter().circle_filled(
+                center_pt,
+                (tile_size * 0.7).clamp(2.5, 6.0),
+                egui::Color32::from_rgb(255, 230, 50),
+            );
+
+            // Draw look direction heading pointer
+            let dir_x = -orbit.yaw.sin();
+            let dir_z = -orbit.yaw.cos();
+            let pointer_len = (tile_size * 1.3).clamp(5.0, 15.0);
+            ui.painter().line_segment(
+                [center_pt, center_pt + egui::vec2(dir_x * pointer_len, dir_z * pointer_len)],
+                egui::Stroke::new(1.5, egui::Color32::from_rgb(255, 255, 100)),
+            );
+        }
+    }
+}
+
+fn zone_browser_dialog(
+    ctx: &egui::Context,
+    state: &mut GenesisState,
+    streaming: &mut streaming::WorldStreaming,
+    client: &client_data::ClientFiles,
+    orbit: &mut OrbitCamera,
+    commands: &mut Commands,
+) {
+    if !state.open_zone_dialog {
+        return;
+    }
+    if !client.ready() {
+        state.open_zone_dialog = false;
+        state.status = "Please setup ClientData before opening zones.".to_string();
+        return;
+    }
+
+    if streaming.available_maps.is_empty() {
+        streaming.refresh_available_maps(client);
+    }
+
+    let mut open = true;
+    egui::Window::new("Open WildStar Zone (World Streaming)")
+        .collapsible(false)
+        .resizable(true)
+        .default_size(egui::vec2(440.0, 520.0))
+        .open(&mut open)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Search:");
+                ui.add(egui::TextEdit::singleline(&mut streaming.map_search).desired_width(220.0));
+                if ui.small_button("Clear").clicked() {
+                    streaming.map_search.clear();
+                }
+                if ui.small_button("Refresh").clicked() {
+                    streaming.refresh_available_maps(client);
+                }
+            });
+            ui.separator();
+
+            let query = streaming.map_search.trim().to_ascii_lowercase();
+            let matches: Vec<String> = streaming
+                .available_maps
+                .iter()
+                .filter(|m| query.is_empty() || m.to_ascii_lowercase().contains(&query))
+                .cloned()
+                .collect();
+
+            ui.label(egui::RichText::new(format!("Available Zones: {} (showing {})", streaming.available_maps.len(), matches.len())).size(9.).color(EDGE));
+            ui.separator();
+
+            egui::ScrollArea::vertical().max_height(380.0).show(ui, |ui| {
+                for map_name in matches {
+                    ui.horizontal(|ui| {
+                        if ui.button(egui::RichText::new(&map_name).strong()).clicked() {
+                            match streaming.open_map(&map_name, client, orbit, commands) {
+                                Ok(_) => {
+                                    state.status = format!("Loaded zone {map_name}");
+                                    state.dock_tab = 5;
+                                    state.open_zone_dialog = false;
+                                }
+                                Err(e) => {
+                                    state.status = format!("Failed to open {map_name}: {e}");
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+
+            ui.separator();
+            ui.horizontal(|ui| {
+                if ui.button("Close").clicked() {
+                    state.open_zone_dialog = false;
+                }
+            });
+        });
+
+    if !open {
+        state.open_zone_dialog = false;
+    }
 }
 fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea){
     ui.label("Terrain preview");

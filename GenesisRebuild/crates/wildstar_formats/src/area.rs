@@ -52,6 +52,87 @@ impl AreaCell {
         }
         Some(ids)
     }
+    /// Parse GtAW water bodies from cell subchunks (FUN_1402e5720).
+    pub fn water_bodies(&self) -> Vec<WaterBody> {
+        let mut bodies = Vec::new();
+        for chunk in &self.subchunks {
+            if &chunk.id == b"GtAW" || &chunk.id == b"WATG" {
+                if chunk.data.len() < 4 { continue; }
+                let body_count = u32::from_le_bytes(chunk.data[0..4].try_into().unwrap()) as usize;
+                let mut pos = 4usize;
+                for _ in 0..body_count {
+                    if pos + 80 > chunk.data.len() { break; }
+                    let header: [u8; 80] = chunk.data[pos..pos + 80].try_into().unwrap();
+                    let min = [
+                        f32::from_bits(u32::from_le_bytes(header[0..4].try_into().unwrap())),
+                        f32::from_bits(u32::from_le_bytes(header[4..8].try_into().unwrap())),
+                        f32::from_bits(u32::from_le_bytes(header[8..12].try_into().unwrap())),
+                    ];
+                    let max = [
+                        f32::from_bits(u32::from_le_bytes(header[12..16].try_into().unwrap())),
+                        f32::from_bits(u32::from_le_bytes(header[16..20].try_into().unwrap())),
+                        f32::from_bits(u32::from_le_bytes(header[20..24].try_into().unwrap())),
+                    ];
+                    let index_count = u32::from_le_bytes(header[64..68].try_into().unwrap()) as usize;
+                    let vertex_count = u32::from_le_bytes(header[68..72].try_into().unwrap()) as usize;
+                    pos += 80;
+
+                    let idx_bytes = index_count.checked_mul(4).unwrap_or(usize::MAX);
+                    let vtx_bytes = vertex_count.checked_mul(72).unwrap_or(usize::MAX);
+                    if pos + idx_bytes + vtx_bytes > chunk.data.len() { break; }
+
+                    let mut indices = Vec::with_capacity(index_count);
+                    for i in 0..index_count {
+                        let ip = pos + i * 4;
+                        indices.push(u32::from_le_bytes(chunk.data[ip..ip + 4].try_into().unwrap()));
+                    }
+                    pos += idx_bytes;
+
+                    let mut vertices = Vec::with_capacity(vertex_count);
+                    for i in 0..vertex_count {
+                        let vp = pos + i * 72;
+                        let raw: [u8; 72] = chunk.data[vp..vp + 72].try_into().unwrap();
+                        let position = [
+                            f32::from_bits(u32::from_le_bytes(raw[0..4].try_into().unwrap())),
+                            f32::from_bits(u32::from_le_bytes(raw[4..8].try_into().unwrap())),
+                            f32::from_bits(u32::from_le_bytes(raw[8..12].try_into().unwrap())),
+                        ];
+                        let normal = [
+                            f32::from_bits(u32::from_le_bytes(raw[12..16].try_into().unwrap())),
+                            f32::from_bits(u32::from_le_bytes(raw[16..20].try_into().unwrap())),
+                            f32::from_bits(u32::from_le_bytes(raw[20..24].try_into().unwrap())),
+                        ];
+                        let uv = [
+                            f32::from_bits(u32::from_le_bytes(raw[48..52].try_into().unwrap())),
+                            f32::from_bits(u32::from_le_bytes(raw[52..56].try_into().unwrap())),
+                        ];
+                        vertices.push(WaterVertex { position, normal, uv, raw });
+                    }
+                    pos += vtx_bytes;
+
+                    bodies.push(WaterBody { header, min, max, indices, vertices });
+                }
+            }
+        }
+        bodies
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct WaterVertex {
+    pub position: [f32; 3],
+    pub normal: [f32; 3],
+    pub uv: [f32; 2],
+    pub raw: [u8; 72],
+}
+
+#[derive(Debug, Clone)]
+pub struct WaterBody {
+    pub header: [u8; 80],
+    pub min: [f32; 3],
+    pub max: [f32; 3],
+    pub indices: Vec<u32>,
+    pub vertices: Vec<WaterVertex>,
 }
 
 #[derive(Debug,Clone)]
@@ -97,6 +178,9 @@ impl RawArea {
     }
     pub fn cell_count(&self)->usize{
         self.cells.iter().filter(|c|c.is_some()).count()
+    }
+    pub fn all_water_bodies(&self) -> Vec<WaterBody> {
+        self.cells.iter().flatten().flat_map(|c| c.water_bodies()).collect()
     }
     pub fn prop_count(&self)->usize{
         self.chunks.iter().filter(|c|&c.id==b"pORP")
@@ -280,6 +364,62 @@ mod tests{
         assert!(area.compressed);
         assert_eq!(area.lod_prefix.as_ref().unwrap().len(),1024);
         assert_eq!(area.cell_count(),1);
+    }
+    #[test]
+    fn decodes_synthetic_water_subchunk() {
+        let mut subchunk_data = Vec::new();
+        // 1 body
+        subchunk_data.extend(1u32.to_le_bytes());
+        // 80-byte header
+        let mut header = vec![0u8; 80];
+        // min = (-16.0, 50.0, -16.0)
+        header[0..4].copy_from_slice(&(-16.0f32).to_bits().to_le_bytes());
+        header[4..8].copy_from_slice(&(50.0f32).to_bits().to_le_bytes());
+        header[8..12].copy_from_slice(&(-16.0f32).to_bits().to_le_bytes());
+        // max = (16.0, 50.0, 16.0)
+        header[12..16].copy_from_slice(&(16.0f32).to_bits().to_le_bytes());
+        header[16..20].copy_from_slice(&(50.0f32).to_bits().to_le_bytes());
+        header[20..24].copy_from_slice(&(16.0f32).to_bits().to_le_bytes());
+        // index_count = 3, vertex_count = 3
+        header[64..68].copy_from_slice(&3u32.to_le_bytes());
+        header[68..72].copy_from_slice(&3u32.to_le_bytes());
+        subchunk_data.extend(&header);
+
+        // 3 indices
+        subchunk_data.extend(0u32.to_le_bytes());
+        subchunk_data.extend(1u32.to_le_bytes());
+        subchunk_data.extend(2u32.to_le_bytes());
+
+        // 3 vertices (72 bytes each)
+        for i in 0..3 {
+            let mut vtx = vec![0u8; 72];
+            let pos_x = (i as f32) * 5.0;
+            vtx[0..4].copy_from_slice(&pos_x.to_bits().to_le_bytes());
+            vtx[4..8].copy_from_slice(&(50.0f32).to_bits().to_le_bytes());
+            vtx[8..12].copy_from_slice(&(0.0f32).to_bits().to_le_bytes());
+            // normal Y = 1.0
+            vtx[16..20].copy_from_slice(&(1.0f32).to_bits().to_le_bytes());
+            subchunk_data.extend(&vtx);
+        }
+
+        let cell = AreaCell {
+            index: 0,
+            flags: 0,
+            blocks: vec![None; 32],
+            subchunks: vec![RawChunk {
+                id: *b"GtAW",
+                file_offset: 0,
+                data: subchunk_data,
+            }],
+        };
+
+        let bodies = cell.water_bodies();
+        assert_eq!(bodies.len(), 1);
+        assert_eq!(bodies[0].indices, vec![0, 1, 2]);
+        assert_eq!(bodies[0].vertices.len(), 3);
+        assert_eq!(bodies[0].vertices[1].position[0], 5.0);
+        assert_eq!(bodies[0].vertices[1].position[1], 50.0);
+        assert_eq!(bodies[0].vertices[1].normal[1], 1.0);
     }
     #[test]
     fn reject_truncated(){

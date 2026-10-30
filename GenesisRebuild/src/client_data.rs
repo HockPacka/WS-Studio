@@ -131,6 +131,9 @@ impl ClientFiles {
         }
         picker.pick_file()
     }
+    pub fn client_data_dir(&self) -> Option<PathBuf> {
+        self.index.as_ref().and_then(|i| i.roots.as_ref()).map(|r| r.client_data.clone())
+    }
 }
 pub fn poll_system(mut assets:ResMut<ClientFiles>){assets.poll();}
 

@@ -144,6 +144,93 @@ impl AreaCell {
         let r=((n>>11)&31) as u8;let g=((n>>5)&63) as u8;let b=(n&31) as u8;
         Some([(r<<3)|(r>>2),(g<<2)|(g>>4),(b<<3)|(b>>2)])
     }
+    /// Terrain macro color tint (Bit 3 RGB565 or Bit 13 BC2).
+    pub fn terrain_color(&self,x:usize,z:usize)->Option<[u8;3]>{
+        if x>=65||z>=65{return None;}
+        if let Some(c)=self.color_rgb565(x,z){
+            return Some(c);
+        }
+        let b=self.block(13)?;
+        if b.len()<4624{return None;}
+        let bx=(x/4).min(16);
+        let by=(z/4).min(16);
+        let px=(x%4).min(3);
+        let py=(z%4).min(3);
+        let off=(by*17+bx)*16;
+        let block=&b[off..off+16];
+        let c0=u16::from_le_bytes([block[8],block[9]]);
+        let c1=u16::from_le_bytes([block[10],block[11]]);
+        let indices=u32::from_le_bytes([block[12],block[13],block[14],block[15]]);
+        let shift=(py*4+px)*2;
+        let ci=((indices>>shift)&3) as usize;
+        let r0=((c0>>11)&31) as u8;let g0=((c0>>5)&63) as u8;let b0=(c0&31) as u8;
+        let r1=((c1>>11)&31) as u8;let g1=((c1>>5)&63) as u8;let b1=(c1&31) as u8;
+        let rgb0=[(r0<<3)|(r0>>2),(g0<<2)|(g0>>4),(b0<<3)|(b0>>2)];
+        let rgb1=[(r1<<3)|(r1>>2),(g1<<2)|(g1>>4),(b1<<3)|(b1>>2)];
+        let res=match ci {
+            0=>rgb0,
+            1=>rgb1,
+            2=>[
+                ((2*rgb0[0] as u16+rgb1[0] as u16)/3) as u8,
+                ((2*rgb0[1] as u16+rgb1[1] as u16)/3) as u8,
+                ((2*rgb0[2] as u16+rgb1[2] as u16)/3) as u8,
+            ],
+            _=>[
+                ((rgb0[0] as u16+2*rgb1[0] as u16)/3) as u8,
+                ((rgb0[1] as u16+2*rgb1[1] as u16)/3) as u8,
+                ((rgb0[2] as u16+2*rgb1[2] as u16)/3) as u8,
+            ],
+        };
+        Some(res)
+    }
+    /// Compressed weights from Bit 17 (base weights BC1) + Bit 18 (signed corrections BC1).
+    pub fn compressed_weights(&self,x:usize,z:usize)->Option<[f32;4]>{
+        if x>=65||z>=65{return None;}
+        let b17=self.block(17)?;
+        if b17.len()<2312{return None;}
+        let bx=(x/4).min(16);
+        let by=(z/4).min(16);
+        let px=(x%4).min(3);
+        let py=(z%4).min(3);
+        let off=(by*17+bx)*8;
+        let decode_bc1_rgb=|blk:&[u8]|->[f32;3]{
+            let c0=u16::from_le_bytes([blk[0],blk[1]]);
+            let c1=u16::from_le_bytes([blk[2],blk[3]]);
+            let indices=u32::from_le_bytes([blk[4],blk[5],blk[6],blk[7]]);
+            let shift=(py*4+px)*2;
+            let ci=(indices>>shift)&3;
+            let r0=((c0>>11)&31) as f32/31.0;
+            let g0=((c0>>5)&63) as f32/63.0;
+            let b0=(c0&31) as f32/31.0;
+            let r1=((c1>>11)&31) as f32/31.0;
+            let g1=((c1>>5)&63) as f32/63.0;
+            let b1=(c1&31) as f32/31.0;
+            match ci {
+                0=>[r0,g0,b0],
+                1=>[r1,g1,b1],
+                2=>[(2.0*r0+r1)/3.0,(2.0*g0+g1)/3.0,(2.0*b0+b1)/3.0],
+                _=>[(r0+2.0*r1)/3.0,(g0+2.0*g1)/3.0,(b0+2.0*b1)/3.0],
+            }
+        };
+        let base=decode_bc1_rgb(&b17[off..off+8]);
+        let mut r=base[0];
+        let mut g=base[1];
+        let mut b=base[2];
+        if let Some(b18)=self.block(18){
+            if b18.len()>=2312{
+                let corr=decode_bc1_rgb(&b18[off..off+8]);
+                let cr=(corr[0]*(31.0/15.0)-1.0)*0.5;
+                let cg=(corr[1]*(63.0/31.0)-1.0)*0.5;
+                let cb=(corr[2]*(31.0/15.0)-1.0)*0.5;
+                r=(r+cr).clamp(0.0,1.0);
+                g=(g+cg).clamp(0.0,1.0);
+                b=(b+cb).clamp(0.0,1.0);
+            }
+        }
+        let a=(1.0-(r+g+b)).clamp(0.0,1.0);
+        let sum=r+g+b+a;
+        if sum>0.0001{Some([r/sum,g/sum,b/sum,a/sum])}else{Some([1.0,0.0,0.0,0.0])}
+    }
     pub fn sky_ids(&self)->Option<[[u32;4];4]>{
         let b=self.block(6)?;
         let mut result=[[0u32;4];4];
@@ -243,6 +330,7 @@ mod tests {
         assert_eq!(c.normalized_weights(0,0),Some([1,2,0,12]));
         assert_eq!(c.authoring_weights(0,0),Some([0,15,0,0]));
         assert_eq!(c.color_rgb565(0,0),Some([255,0,0]));
+        assert_eq!(c.terrain_color(0,0),Some([255,0,0]));
         assert_eq!(c.sky_ids().unwrap()[0],[0,1,2,3]);
         assert_eq!(c.sky_weights().unwrap()[3],[12,13,14,15]);
         assert!(c.zone_flag(64,0).is_none());
@@ -270,6 +358,31 @@ mod tests {
         assert_eq!(props[0].raw_record.len(),104);
         data[..4].copy_from_slice(&u32::MAX.to_le_bytes());
         assert!(decode_props(&data).is_err());
+    }
+    #[test]
+    fn compressed_bc2_color_and_bc1_weights() {
+        let mut b13 = vec![0u8; 4624];
+        // 17x17 blocks, each 16 bytes. Test block 0:
+        // bytes 0..7 alpha, 8..11 RGB565 endpoints, 12..15 indices
+        // c0 = pure red (0xF800), c1 = pure green (0x07E0), index 0 = 0 -> c0
+        b13[8..10].copy_from_slice(&0xF800u16.to_le_bytes());
+        b13[10..12].copy_from_slice(&0x07E0u16.to_le_bytes());
+        let mut c = AreaCell {
+            index: 0,
+            flags: 1 << 13,
+            blocks: vec![None; 32],
+            subchunks: Vec::new(),
+        };
+        c.blocks[13] = Some(b13);
+        assert_eq!(c.terrain_color(0, 0), Some([255, 0, 0]));
+
+        let mut b17 = vec![0u8; 2312];
+        // 17x17 blocks, each 8 bytes. c0 = pure red, c1 = black, index 0 = 0
+        b17[0..2].copy_from_slice(&0xF800u16.to_le_bytes());
+        c.flags |= 1 << 17;
+        c.blocks[17] = Some(b17);
+        let w = c.compressed_weights(0, 0).unwrap();
+        assert!(w[0] > 0.9);
     }
     #[test]
     fn real_tile_is_still_readable() {

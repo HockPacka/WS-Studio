@@ -100,7 +100,7 @@ pub fn virtual_key(name:&str)->String{
     segments.join("/")
 }
 
-#[derive(Debug,Default)]
+#[derive(Debug, Clone, Default)]
 pub struct AssetIndex {
     pub roots:Option<AssetRoots>,
     pub files:HashMap<String,AssetFile>,

@@ -11,13 +11,15 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 wildstar_formats = { path = "crates/wildstar_formats" }
 rfd = "0.17.2"
 
-# Fast local iteration: optimize only the application crate for compile/link time.
-# Cargo reuses the ordinary target/debug artifacts for both cargo run and cargo fast.
-# Debug assertions remain enabled; no extra Bevy features or DLLs are required.
+# Optimize performance-critical parsing, decompression and texture baking
 [profile.dev.package.genesis]
-opt-level = 0
+opt-level = 2
 debug = 0
-codegen-units = 256
+codegen-units = 16
+
+[profile.dev.package.wildstar_formats]
+opt-level = 3
+debug = 0
 
 [workspace]
 members = ["crates/wildstar_formats"]

@@ -4,6 +4,7 @@ use wildstar_formats::area;
 mod area_ui;
 mod client_data;
 mod terrain;
+mod terrain_material;
 use bevy::prelude::*;
 use bevy::camera::Viewport;
 use std::path::Path;
@@ -77,7 +78,7 @@ impl Default for GenesisState {
             bottom_tab: 0,
             ribbon_tab: 0,
             time_of_day: 12.0,
-            terrain_view: 0,
+            terrain_view: 5,
         }
     }
 }
@@ -94,6 +95,9 @@ struct LoadedArea {
     props: Vec<area::AreaProp>,
     prop_issue: Option<String>,
     last_preview: (usize, usize),
+    terrain_albedo: Option<Handle<Image>>,
+    layer_status: String,
+    missing_textures: Vec<String>,
 }
 #[derive(Resource)]
 struct OrbitCamera {
@@ -170,13 +174,35 @@ fn load_raw_area(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut images: ResMut<Assets<Image>>,
 ) {
     // Never load an AREA before its WildStar client asset root is indexed.
     if !client.ready(){return;}
     let Some(path)=state.pending_load.take() else {return;};
     match area::RawArea::from_path(Path::new(&path)) {
         Ok(tile)=>{
-            match terrain::terrain_mesh(&tile,state.terrain_view,state.texture_index) {
+            // Resolve only WorldLayer textures referenced by this AREA.
+            // Real TEX images are CPU-composited and sent as a GPU albedo atlas.
+            let atlas=client.index.as_ref().and_then(|index|{
+                terrain_material::bake(&tile,index).map_err(|e|{
+                    state.status=format!("WorldLayer preview unavailable: {e}");
+                }).ok()
+            });
+            loaded.terrain_albedo=None;
+            loaded.missing_textures.clear();
+            loaded.layer_status=String::from("WorldLayer material unavailable");
+            if let Some(atlas)=atlas{
+                loaded.layer_status=format!(
+                    "WorldLayer: {} IDs, {} decoded textures ({} unresolved)",
+                    atlas.layers,atlas.textures,atlas.unresolved.len()
+                );
+                loaded.missing_textures=atlas.unresolved;
+                loaded.terrain_albedo=Some(images.add(atlas.image));
+            }
+            let preview=if state.terrain_view==5 && loaded.terrain_albedo.is_none(){
+                0
+            }else{state.terrain_view};
+            match terrain::terrain_mesh(&tile,preview,state.texture_index) {
                 Ok((mesh,focus))=>{
                     if let Some(old)=loaded.mesh_entity.take(){
                         commands.entity(old).despawn();
@@ -185,6 +211,9 @@ fn load_raw_area(
                         Mesh3d(meshes.add(mesh)),
                         MeshMaterial3d(materials.add(StandardMaterial {
                             base_color:Color::WHITE,
+                            base_color_texture:if state.terrain_view==5 {
+                                loaded.terrain_albedo.clone()
+                            }else{None},
                             perceptual_roughness:1.0,
                             cull_mode:None,
                             ..default()
@@ -215,14 +244,21 @@ fn refresh_terrain_view(
     state:Res<GenesisState>,
     mut loaded:ResMut<LoadedArea>,
     mut meshes:ResMut<Assets<Mesh>>,
-    mut mesh_components:Query<&mut Mesh3d>,
+    mut materials:ResMut<Assets<StandardMaterial>>,
+    mut mesh_components:Query<(&mut Mesh3d,&MeshMaterial3d<StandardMaterial>)>,
 ){
     let target=(state.terrain_view,state.texture_index);
     if loaded.last_preview==target{return;}
     let Some(tile)=loaded.tile.as_ref() else{return;};
     let Some(entity)=loaded.mesh_entity else{return;};
-    let Ok((mesh,_))=terrain::terrain_mesh(tile,target.0,target.1) else{return;};
-    if let Ok(mut component)=mesh_components.get_mut(entity) {
+    let preview=if target.0==5 && loaded.terrain_albedo.is_none(){0}else{target.0};
+    let Ok((mesh,_))=terrain::terrain_mesh(tile,preview,target.1) else{return;};
+    if let Ok((mut component,material))=mesh_components.get_mut(entity) {
+        if let Some(standard)=materials.get_mut(&material.0){
+            standard.base_color_texture=if target.0==5{
+                loaded.terrain_albedo.clone()
+            }else{None};
+        }
         component.0=meshes.add(mesh);
         loaded.last_preview=target;
     }
@@ -1074,7 +1110,7 @@ fn dock_world(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea) {
 fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea){
     ui.label("Terrain preview");
     ui.horizontal_wrapped(|ui|{
-        for (i,name) in ["Height","RGB565","Layer IDs","Zone IDs","Blend"].iter().enumerate(){
+        for (i,name) in ["Height","RGB565","Layer IDs","Zone IDs","Blend","Textured"].iter().enumerate(){
             ui.selectable_value(&mut state.terrain_view,i,*name);
         }
     });
@@ -1083,6 +1119,17 @@ fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea){
             ui.label("Layer slot");
             ui.add(egui::Slider::new(&mut state.texture_index,0..=3));
         });
+    }
+    if state.terrain_view==5{
+        ui.label(egui::RichText::new(&loaded.layer_status).small());
+        if !loaded.missing_textures.is_empty(){
+            ui.collapsing(format!("Missing / unsupported textures ({})",
+                loaded.missing_textures.len()),|ui|{
+                for issue in loaded.missing_textures.iter().take(70){
+                    ui.monospace(issue);
+                }
+            });
+        }
     }
     if let Some(area)=loaded.tile.as_ref(){
         area_ui::show(ui,&mut state.selected_cell,area,

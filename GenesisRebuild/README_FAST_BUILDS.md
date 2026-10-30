@@ -1,59 +1,59 @@
-# Schneller entwickeln: `Compiling genesis v0.1.0`
+# Genesis – schnellere lokale Builds ohne Dynamic Linking
 
-Wenn du Rust-Code in `src/main.rs`, `src/area.rs`, `src/terrain.rs` usw. änderst, **muss Rust das Paket `genesis` erneut übersetzen**. Das ist korrektes Cargo-Verhalten, kein vollständiger Bevy-Neubau. Ein erneutes Linken kann unter Windows aber teuer sein.
+## Fehler bei `cargo fast` (Bevy 0.20.1)
 
-## 1. Gewohnter Start, jetzt mit weniger Debug-Daten für Genesis
+Wenn `cargo fast` meldet:
 
-```powershell
-cd GenesisRebuild
-cargo run -- "../WildStarModelStudio/demo/Hills.area"
+```text
+failed to select a version for the requirement `bevy_dylib = "^0.20.1"`
+candidate versions found which didn't match: 0.20.0, ...
 ```
 
-`[profile.dev.package.genesis]` in `Cargo.toml` erzeugt weniger Debug-Informationen für **nur `genesis`** (`debug = 1`, `opt-level = 0`). Das kann die Kompilierung und das Linken beschleunigen. Debug-Assertions bleiben aktiviert. Die bereits übersetzten Bevy-Abhängigkeiten müssen für diese Profiländerung nicht umkonfiguriert werden, **aber die eigene Crate wird beim ersten Start nach der Änderung einmal neu übersetzt**.
+liegt das daran, dass Bevy 0.20.1 bei aktiviertem Feature `bevy/dynamic_linking` die Version `bevy_dylib 0.20.1` verlangt, die aktuell auf crates.io nicht verfügbar ist. Das ist **kein Fehler in deinem AREA-Reader**.
 
-## 2. Optional: deutlich schnellere Build-Iterationen durch Dynamic Linking
+Im Branch `feature/genesis-raw-area-3d` ist der Alias korrigiert: er verzichtet auf `dynamic_linking`. Bevy 0.20.1 und der Lockfile bleiben unverändert.
+
+## Starten
+
+Im Ordner `GenesisRebuild`:
 
 ```powershell
-cd GenesisRebuild
 cargo fast -- "../WildStarModelStudio/demo/Hills.area"
 ```
 
-`cargo fast` ist ein Alias aus `.cargo/config.toml` für:
+`cargo fast` ist jetzt ein Alias für **`cargo run`**. Beide Befehle verwenden das **gleiche `dev`-Profil** und den **gleichen `target/debug`-Cache**. Damit gibt es keinen separaten `fast-dev`-Erstbuild mehr. Auch dieser Alias kann die erneute Übersetzung von `genesis` nach Codeänderungen nicht vermeiden.
 
 ```powershell
-cargo run --profile fast-dev --features bevy/dynamic_linking -- "../WildStarModelStudio/demo/Hills.area"
+cargo fast-check
 ```
 
-- **Der erste Aufruf kann sehr lange dauern**: Bevy muss für das gesonderte `fast-dev`-Profil samt `bevy_dylib` neu gebaut werden.
-- **Weitere Aufrufe mit demselben Befehl** verwenden den bereits gebauten dynamischen Bevy-Code und sind für Änderungen an unserem Editor gewöhnlich wesentlich schneller.
-- `Compiling genesis` kann **weiterhin** erscheinen: deine geänderte Anwendung wird natürlich noch kompiliert, aber es müssen weniger große Teile statisch in die EXE gelinkt werden.
-- Windows benötigt für Bevy Dynamic Linking optimierte Abhängigkeiten. Deshalb verwendet nur das `fast-dev`-Profil `[profile.fast-dev.package."*"] opt-level = 3`. Beim normalen `cargo run` bleiben sie unverändert.
-- Zum Prüfen ohne vollständiges EXE-Linken: `cargo check` oder `cargo fast-check`.
+ist ein Alias für `cargo check`: Es prüft Rust-Code, ohne eine ausführbare `.exe` zu linken.
 
-**Wichtig:** Dynamic Linking ist ausschließlich für die lokale Entwicklung vorgesehen. Das dynamische Profil benötigt Bevy-Laufzeitbibliotheken und eignet sich nicht als standalone Release. Für Builds zur Veröffentlichung `cargo build --release` ohne `dynamic_linking` verwenden.
+## Was tatsächlich schneller wird
 
-## 3. Unnötige Neubauten vermeiden
-
-- Immer aus demselben Ordner/Workspace und mit demselben Buildbefehl arbeiten. Ein Wechsel zwischen `cargo fast`, `cargo run` und `cargo run --release` benutzt unterschiedliche Artefakte.
-- Nicht `cargo clean` nach jeder Änderung ausführen: das löscht den Buildcache unter `target/`.
-- Kein wechselndes `RUSTFLAGS`, `CARGO_TARGET_DIR`, Rust-Toolchain oder Bevy-Feature-Set zwischen Builds setzen: das kann viele Crates neu kompilieren.
-- `cargo check` prüft Code deutlich schneller, weil es keinen vollständigen Programm-Link ausführt; zum tatsächlichen Anzeigen des 3D-Viewports ist `cargo run`/ `cargo fast` nötig.
-- Mehrere `cargo`-Prozesse auf demselben Zielverzeichnis vermeiden (Lock-Wartezeiten).
-- Falls der Schritt `Compiling genesis` trotz dieser Maßnahmen sehr lange dauert: `cargo build --timings` erzeugt einen HTML-Buildbericht, mit dem die langsamen Crates identifiziert werden können.
-
-## Optional: schnellerer Windows-Linker
-
-Nach Installation von `rust-lld.exe` (siehe offizielle Bevy-Anleitung) kann man **lokal** in `GenesisRebuild/.cargo/config.toml` ergänzen:
+Im `Cargo.toml` gilt für die lokale Anwendung:
 
 ```toml
-[target.x86_64-pc-windows-msvc]
-linker = "rust-lld.exe"
+[profile.dev.package.genesis]
+opt-level = 0
+debug = 0
+codegen-units = 256
 ```
 
-Das wird **nicht standardmäßig eingeschaltet**, weil es auf einem Windows-PC ohne den entsprechenden Linker den Build verhindern würde. Ein Linkerwechsel kann außerdem einmalig einen erneuten Build auslösen.
+Das deaktiviert **nur für das Paket `genesis`** die Erstellung zusätzlicher Debug-Symbole, wodurch das Kompilieren und Linken schneller sein kann. Der übliche Debug-Profile-Modus mit Debug-Assertions bleibt aktiviert. Wenn du Debug-Symbole für `genesis` brauchst, setze `debug = 1` oder `debug = 2`.
 
-Quellen: [Bevy – Fast Compiles](https://bevy.org/learn/quick-start/getting-started/setup/#enable-fast-compiles-optional), [Cargo – Profiles](https://doc.rust-lang.org/cargo/reference/profiles.html).
+Nach einer Änderung an Cargo-Profilen muss Cargo betroffene Artefakte einmal erneuern. Danach wird der Cache weiterverwendet. Es kann auf Windows beim Linken weiterhin eine Verzögerung auftreten.
 
-## Status
+**Nicht machen:** `cargo clean` bei jedem Start, ständig zwischen Toolchains wechseln oder `RUSTFLAGS` ändern. Das verwirft oder invalidiert oft den Cache.
 
-Diese Optimierungen verändern **keinen GDScript-Code**, keine .area-Rohdaten, keine Editor-Menüs und keine Release-Optionen. Sie liegen ausschließlich im Branch `feature/genesis-raw-area-3d`.
+Die normalen Befehle `cargo run` und `cargo build --release` bleiben nutzbar. Das `bevy_dylib`-Feature wird nicht mehr aktiviert und `Cargo.lock` muss nicht gelöscht werden.
+
+## Fehlersuche
+
+- `cargo check` schnell, `cargo run` langsam? Dann ist oft **Codegenerierung oder Linken** der eigenen `.exe` der Engpass.
+- `cargo build --timings`: Erstellt einen Buildbericht im Verzeichnis `target/cargo-timings/`.
+- `cargo run -v`: Gibt Rustc- und Linker-Aufrufe ausführlicher aus.
+
+Docs: [Cargo Profiles](https://doc.rust-lang.org/cargo/reference/profiles.html), [Bevy Fast Compiles](https://bevy.org/learn/quick-start/getting-started/setup/#enable-fast-compiles-optional).
+
+Nur Branch `feature/genesis-raw-area-3d`. Kein Release- oder Game-Daten-Format geändert.

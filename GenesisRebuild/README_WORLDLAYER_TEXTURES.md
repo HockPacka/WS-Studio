@@ -36,11 +36,11 @@ Der Editor wählt beim Laden einer AREA standardmäßig den **Textured**-Modus. 
 ## Ausdrücklich noch unvollständig
 
 - **Kein finaler WildStar-GPU-Terrainshader**: Die erste Stufe mixt auf der CPU und rendert eine StandardMaterial-Textur. Dadurch ist echtes vierlagiges Albedo sichtbar, aber nicht die vollständige originale Materialberechnung. Ein WGSL-Layer-Shader mit zusätzlichen Maps kann danach folgen.
-- **TEX mit WildStars JPEG-artiger Kompression** (`is_jpg`): wird mit klarer Fehlermeldung nicht dekodiert. Bei nicht lesbaren Layer-Texturen wird nur für diese Layer auf die tatsächlich in AREA enthaltene RGB565-Farbmap zurückgegriffen. Falls gar keine TEX-Textur verwendbar ist, wird die bisherige Höhen-Vorschau beibehalten.
+- **WildStar-JPEG-TEX**: TYPE1/TYPE2/TYPE3 werden nun ebenfalls nativ entschlüsselt. Der Decoder verwendet die bekannten Huffman-/DCT-Tabellen aus den WS-Tools-Quellen und ist mit synthetischen Testbildern geprüft. Ein vollständiger Vergleich aller Original-TEX-Dateien steht noch aus. Bei nicht lesbaren Layern bleibt die original gespeicherte RGB565-Farbkarte als Fallback erhalten.
 - Kein Normal-/Specular-/Parallax-Shading, kein BC1 bit17/18-Korrekturpfad, keine endgültige WildStar-Bit13-/Layer-Tint-Interpretation
 - CPU-Atlas nutzt nächstgelegenen Texel und vorläufige 64x64 Gewichtsauflösung je Zelle. Für visuelle Parität sind bilineare Gewichte, Filterung und korrekte sRGB/linear-Gewichtsrechnung nachzurüsten.
 
-Im AREA-Dock erscheinen die Anzahl gefundener Layer-IDs, dekodierter Texturen und konkrete Fehler für fehlende bzw. nicht unterstützte Formate.
+Im AREA-Dock erscheinen die Anzahl gefundener Layer-IDs, dekodierter Texturen, Hinweise und konkrete Fehler. Auch direkt im 3D-Viewport wird `TEXTURED` oder `TEXTURED unavailable | RGB565 fallback` samt Grund angezeigt. Die Compilerwarnung zum bisher ungenutzten `notes`-Feld ist behoben, indem die Hinweise tatsächlich dargestellt werden. Falls keine einzige TEX dekodiert wird, enthält die Fehlermeldung jetzt die ersten fünf konkreten Layer-/Dateifehler. Die UI wechselt beim Laden einer AREA auf den AREA-Dock.
 
 ## Test
 

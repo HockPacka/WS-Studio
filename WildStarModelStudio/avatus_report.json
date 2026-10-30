@@ -1,0 +1,226 @@
+{
+  "folder": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\WoWClient\\ClientData\\Art\\Creature\\Avatus",
+  "parser": {
+    "nativeM3": true,
+    "library": "ws_m3_parser.dll",
+    "abi": 2
+  },
+  "parts": [
+    {
+      "name": "Avatus.m3",
+      "found": true,
+      "readable": true,
+      "meshCount": 0,
+      "bones": 243,
+      "clips": 39,
+      "materials": 19,
+      "textureRefs": 26,
+      "missingTextureRefs": [],
+      "errors": [
+        "Kein darstellbares Mesh: Metadaten können dennoch gültig sein."
+      ]
+    },
+    {
+      "name": "Avatus_Gun.m3",
+      "found": true,
+      "readable": true,
+      "meshCount": 0,
+      "bones": 31,
+      "clips": 24,
+      "materials": 2,
+      "textureRefs": 6,
+      "missingTextureRefs": [],
+      "errors": [
+        "Kein darstellbares Mesh: Metadaten können dennoch gültig sein."
+      ]
+    },
+    {
+      "name": "Avatus_HandLf.m3",
+      "found": true,
+      "readable": true,
+      "meshCount": 0,
+      "bones": 31,
+      "clips": 29,
+      "materials": 5,
+      "textureRefs": 8,
+      "missingTextureRefs": [],
+      "errors": [
+        "Kein darstellbares Mesh: Metadaten können dennoch gültig sein."
+      ]
+    },
+    {
+      "name": "Avatus_HandRt.m3",
+      "found": true,
+      "readable": true,
+      "meshCount": 0,
+      "bones": 28,
+      "clips": 29,
+      "materials": 5,
+      "textureRefs": 8,
+      "missingTextureRefs": [],
+      "errors": [
+        "Kein darstellbares Mesh: Metadaten können dennoch gültig sein."
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "name": "avatus_glass_color.tex",
+      "headerValid": true,
+      "decoded": true,
+      "error": null,
+      "width": 1024,
+      "height": 1024,
+      "fmt": 0,
+      "jpg": true,
+      "jpgType": 0,
+      "previewSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "name": "Avatus_Glass_Grad.tex",
+      "headerValid": true,
+      "decoded": true,
+      "error": null,
+      "width": 128,
+      "height": 2,
+      "fmt": 0,
+      "jpg": false,
+      "jpgType": 0,
+      "previewSize": [
+        128,
+        2
+      ]
+    },
+    {
+      "name": "avatus_glass_normal.tex",
+      "headerValid": true,
+      "decoded": true,
+      "error": null,
+      "width": 1024,
+      "height": 1024,
+      "fmt": 0,
+      "jpg": true,
+      "jpgType": 1,
+      "previewSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "name": "Avatus_Glass_SkinFX.tex",
+      "headerValid": true,
+      "decoded": true,
+      "error": null,
+      "width": 1024,
+      "height": 1024,
+      "fmt": 13,
+      "jpg": false,
+      "jpgType": 0,
+      "previewSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "name": "avatus_gp01_color.tex",
+      "headerValid": true,
+      "decoded": true,
+      "error": null,
+      "width": 1024,
+      "height": 1024,
+      "fmt": 0,
+      "jpg": true,
+      "jpgType": 2,
+      "previewSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "name": "avatus_gp01_normal.tex",
+      "headerValid": true,
+      "decoded": true,
+      "error": null,
+      "width": 1024,
+      "height": 1024,
+      "fmt": 0,
+      "jpg": true,
+      "jpgType": 1,
+      "previewSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "name": "avatus_gp02_color.tex",
+      "headerValid": true,
+      "decoded": true,
+      "error": null,
+      "width": 1024,
+      "height": 1024,
+      "fmt": 0,
+      "jpg": true,
+      "jpgType": 2,
+      "previewSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "name": "avatus_gp02_normal.tex",
+      "headerValid": true,
+      "decoded": true,
+      "error": null,
+      "width": 1024,
+      "height": 1024,
+      "fmt": 0,
+      "jpg": true,
+      "jpgType": 1,
+      "previewSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "name": "avatus_gp03_color.tex",
+      "headerValid": true,
+      "decoded": true,
+      "error": null,
+      "width": 1024,
+      "height": 1024,
+      "fmt": 0,
+      "jpg": true,
+      "jpgType": 2,
+      "previewSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "name": "avatus_gp03_normal.tex",
+      "headerValid": true,
+      "decoded": true,
+      "error": null,
+      "width": 1024,
+      "height": 1024,
+      "fmt": 0,
+      "jpg": true,
+      "jpgType": 1,
+      "previewSize": [
+        256,
+        256
+      ]
+    }
+  ],
+  "summary": {
+    "partsReadable": 4,
+    "partsTotal": 4,
+    "textureHeadersOK": 10,
+    "textureDecoded": 10,
+    "textureTotal": 10,
+    "missingTextureRefs": 0
+  }
+}

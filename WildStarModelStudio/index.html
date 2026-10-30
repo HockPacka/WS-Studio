@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WildStar · Model Studio</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<div id="app">
+  <aside class="left-panel">
+    <div class="brand">
+      <div class="brand-logo">✦</div>
+      <div><div class="brand-title">WILDSTAR <span>STUDIO</span></div><div class="brand-sub">ASSET EXPLORER <span class="version">v0.9.1</span></div></div>
+    </div>
+    <div class="side-content">
+      <div class="section-head">WORKSPACE <span class="mini-dot"></span></div>
+      <button class="side-action primary" id="nativeBrowse"><span class="action-icon">＋</span><span>Datei vom PC öffnen</span><span class="keyhint">M3 / I3 / AREA</span></button>
+      <button class="side-action" id="uploadButton"><span class="action-icon">⇧</span><span>Datei auswählen / ablegen</span></button>
+      <button class="side-action" id="textureFolder"><span class="action-icon">▧</span><span>ClientData / Asset-Paket wählen</span></button>
+      <button class="side-action" id="animatedDemoButton"><span class="action-icon">▶</span><span>Animiertes Demo öffnen</span></button>
+      <button class="side-action" id="demoButton"><span class="action-icon">◇</span><span>Demo-Modell öffnen</span></button>
+      <input type="file" id="fileInput" accept=".m3,.i3,.area" hidden>
+      <div id="modelPartsSection" class="model-parts-section" hidden>
+        <div class="section-head with-margin">MODEL PACK <span id="modelPartsCount" class="count-pill">0</span></div>
+        <div class="model-parts-help">Zusammengehörige M3-Dateien wählen · Texturen werden automatisch aufgelöst.</div>
+        <div id="modelPartsList" class="model-parts-list"></div>
+      </div>
+      <div class="section-head with-margin">SCENE OUTLINER <span id="sceneCount" class="count-pill">0</span></div>
+      <div class="search-wrap"><span class="search-icon">⌕</span><input id="meshSearch" placeholder="Meshes durchsuchen…" aria-label="Meshes durchsuchen"><span class="keyhint">⌕</span></div>
+      <div class="outliner-actions"><button id="showAll">Alle zeigen</button><button id="hideAll">Alle ausblenden</button></div>
+      <div class="mesh-scroll" id="meshList"><div class="empty-list">Noch kein Modell geladen.</div></div>
+    </div>
+    <div class="sidebar-footer"><span class="status-dot"></span><div><strong>Lokaler Viewer</strong><br><small>Dateien bleiben auf diesem PC</small></div></div>
+  </aside>
+  <main class="main-stage" id="dropTarget">
+    <header class="topbar">
+      <div class="crumb"><span>WORKSPACE</span><b> / </b><strong id="fileTitle">Unbenanntes Modell</strong></div>
+      <div class="topbar-actions"><span class="top-chip">● <span id="formatChip">MODEL VIEWER</span></span><button class="icon-button" id="fullScreen" title="Vollbild">⛶</button></div>
+    </header>
+    <section class="viewport" id="viewport">
+      <canvas id="glcanvas"></canvas>
+      <div class="viewport-shine"></div>
+      <div class="view-toolbar">
+        <button id="toggleGrid" class="tool active" title="Gitter umschalten">▦ <span>Grid</span></button>
+        <button id="toggleAxes" class="tool active" title="Achsen umschalten">⌗ <span>Axes</span></button>
+        <button id="toggleWire" class="tool" title="Wireframe umschalten">▱ <span>Wire</span></button>
+        <select id="renderMode" class="viewport-select" title="Vorschaukanal wählen" aria-label="Vorschaukanal"><option value="shaded">Materialien / TEX</option><option value="vertex">Vertexfarben</option><option value="uv">UV Checker</option><option value="normal">Normalen</option></select>
+        <div class="toolbar-separator"></div>
+        <button id="resetCamera" class="tool" title="Kamera fokussieren (F)">◎ <span>Focus</span></button>
+        <button id="screenshot" class="tool" title="Screenshot speichern">▧ <span>Shot</span></button>
+      </div>
+      <div class="viewport-corner"><span class="viewport-label">PERSPECTIVE</span><span class="render-label">● WebGL 2</span></div>
+      <div class="axis-compass" aria-hidden="true"><span class="ax-z">Z</span><span class="ax-y">Y</span><span class="ax-x">X</span><span class="axis-stem"></span></div>
+      <div class="empty-state" id="emptyState"><div class="hero-symbol">✦</div><div class="eyebrow">WELCOME TO THE VIEWPORT</div><h1>Bring your <em>worlds</em><br>into focus.</h1><p>WildStar M3, I3 und AREA direkt untersuchen.<br>Öffne ein Modell oder probiere die Demo.</p><button class="hero-button" id="heroDemo">Demo-Modell anzeigen <span>↗</span></button></div>
+      <div class="loading hidden" id="loading"><div class="spinner"></div><strong id="loadingLabel">Modell wird geladen…</strong><span>Geometriedaten werden vorbereitet</span></div>
+      <div class="drag-overlay hidden" id="dragOverlay"><div>⇩<br><strong>M3, I3 oder AREA hier ablegen</strong><small>WildStar model files</small></div></div>
+      <div class="viewport-footer"><div class="control-help">↶ Linksklick drehen <span>•</span> Leertaste Play/Pause <span>•</span> ⇥ Rechtsklick schwenken <span>•</span> ⊕ Mausrad zoomen</div><div id="canvasStatus">READY</div></div>
+    </section>
+    <footer class="bottom-strip"><div class="bottom-item"><span class="stat-icon">◈</span><div><span>VERTICES</span><strong id="statVertices">—</strong></div></div><div class="bottom-item"><span class="stat-icon">△</span><div><span>TRIANGLES</span><strong id="statTriangles">—</strong></div></div><div class="bottom-item"><span class="stat-icon">▤</span><div><span>MESHES</span><strong id="statMeshes">—</strong></div></div><div class="bottom-item"><span class="stat-icon">♧</span><div><span>BONES</span><strong id="statBones">—</strong></div></div><div class="bottom-state" id="bottomState">Keine Datei geöffnet</div></footer>
+  </main>
+  <aside class="right-panel">
+    <div class="properties-title">INSPECTOR <span class="inspector-icon">☷</span></div>
+    <div class="inspector-content">
+      <div class="property-section"><div class="prop-heading">ASSET INFORMATION <span>⌄</span></div><div class="file-icon">⬡</div><div class="model-name" id="inspectorName">No model loaded</div><div class="model-type" id="inspectorType">Open a WildStar asset</div></div>
+      <div class="property-section"><div class="prop-heading">MODEL DATA <span>⌄</span></div><div id="modelProperties" class="property-rows"><div class="property-row"><span>Status</span><strong>Not loaded</strong></div></div></div>
+      <div class="property-section" id="assetValidation" hidden>
+        <div class="prop-heading">ASSET PACK CHECK <span>✧</span></div>
+        <div id="assetValidationText" class="material-status"></div>
+        <div id="assetMissingList" class="asset-missing-list"></div>
+        <div id="packExtraTextures" class="pack-extra-textures"></div>
+      </div>
+      <div class="property-section m3-explorer" id="m3DetailsSection" hidden>
+        <div class="prop-heading">M3 DATA EXPLORER <span id="m3CountBadge" class="count-pill">ABI 2</span></div>
+        <div class="m3-explorer-controls">
+          <select id="m3Category" aria-label="M3-Datenkategorie"></select>
+          <input id="m3Filter" type="search" placeholder="Daten durchsuchen…" aria-label="M3-Daten durchsuchen">
+        </div>
+        <div id="m3CategoryStats" class="m3-category-stats">Kein Modell geladen</div>
+        <div id="m3DataList" class="m3-data-list"></div>
+        <div id="m3DetailTitle" class="m3-detail-title">Eintrag auswählen</div>
+        <pre id="m3DataDetail" class="m3-data-detail">Noch keine Daten</pre>
+        <button id="exportM3Json" class="m3-export">M3-Metadaten als JSON exportieren ↗</button>
+      </div>
+      <div class="property-section material-animation" id="animatedMaterials" hidden>
+        <div class="prop-heading">M3 ANIMATION PLAYER <span>◷</span></div>
+        <div id="materialTracksCount" class="material-status">0 animierte Material-Tracks</div>
+        <div class="skeleton-tools">
+          <label class="anim-check"><input id="skeletonEnabled" type="checkbox" checked> GPU-Skinning / Bone-Animation</label>
+          <label class="anim-check"><input id="skeletonBindPose" type="checkbox"> Bind-Pose anzeigen</label>
+          <button id="skeletonStop" class="anim-button" type="button">■ Stop / Reset</button>
+          <div id="skeletonDetails" class="material-status">Skelett wird geladen…</div>
+        </div>
+        <label class="anim-label" for="materialAnimClip">M3 Animationsclip</label>
+        <select id="materialAnimClip" class="anim-select"></select>
+        <div class="anim-control-row"><button id="materialPlay" class="anim-button" type="button">▶ Play</button>
+          <select id="materialSpeed" class="anim-select speed-select" aria-label="Animationsgeschwindigkeit">
+            <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option>
+            <option value="2">2×</option><option value="4">4×</option>
+          </select></div>
+        <input id="materialTimeline" type="range" min="0" max="10000" step="10" value="0" aria-label="Animationszeit">
+        <div id="materialTimeLabel" class="animation-time">0.00 / 10.00 s</div>
+        <div id="animatedValues" class="material-status">Materialwerte —</div>
+        <div class="anim-subsection">
+          <div class="animation-time">Bone-Animation: primäre M3-Tracks · Bind-Pose-korrigiertes GPU-Skinning · sekundäre Pose-Layer noch offen</div>
+          <label class="anim-check"><input id="uvPreviewToggle" type="checkbox"> UV-Bewegung (Vorschau)</label>
+          <div class="anim-grid">
+            <label>Scroll U <input id="uvSpeedU" type="number" step="0.05" min="-10" max="10" value="0.2"></label>
+            <label>Scroll V <input id="uvSpeedV" type="number" step="0.05" min="-10" max="10" value="0"></label>
+            <label>Rotation °/s <input id="uvRotation" type="number" step="10" min="-720" max="720" value="0"></label>
+            <label>UV Tiling <input id="uvTiling" type="number" step="0.25" min="0.25" max="16" value="1"></label>
+          </div>
+          <small>UV-Scrolling/Rotation sind manuelle Vorschau-Effekte, keine aus M3 dekodierten UV-Animationen.</small>
+        </div>
+        <div class="anim-subsection" id="flipbookArea" hidden>
+          <label class="anim-label" for="flipbookEmitter">Original-M3-Partikel-Flipbook</label>
+          <select id="flipbookEmitter" class="anim-select"></select>
+          <canvas id="flipbookCanvas" width="240" height="125" aria-label="Flipbook-Frame-Vorschau"></canvas>
+          <div class="animation-time" id="flipbookFrame">—</div>
+          <small>2D-Atlasvorschau; noch keine Partikelsimulation im 3D-Viewport.</small>
+        </div>
+      </div>
+      <div class="property-section" id="materialInspector" hidden>
+        <div class="prop-heading">MATERIAL PREVIEW <span>✧</span></div>
+        <div id="textureStatus" class="material-status">Keine Texturen geladen</div>
+        <div id="materialBlend" class="material-status">Blend —</div>
+        <div id="materialTextureList" class="material-textures"></div>
+        <div class="render-options"><label><input type="checkbox" id="materialsToggle" checked> Materialien / Texturen anzeigen</label></div>
+        <div class="material-tip">Diffuse, Normal, Alpha, Gloss & Glow. Mehrfach-Layer und Shaderparameter angenähert.</div>
+      </div>
+      <div class="property-section"><div class="prop-heading">SELECTED MESH <span>⌄</span></div><div id="selectedProperties" class="property-rows"><div class="property-row muted">Mesh in der Liste auswählen</div></div></div>
+      <div class="property-section"><div class="prop-heading">RENDER MODE <span>⌄</span></div><div class="render-options"><label><input id="smoothToggle" type="checkbox" checked> Beleuchtete Flächen</label><label><input id="spinToggle" type="checkbox"> Automatisch drehen</label></div></div>
+      <div class="property-section"><div class="prop-heading">HINWEISE <span>⌄</span></div><div id="warnings" class="warning-area">Statische Vorschau. Materialien werden vereinfacht dargestellt.</div></div>
+    </div>
+    <div class="inspector-footer"><span>ENGINE</span> <strong id="parserState">M3-Parser wird geprüft…</strong></div>
+  </aside>
+</div>
+<div class="toast hidden" id="toast" role="status"></div>
+<script src="/m3_explorer.js"></script>
+<script src="/material_animation.js"></script>
+<script src="/skeleton_animation.js"></script>
+<script src="/material_renderer.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

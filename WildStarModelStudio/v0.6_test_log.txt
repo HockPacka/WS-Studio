@@ -1,0 +1,15 @@
+[Viewer] "GET /?startup=1 HTTP/1.1" 200 -
+[Viewer] "GET /api/demo HTTP/1.1" 200 -
+[Viewer] "POST /api/browse HTTP/1.1" 200 -
+[Viewer] "GET /api/startup HTTP/1.1" 200 -
+[Viewer] "GET /api/startup HTTP/1.1" 200 -
+[Viewer] "GET /api/startup HTTP/1.1" 200 -
+[Viewer] "GET /api/texture/a00d4c03f038a03cda22ddce1c0b54a7/0 HTTP/1.1" 200 -
+[Viewer] code 404, message Not Found
+[Viewer] "GET /api/texture/a00d4c03f038a03cda22ddce1c0b54a7/4 HTTP/1.1" 404 -
+----------------------------------------------------------------------
+Ran 33 tests in 1.513s
+
+OK
+Material shader mapping tests passed
+M3 Explorer: 10 assertions OK

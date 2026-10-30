@@ -553,7 +553,7 @@ fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAr
         .frame(egui::Frame::default().fill(PANEL)
             .stroke(egui::Stroke::new(1.,EDGE))
             .inner_margin(egui::Margin::symmetric(5,3)))
-        .resizable(true).default_height(62.0).height_range(46.0..=190.0)
+        .resizable(true).default_size(62.0).min_size(46.0).max_size(190.0)
         .show(ui_root,|ui| {
             ui.horizontal_wrapped(|ui| {
                 for (i,label) in ["Occlusion","Layers","Selection","Navigation","Output"].iter().enumerate() {
@@ -806,8 +806,8 @@ fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAre
     }
     egui::Panel::right("genesis-properties-dock")
         .resizable(true)
-        .default_width(232.0)
-        .width_range(188.0..=440.0)
+        .default_size(232.0)
+        .min_size(188.0).max_size(440.0)
         .frame(panel_frame())
         .show(ui_root,|ui| {
             ui.horizontal_wrapped(|ui| {

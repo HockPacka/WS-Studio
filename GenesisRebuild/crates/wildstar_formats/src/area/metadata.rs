@@ -205,3 +205,7 @@ impl AreaCell {
         Some(ZoneSummary{ids,slot_counts,dominant_id,road_samples,suppress_clutter_samples})
     }
 }
+
+#[cfg(test)]
+#[path = "metadata_tests.rs"]
+mod tests;

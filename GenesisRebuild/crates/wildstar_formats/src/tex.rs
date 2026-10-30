@@ -1,6 +1,6 @@
-//! Native WildStar TEX preview decoder, verified layout from WS-Tools
-//! blender_addon/wildstar_m3/tex.py. Supports uncompressed and BC1/2/3.
-//! The proprietary JPEG-like mips are rejected explicitly, never faked.
+mod jpg;
+//! Native WildStar TEX preview decoder, verified layout from WS-Tools.
+//! Supports uncompressed, BC1/BC2/BC3 and proprietary JPG-like TYPE1/2/3.
 #[derive(Debug,Clone)]
 pub struct RgbaImage {
     pub width:usize,
@@ -108,7 +108,7 @@ pub fn decode_tex(bytes:&[u8],max_size:usize)->Result<RgbaImage,String>{
     }
     let jpg=number(bytes,32)?!=0;
     if jpg {
-        return Err("TEX: proprietary JPEG-like compression not yet supported".into());
+        return jpg::decode_jpg_tex(bytes,max_size);
     }
     let fmt=number(bytes,28)?;
     let mips=number(bytes,24)?;
@@ -178,7 +178,7 @@ mod tests{
         let tex=sample(13,&block);
         assert_eq!(decode_tex(&tex,256).unwrap().sample_wrapped(0.,0.),[255,0,0,255]);
         let mut jpg=tex.clone();jpg[32]=1;
-        assert!(decode_tex(&jpg,256).unwrap_err().contains("JPEG"));
+        assert!(decode_tex(&jpg,256).is_err()); // synthetic header lacks JPEG mip count
     }
     #[test]
     fn reject_truncated(){

@@ -33,6 +33,15 @@ struct GenesisState {
     pending_load: Option<String>,
     area_inspector: bool,
     selected_cell: usize,
+    dock_visible: bool,
+    floating_mode: bool,
+    bottom_visible: bool,
+    toolbars_visible: bool,
+    ui_zoom: f32,
+    dock_tab: usize,
+    bottom_tab: usize,
+    ribbon_tab: usize,
+    time_of_day: f32,
 }
 impl Default for GenesisState {
     fn default() -> Self {
@@ -51,6 +60,15 @@ impl Default for GenesisState {
             pending_load: None,
             area_inspector: false,
             selected_cell: 0,
+            dock_visible: true,
+            floating_mode: false,
+            bottom_visible: true,
+            toolbars_visible: true,
+            ui_zoom: 1.0,
+            dock_tab: 0,
+            bottom_tab: 0,
+            ribbon_tab: 0,
+            time_of_day: 12.0,
         }
     }
 }
@@ -72,10 +90,11 @@ struct OrbitCamera {
     yaw: f32,
     pitch: f32,
     rect: Option<[f32;4]>,
+    ui_pixels_per_point: f32,
 }
 impl Default for OrbitCamera {
     fn default()->Self {
-        Self{focus:Vec3::ZERO,distance:730.0,yaw:0.55,pitch:0.74,rect:None}
+        Self{focus:Vec3::ZERO,distance:730.0,yaw:0.55,pitch:0.74,rect:None,ui_pixels_per_point:1.0}
     }
 }
 fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>) {
@@ -158,7 +177,8 @@ fn update_camera(
         .looking_at(orbit.focus,Vec3::Y);
     let Ok(window)=windows.single() else{return;};
     if let Some([left,top,right,bottom])=orbit.rect {
-        let scale=window.resolution.scale_factor();
+        // Egui coordinates are logical points: include its user-selected zoom factor.
+        let scale=orbit.ui_pixels_per_point;
         let width=window.resolution.physical_width();
         let height=window.resolution.physical_height();
         let x=((left*scale).max(0.) as u32).min(width.saturating_sub(1));
@@ -248,16 +268,25 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
     let ctx = contexts.ctx_mut()?;
     if !*initialized { classic_visuals(ctx); *initialized = true; }
     if previews.textures.is_empty() { load_scenes(ctx, &mut previews); }
-    egui::Area::new(egui::Id::new("genesis-main-root"))
-        .fixed_pos(egui::Pos2::ZERO)
-        .order(egui::Order::Background)
+    // Use the actual top-level frame instead of a fixed-position egui::Area.
+    // Nested panels reserve space; the 3D camera viewport tracks the remainder.
+    if (ctx.zoom_factor() - state.ui_zoom).abs() > 0.001 {
+        ctx.set_zoom_factor(state.ui_zoom);
+    }
+    orbit.ui_pixels_per_point = ctx.pixels_per_point();
+    egui::CentralPanel::default()
+        .frame(egui::Frame::default()
+            .fill(egui::Color32::TRANSPARENT)
+            .inner_margin(egui::Margin::same(0)))
         .show(ctx, |ui| {
-            ui.set_min_size(ctx.content_rect().size());
             menu_and_toolbars(ui, &mut state);
-            bottom_strip(ui, &mut state);
+            bottom_strip(ui, &mut state, &loaded, &orbit);
+            if state.dock_visible && !state.floating_mode {
+                dock_panels(ui, &mut state, &loaded);
+            }
             viewport(ui, &mut state, &previews, &mut orbit, &loaded);
         });
-    floating_panels(ctx, &mut state);
+    if state.floating_mode { floating_panels(ctx, &mut state); }
     area_inspector_panel(ctx, &mut state, &loaded);
     if state.open_area_dialog {
         let mut open=true;
@@ -266,7 +295,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
             .default_pos(egui::pos2(220.,190.)).open(&mut open)
             .show(ctx, |ui| {
                 ui.label("Original .area path (raw binary):");
-                ui.add(egui::TextEdit::singleline(&mut state.area_path).desired_width(485.));
+                ui.add(egui::TextEdit::singleline(&mut state.area_path).desired_width((ctx.content_rect().width()-60.0).clamp(150.0, 485.0)));
                 if ui.button("Load AREA").clicked() {
                     state.pending_load=Some(state.area_path.clone());
                     state.open_area_dialog=false;
@@ -281,14 +310,23 @@ fn command(state: &mut GenesisState, name: &'static str) {
     state.active = name;
     state.status = format!("{name} | UI placeholder; no editing operation");
     match name {
-        "Color Brush" | "Color Brush Properties" => state.color_panel = true,
-        "Color Palette" => state.color_palette = true,
-        "Texture Brush" | "Texture Brush Properties" => state.texture_panel = true,
-        "Clutter" | "Clutter Preset" => state.clutter_panel = true,
-        "Prop Models" | "Snap Points Properties" => state.prop_panel = true,
-        "Object List" => state.object_list = true,
-        "AREA Inspector" => state.area_inspector = true,
-        "Zones" | "Named Region Editor" => state.zone_panel = true,
+        "Color Brush" | "Color Brush Properties" => { state.color_panel = true; state.dock_tab = 0; },
+        "Color Palette" => { state.color_palette = true; state.dock_tab = 1; },
+        "Texture Brush" | "Texture Brush Properties" => { state.texture_panel = true; state.dock_tab = 2; },
+        "Clutter" | "Clutter Preset" => { state.clutter_panel = true; state.dock_tab = 3; },
+        "Prop Models" | "Snap Points Properties" => { state.prop_panel = true; state.dock_tab = 4; },
+        "Object List" => { state.object_list = true; state.dock_tab = 4; },
+        "AREA Inspector" => { state.area_inspector = true; state.dock_tab = 6; },
+        "Dock Properties" => { state.dock_visible = true; state.floating_mode = false; },
+        "Float Properties" => { state.floating_mode = true; state.dock_visible = false; },
+        "Hide Properties" => { state.dock_visible = false; state.floating_mode = false; },
+        "Bottom Workspace" => state.bottom_visible = !state.bottom_visible,
+        "Header Toolbars" => state.toolbars_visible = !state.toolbars_visible,
+        "UI 80%" => state.ui_zoom = 0.8,
+        "UI 100%" => state.ui_zoom = 1.0,
+        "UI 125%" => state.ui_zoom = 1.25,
+        "UI 150%" => state.ui_zoom = 1.5,
+        "Zones" | "Named Region Editor" => { state.zone_panel = true; state.dock_tab = 5; },
         "Land Chunk Grid" => state.grid = !state.grid,
         "3D AREA View" => state.raw_view = true,
         "Open AREA..." => state.open_area_dialog = true,
@@ -327,6 +365,7 @@ const ICONS: &[(&str,&str,[u8;3])] = &[
     ("Prop Models","P",[151,128,82]),("Prop Interiors","I",[106,122,167]),
     ("Snap Points Properties","S",[156,97,90]),("Water","W",[71,150,197]),
     ("Water Sphere","O",[71,142,190]),("Zones","Z",[164,121,173]),
+    ("3D AREA View","3D",[59,121,166]),("AREA Inspector","I",[171,130,75]),
     ("Land Chunk Grid","#",[171,117,70]),("Land Wireframe","L",[103,138,147]),
     ("Lights","L",[214,168,74]),("Sky","K",[97,154,190]),
     ("Fog","G",[130,145,153]),("Cloud Shadows","C",[150,143,160]),
@@ -357,81 +396,201 @@ fn small_commands(ui: &mut egui::Ui, state: &mut GenesisState, tag: &str,
             });
         });
 }
-fn menu_and_toolbars(ui_root: &mut egui::Ui, state: &mut GenesisState) {
+// Classic Genesis chrome: menu header, multiple toolbars and bottom workspace.
+// All layout regions are nested in the top-level CentralPanel and therefore resize.
+fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
     egui::Panel::top("genesis-menu-and-ribbon")
         .frame(egui::Frame::default().fill(PAPER)
-               .inner_margin(egui::Margin::symmetric(4,2)))
-        .show(ui_root, |ui| {
-            ui.horizontal(|ui| {
+            .inner_margin(egui::Margin::symmetric(4,2)))
+        .show(ui_root,|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().item_spacing.x=5.0;
                 for (title, entries) in [
-                    ("File",&["New","Open","Open AREA...","Save","Save As","Exit"][..]),
-                    ("Edit",&["Undo","Redo","Cut","Copy","Paste","Delete"][..]),
-                    ("View",&["3D AREA View","Land Wireframe","Land Chunk Grid","Land Edges","Slope",
-                              "Grimvault Preview","Aurora Preview","Blue Forest Preview"][..]),
-                    ("Tools",&["Height Brush","Texture Brush","Color Brush","Clutter","Prop Models"][..]),
-                    ("Window",&["Color Brush Properties","Color Palette","Texture Brush Properties",
-                                "Clutter Preset","Object List","Snap Points Properties","AREA Inspector"][..]),
+                    ("File",&["New","Open AREA...","Save","Save As","Save Package","Exit"][..]),
+                    ("Edit",&["Undo","Redo","Cut","Copy","Paste","Delete","Select","Align Selection"][..]),
+                    ("View",&["3D AREA View","Land Wireframe","Object Wireframe","Land Chunk Grid",
+                        "Land Area Grid","Land Layer ID","Hide Land Color","Hide Land Layers",
+                        "Hide Shadows","Dynamic Shadows","UI 80%","UI 100%","UI 125%","UI 150%",
+                        "Grimvault Preview","Aurora Preview","Blue Forest Preview"][..]),
+                    ("Select",&["Select","Selection Mask","Highlight Primary",
+                        "Align Selection","Group","Ungroup"][..]),
+                    ("Terrain",&["Height Brush","Smooth","Flatten","Noise","Clone","Stamp",
+                        "Texture Brush","Color Brush","Land Chunk Grid","Chunk Inspector"][..]),
+                    ("Objects",&["Prop Models","Prop Interiors","Object List",
+                        "Snap Points Properties","Group","Ungroup"][..]),
+                    ("Clutter",&["Clutter Preset","Clutter","Hide Canopy","Fade Unused Props"][..]),
+                    ("Water",&["Water","Simple Water","Water Grid","Water Sphere",
+                        "Water Grid Outer Edge"][..]),
+                    ("Environment",&["Sky","Sky Editor","Fog","Lights","Cloud Shadows",
+                        "God Rays","Dynamic Shadows","Time of Day"][..]),
+                    ("Zones",&["Zones","Named Region Editor","Navigation Window",
+                        "Land Layer ID"][..]),
+                    ("Window",&["Dock Properties","Float Properties","Hide Properties",
+                        "Bottom Workspace","Header Toolbars","Color Brush Properties",
+                        "Color Palette","Texture Brush Properties","Clutter Preset",
+                        "Object List","AREA Inspector","Named Region Editor"][..]),
                     ("Help",&["About Genesis","Keyboard Shortcuts"][..]),
                 ] {
-                    ui.menu_button(egui::RichText::new(title).size(10.0), |ui| {
+                    ui.menu_button(egui::RichText::new(title).size(10.0),|ui| {
                         for &entry in entries {
-                            if ui.button(entry).clicked() { command(state,entry); ui.close(); }
+                            if ui.button(entry).clicked() {
+                                command(state,entry);
+                                ui.close();
+                            }
                         }
                     });
                 }
-                ui.separator();
-                ui.label(egui::RichText::new("World Editor - Genesis").size(9.0).color(EDGE));
+                if ui.available_width()>150.0 {
+                    ui.separator();
+                    ui.label(egui::RichText::new("World Editor - Genesis")
+                        .size(9.0).color(EDGE));
+                }
             });
             ui.separator();
-            egui::ScrollArea::horizontal().id_salt("icon-row")
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new("World").size(9.).strong());
+                ui.add_sized([83.,17.],egui::Button::new("NewCentral").frame(true));
+                ui.label(egui::RichText::new("Map").size(9.).strong());
+                ui.add_sized([52.,17.],egui::Button::new("Area 106").frame(true));
+                if ui.button("Open AREA...").clicked() {command(state,"Open AREA...");}
+                if ui.button("3D View").clicked() {command(state,"3D AREA View");}
+                ui.separator();
+                ui.label(egui::RichText::new("Time of Day").size(9.));
+                ui.add(egui::Slider::new(&mut state.time_of_day,0.0..=24.0)
+                    .show_value(true).custom_formatter(|v,_|format!("{v:04.1}")));
+            });
+            if !state.toolbars_visible {return;}
+            ui.separator();
+            let compact=ui.available_width()<1000.0;
+            if compact {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Tools").strong().size(9.));
+                    for (i,label) in ["Main","Terrain","Props","Environment","Zones"].iter().enumerate() {
+                        if ui.selectable_label(state.ribbon_tab==i,
+                            egui::RichText::new(*label).size(9.)).clicked() {
+                            state.ribbon_tab=i;
+                        }
+                    }
+                });
+            }
+            egui::ScrollArea::horizontal()
+                .id_salt("genesis-icon-toolbar")
                 .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-                .show(ui, |ui| {
+                .show(ui,|ui| {
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 1.0;
+                        ui.spacing_mut().item_spacing.x=1.0;
                         for (i,&(name,glyph,color)) in ICONS.iter().enumerate() {
-                            if matches!(i, 6|10|16|20|26|33) { ui.separator(); }
+                            if compact {
+                                let group=if i<10 {0} else if i<20 {1}
+                                    else if i<27 {2} else if i<34 {3} else {4};
+                                if group!=state.ribbon_tab {continue;}
+                            }
+                            if matches!(i,6|10|16|20|26|33) {ui.separator();}
                             icon(ui,state,name,glyph,color);
                         }
                     });
                 });
-            small_commands(ui,state,"ribbon-row-1",&[
+            let terrain:&[&'static str]=&[
                 "Double Sided","Slope","Object Wireframe","Land Wireframe",
                 "Land Area Grid","Land Chunk Grid","Land Edges","Designer Color",
                 "SkyWeights","Land Layer ID","In Flux","Highlight Primary","Align Selection",
                 "Normal","Opaque","Navigation Window","Play Now","Sky Editor",
-                "Save Package","Cell","Navigation Window",
-            ]);
-            small_commands(ui,state,"ribbon-row-2",&[
+                "Save Package","Cell",
+            ];
+            let art:&[&'static str]=&[
                 "Fog","Land","Land Love","Prop Models","Prop Interiors","Hide Canopy",
                 "Clutter","Water","Particles","Simple Water","Water Sphere","Water Grid",
                 "Water Grid Outer Edge","Selection Mask","Chunk Inspector","Land Shadows",
                 "Dynamic Shadows","Plug Mask","Things with No Bounds",
-            ]);
-            small_commands(ui,state,"ribbon-row-3",&[
+            ];
+            let environment:&[&'static str]=&[
                 "Sky","FullScreen Effects","Lights","Set Diffuse to Gray",
                 "Force Plastic Material","Hide Shadows","Cloud Shadows",
                 "Select Sky Override","Selected Sky Gizmos","Hide Land Color",
                 "Hide Land Layers","God Rays","Fade Unused Props","Object List",
                 "Snap Points Properties","Zones","Named Region Editor",
-            ]);
+            ];
+            if compact {
+                let row=match state.ribbon_tab {
+                    0|1=>terrain,2=>art,3=>environment,_=>&[
+                        "Zones","Named Region Editor","Navigation Window",
+                        "Land Occlusion Lines","Occlusion Editor"][..],
+                };
+                small_commands(ui,state,"compact-genesis-command-row",row);
+            } else {
+                small_commands(ui,state,"genesis-tool-row-1",terrain);
+                small_commands(ui,state,"genesis-tool-row-2",art);
+                small_commands(ui,state,"genesis-tool-row-3",environment);
+            }
         });
 }
-fn bottom_strip(ui_root: &mut egui::Ui, state: &mut GenesisState) {
-    egui::Panel::bottom("bottom-occlusion-strip")
+
+fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedArea,
+                orbit:&OrbitCamera) {
+    // The status bar is always visible, while the workspace can be collapsed.
+    egui::Panel::bottom("genesis-bottom-status")
         .frame(egui::Frame::default().fill(PAPER)
-               .inner_margin(egui::Margin::symmetric(5,2)))
-        .show(ui_root, |ui| {
+            .inner_margin(egui::Margin::symmetric(6,3)))
+        .show(ui_root,|ui| {
             ui.horizontal(|ui| {
-                for item in ["Occlusion","Land Occlusion Lines","Land Occlusion Nodes",
-                             "Occlusion Editor","Land Occlusion Curtains"] {
-                    if ui.add(egui::Button::new(egui::RichText::new(item).size(8.2))
-                              .frame(false)).clicked() { command(state,item); }
+                if ui.small_button(if state.bottom_visible {"▾"} else {"▴"}).clicked() {
+                    state.bottom_visible=!state.bottom_visible;
+                }
+                ui.label(egui::RichText::new(&state.status).size(9.));
+                if ui.available_width()>210.0 {
+                    ui.separator();
+                    ui.label(egui::RichText::new(format!(
+                        "XYZ {:>5.1} / {:>5.1} / {:>5.1}",
+                        orbit.focus.x,orbit.focus.y,orbit.focus.z)).size(9.));
+                    ui.label(egui::RichText::new(format!(
+                        "{} cells",loaded.tile.as_ref().map(|t|t.cell_count()).unwrap_or(0)))
+                        .size(9.));
+                }
+            });
+        });
+    if !state.bottom_visible {return;}
+    egui::Panel::bottom("genesis-bottom-workspace")
+        .frame(egui::Frame::default().fill(PANEL)
+            .stroke(egui::Stroke::new(1.,EDGE))
+            .inner_margin(egui::Margin::symmetric(5,3)))
+        .resizable(true).default_height(62.0).height_range(46.0..=190.0)
+        .show(ui_root,|ui| {
+            ui.horizontal_wrapped(|ui| {
+                for (i,label) in ["Occlusion","Layers","Selection","Navigation","Output"].iter().enumerate() {
+                    if ui.selectable_label(state.bottom_tab==i,
+                        egui::RichText::new(*label).size(9.)).clicked(){
+                        state.bottom_tab=i;
+                    }
                 }
                 ui.separator();
-                ui.label(egui::RichText::new(&state.status).size(8.0).color(INK));
+                if ui.small_button("Hide").clicked(){state.bottom_visible=false;}
+            });
+            ui.separator();
+            egui::ScrollArea::vertical().show(ui,|ui| {
+                ui.horizontal_wrapped(|ui| {
+                    let commands:&[&'static str]=match state.bottom_tab {
+                        0=>&["Occlusion","Land Occlusion Lines","Land Occlusion Nodes",
+                             "Occlusion Editor","Land Occlusion Curtains"],
+                        1=>&["Land","Land Layer ID","Land Chunk Grid",
+                             "Land Area Grid","Chunk Inspector"],
+                        2=>&["Select","Selection Mask","Align Selection",
+                             "Group","Ungroup","Clear Selection"],
+                        3=>&["Navigation Window","Named Region Editor",
+                             "Zones","Waypoints"],
+                        _=>&["Open AREA...","AREA Inspector","Save Package"],
+                    };
+                    for &name in commands {
+                        if ui.add(egui::Button::new(egui::RichText::new(name).size(9.)))
+                            .clicked(){command(state,name);}
+                    }
+                });
+                if state.bottom_tab==4 {
+                    ui.label(egui::RichText::new(&state.status).size(9.).color(INK));
+                }
             });
         });
 }
+
 fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             previews:&Viewports,orbit:&mut OrbitCamera,loaded:&LoadedArea) {
     egui::CentralPanel::default()

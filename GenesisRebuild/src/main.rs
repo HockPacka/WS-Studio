@@ -1,6 +1,6 @@
 //! Visual-only reconstruction of the classic WildStar Genesis editor in Bevy.
 //! Screenshots under WILDSTAREDITOR remain the visual references. No world edits yet.
-mod area;
+use wildstar_formats::area;
 mod terrain;
 use bevy::prelude::*;
 use bevy::camera::Viewport;

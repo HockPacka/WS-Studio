@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/genesis-bevy-ui-replica
+      - feature/genesis-raw-area-3d
     paths:
       - 'GenesisRebuild/**'
       - '.github/workflows/genesis-ui.yml'
@@ -21,3 +22,5 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Cargo check (no graphics runtime)
         run: cargo check
+      - name: Test raw AREA binary reader
+        run: cargo test --bin genesis --no-default-features

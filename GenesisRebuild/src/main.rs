@@ -821,8 +821,8 @@ fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAre
                         1=>dock_palette(ui,state),
                         2=>dock_texture(ui,state),
                         3=>dock_clutter(ui,state),
-                        4=>dock_objects(ui,state),
-                        5=>dock_world(ui,state),
+                        4=>dock_objects(ui,state,loaded),
+                        5=>dock_world(ui,state,loaded),
                         _=>dock_area(ui,state,loaded),
                     }
                 });
@@ -932,8 +932,22 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState) {
     ui.label("Density");
     ui.add(egui::Slider::new(&mut state.power,0.0..=2.0));
 }
-fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState) {
+fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea) {
     ui.label(egui::RichText::new("Object List / Snap Points").strong().size(10.));
+    if !loaded.props.is_empty() {
+        ui.collapsing(format!("AREA Prop Placements ({})",loaded.props.len()),|ui|{
+            for prop in loaded.props.iter().take(64) {
+                ui.collapsing(format!("{}: {}",prop.index,
+                    prop.model_path.as_deref().unwrap_or("<unresolved name>")),|ui|{
+                    ui.monospace(format!("XYZ: {:?}",prop.position_xyz));
+                    ui.monospace(format!("Rotation: {:?}",prop.rotation_xyzw));
+                    ui.monospace(format!("Scale: {:.4}",prop.scale));
+                    ui.monospace(format!("Tint: 0x{:08X}",prop.tint));
+                });
+            }
+            if loaded.props.len()>64{ui.label("Showing first 64 placements");}
+        });
+    }
     for name in ["World","Land","Props","Clutter","Zones","Water","Lights","FX"] {
         ui.collapsing(name,|ui| {
             if ui.selectable_label(false,format!("{name} (placeholder)")).clicked(){
@@ -952,8 +966,32 @@ fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState) {
         command(state,"Snap Points Properties");
     }
 }
-fn dock_world(ui:&mut egui::Ui,state:&mut GenesisState) {
+fn dock_world(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea) {
     ui.label(egui::RichText::new("World / Environment").strong().size(10.));
+    if let Some(area)=loaded.tile.as_ref(){
+        ui.collapsing("AREA WorldZone IDs",|ui|{
+            let mut ids=std::collections::BTreeSet::new();
+            for cell in area.cells.iter().flatten(){
+                if let Some(zone_ids)=cell.zones(){
+                    for id in zone_ids{if id!=0{ids.insert(id);}}
+                }
+            }
+            for id in ids.iter().take(64){ui.monospace(format!("WorldZone {id}"));}
+            if ids.is_empty(){ui.label("No decoded WorldZone IDs");}
+        });
+        ui.collapsing("AREA WorldSky IDs",|ui|{
+            let mut ids=std::collections::BTreeSet::new();
+            for cell in area.cells.iter().flatten(){
+                if let Some(corners)=cell.sky_ids(){
+                    for corner in corners{
+                        for id in corner{if id!=0{ids.insert(id);}}
+                    }
+                }
+            }
+            for id in ids.iter().take(64){ui.monospace(format!("WorldSky {id}"));}
+            if ids.is_empty(){ui.label("No decoded WorldSky IDs");}
+        });
+    }
     ui.collapsing("Zones / Regions",|ui| {
         for name in ["Zones","Named Region Editor","Navigation Window"] {
             if ui.button(name).clicked(){command(state,name);}

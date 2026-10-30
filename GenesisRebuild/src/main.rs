@@ -183,14 +183,18 @@ fn load_raw_area(
         Ok(tile)=>{
             // Resolve only WorldLayer textures referenced by this AREA.
             // Real TEX images are CPU-composited and sent as a GPU albedo atlas.
-            let atlas=client.index.as_ref().and_then(|index|{
-                terrain_material::bake(&tile,index).map_err(|e|{
-                    state.status=format!("WorldLayer preview unavailable: {e}");
-                }).ok()
-            });
             loaded.terrain_albedo=None;
             loaded.missing_textures.clear();
             loaded.layer_status=String::from("WorldLayer material unavailable");
+            let atlas=client.index.as_ref().and_then(|index|{
+                match terrain_material::bake(&tile,index){
+                    Ok(atlas)=>Some(atlas),
+                    Err(error)=>{
+                        loaded.layer_status=format!("WorldLayer preview unavailable: {error}");
+                        None
+                    }
+                }
+            });
             if let Some(atlas)=atlas{
                 loaded.layer_status=format!(
                     "WorldLayer: {} IDs, {} decoded textures ({} unresolved)",

@@ -97,6 +97,7 @@ struct LoadedArea {
     last_preview: (usize, usize),
     terrain_albedo: Option<Handle<Image>>,
     layer_status: String,
+    layer_notes: Vec<String>,
     missing_textures: Vec<String>,
 }
 #[derive(Resource)]
@@ -184,6 +185,7 @@ fn load_raw_area(
             // Resolve only WorldLayer textures referenced by this AREA.
             // Real TEX images are CPU-composited and sent as a GPU albedo atlas.
             loaded.terrain_albedo=None;
+            loaded.layer_notes.clear();
             loaded.missing_textures.clear();
             loaded.layer_status=String::from("WorldLayer material unavailable");
             let atlas=client.index.as_ref().and_then(|index|{
@@ -201,10 +203,11 @@ fn load_raw_area(
                     atlas.layers,atlas.textures,atlas.unresolved.len()
                 );
                 loaded.missing_textures=atlas.unresolved;
+                loaded.layer_notes=atlas.notes;
                 loaded.terrain_albedo=Some(images.add(atlas.image));
             }
             let preview=if state.terrain_view==5 && loaded.terrain_albedo.is_none(){
-                0
+                1
             }else{state.terrain_view};
             match terrain::terrain_mesh(&tile,preview,state.texture_index) {
                 Ok((mesh,focus))=>{
@@ -231,9 +234,18 @@ fn load_raw_area(
                     loaded.prop_issue=decoded_props.as_ref().err().cloned();
                     loaded.props=decoded_props.unwrap_or_default();
                     state.status=format!(
-                        "AREA RAW | {} cells | {} top chunks | {} props | {}",
-                        tile.cell_count(),tile.chunks.len(),loaded.props.len(),path
+                        "AREA | {} cells | {} props | {} | {}",
+                        tile.cell_count(),loaded.props.len(),loaded.layer_status,path
                     );
+                    // Expose the diagnostic for a regular UI launch; otherwise
+                    // the default Brush dock hides all texture-loading errors.
+                    state.dock_tab=6;
+                    if loaded.terrain_albedo.is_none(){
+                        eprintln!("Genesis TEXTURE: {}",loaded.layer_status);
+                    }
+                    for issue in loaded.missing_textures.iter().take(20){
+                        eprintln!("Genesis TEXTURE: {issue}");
+                    }
                     loaded.last_preview=(state.terrain_view,state.texture_index);
                     loaded.tile=Some(tile);
                 }
@@ -255,7 +267,7 @@ fn refresh_terrain_view(
     if loaded.last_preview==target{return;}
     let Some(tile)=loaded.tile.as_ref() else{return;};
     let Some(entity)=loaded.mesh_entity else{return;};
-    let preview=if target.0==5 && loaded.terrain_albedo.is_none(){0}else{target.0};
+    let preview=if target.0==5 && loaded.terrain_albedo.is_none(){1}else{target.0};
     let Ok((mesh,_))=terrain::terrain_mesh(tile,preview,target.1) else{return;};
     if let Ok((mut component,material))=mesh_components.get_mut(entity) {
         if let Some(mut standard)=materials.get_mut(&material.0){
@@ -753,6 +765,21 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             if state.raw_view {
                 orbit.rect=Some([rect.left(),rect.top(),rect.right(),rect.bottom()]);
                 let response=ui.allocate_rect(rect,egui::Sense::click_and_drag());
+                if state.terrain_view==5 && loaded.tile.is_some(){
+                    let has_texture=loaded.terrain_albedo.is_some();
+                    let overlay=if has_texture {
+                        format!("TEXTURED | {}",loaded.layer_status)
+                    }else{
+                        format!("TEXTURED unavailable | RGB565 fallback | {}",loaded.layer_status)
+                    };
+                    let box_rect=egui::Rect::from_min_size(rect.min+egui::vec2(8.,8.),
+                        egui::vec2((rect.width()-16.).clamp(40.,590.),34.));
+                    ui.painter().rect_filled(box_rect,3.,
+                        egui::Color32::from_rgba_unmultiplied(20,20,27,210));
+                    ui.painter().text(box_rect.left_center()+egui::vec2(9.,0.),
+                        egui::Align2::LEFT_CENTER,overlay,
+                        egui::FontId::proportional(12.),egui::Color32::WHITE);
+                }
                 if response.dragged_by(egui::PointerButton::Secondary) {
                     let delta=ui.input(|i|i.pointer.delta());
                     orbit.yaw-=delta.x*0.006;
@@ -1118,14 +1145,21 @@ fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea){
             ui.selectable_value(&mut state.terrain_view,i,*name);
         }
     });
-    if state.terrain_view>=2 && state.terrain_view!=3{
+    if state.terrain_view>=2 && state.terrain_view!=3 && state.terrain_view!=5{
         ui.horizontal(|ui|{
             ui.label("Layer slot");
             ui.add(egui::Slider::new(&mut state.texture_index,0..=3));
         });
     }
     if state.terrain_view==5{
-        ui.label(egui::RichText::new(&loaded.layer_status).small());
+        ui.label(egui::RichText::new(&loaded.layer_status).small().strong());
+        if loaded.terrain_albedo.is_none(){
+            ui.colored_label(egui::Color32::DARK_RED,
+                "No texture atlas loaded: showing original AREA RGB565 instead.");
+        }
+        for note in &loaded.layer_notes {
+            ui.label(egui::RichText::new(note).small().color(EDGE));
+        }
         if !loaded.missing_textures.is_empty(){
             ui.collapsing(format!("Missing / unsupported textures ({})",
                 loaded.missing_textures.len()),|ui|{

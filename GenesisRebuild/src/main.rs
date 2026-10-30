@@ -154,14 +154,13 @@ fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>,
         }
     }
     client.initialize(root_arg);
-    let sample=Path::new("../WildStarModelStudio/demo/Hills.area");
     if let Some(path)=area_arg {
         state.area_path=path.clone();
         state.pending_load=Some(path);
-    } else if sample.is_file(){
-        state.area_path=sample.to_string_lossy().into_owned();
-        state.pending_load=Some(state.area_path.clone());
     }
+    // A regular editor launch opens the client setup first; AREA files are
+    // chosen explicitly using the native Windows Explorer dialog.
+
 }
 fn load_raw_area(
     mut state: ResMut<GenesisState>,

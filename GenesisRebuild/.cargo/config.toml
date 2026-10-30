@@ -1,0 +1,10 @@
+# Optional fast iterative Bevy builds, WITHOUT changing normal cargo run / CI.
+# Run from GenesisRebuild:
+#   cargo fast -- "../WildStarModelStudio/demo/Hills.area"
+#
+# First invocation builds Bevy's shared library in target/fast-dev.
+# Subsequent edits mostly rebuild/link only the application crate.
+# Do not enable the Windows rust-lld linker globally here unless installed.
+[alias]
+fast = "run --profile fast-dev --features bevy/dynamic_linking"
+fast-check = "check --profile fast-dev --features bevy/dynamic_linking"

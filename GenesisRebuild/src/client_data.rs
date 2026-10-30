@@ -121,8 +121,10 @@ impl ClientFiles {
         let mut picker=FileDialog::new()
             .set_title("WildStar .area-Datei öffnen")
             .add_filter("WildStar AREA", &["area"]);
-        if let Some(parent)=Path::new(current_path).parent(){
-            if parent.is_dir(){picker=picker.set_directory(parent);}
+        let selected_area=Path::new(current_path);
+        let existing_parent=selected_area.parent().filter(|p|p.is_dir());
+        if let Some(folder)=existing_parent {
+            picker=picker.set_directory(folder);
         }else if let Some(root)=self.index.as_ref().and_then(|i|i.roots.as_ref()){
             let map_dir=root.client_data.join("Map");
             picker=picker.set_directory(if map_dir.is_dir(){&map_dir}else{&root.client_data});

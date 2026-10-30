@@ -57,7 +57,9 @@ pub fn terrain_mesh(area:&RawArea, preview:usize, layer:usize)->Result<(Mesh,Vec
                     _=>None,
                 }
             }).unwrap_or(fallback);
-            colors.push(tone);
+            // The genuine texture atlas already contains blended albedo;
+            // neutralize vertex tint to avoid multiplying it by debug colors.
+            colors.push(if preview==5{[1.,1.,1.,1.]}else{tone});
         }
     }
     let mut indices=Vec::with_capacity(256*256*6);

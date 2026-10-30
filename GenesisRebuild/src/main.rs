@@ -2,6 +2,7 @@
 //! Screenshots under WILDSTAREDITOR remain the visual references. No world edits yet.
 use wildstar_formats::area;
 mod area_ui;
+mod client_data;
 mod terrain;
 use bevy::prelude::*;
 use bevy::camera::Viewport;
@@ -31,6 +32,8 @@ struct GenesisState {
     status: String,
     raw_view: bool,
     open_area_dialog: bool,
+    open_area_path_dialog: bool,
+    change_client_root: bool,
     area_path: String,
     pending_load: Option<String>,
     area_inspector: bool,
@@ -59,6 +62,8 @@ impl Default for GenesisState {
             status: "3D AREA Preview: right drag orbit, middle drag pan, wheel zoom".to_string(),
             raw_view: true,
             open_area_dialog: false,
+            open_area_path_dialog: false,
+            change_client_root: false,
             area_path: String::new(),
             pending_load: None,
             area_inspector: false,
@@ -104,7 +109,8 @@ impl Default for OrbitCamera {
         Self{focus:Vec3::ZERO,distance:730.0,yaw:0.55,pitch:0.74,rect:None,ui_pixels_per_point:1.0}
     }
 }
-fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>) {
+fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>,
+               mut client: ResMut<client_data::ClientFiles>) {
     // Keep egui on a separate full-window camera, not on the terrain camera.
     // Bevy-egui 0.43 automatically selects the first camera unless disabled.
     // The 3D camera later receives a restricted viewport, which would otherwise
@@ -135,24 +141,39 @@ fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>) {
         },
         Transform::from_xyz(100.,650.,150.).looking_at(Vec3::ZERO,Vec3::Y),
     ));
-    let args:Vec<String>=std::env::args().skip(1).collect();
+    let mut root_arg=None;
+    let mut area_arg=None;
+    let mut args=std::env::args().skip(1);
+    while let Some(arg)=args.next(){
+        match arg.as_str(){
+            "--client-root" | "--root"=>root_arg=args.next(),
+            "--area"=>area_arg=args.next(),
+            _ if arg.to_ascii_lowercase().ends_with(".area")=>area_arg=Some(arg),
+            _ if root_arg.is_none() && Path::new(&arg).is_dir()=>root_arg=Some(arg),
+            _=>{},
+        }
+    }
+    client.initialize(root_arg);
     let sample=Path::new("../WildStarModelStudio/demo/Hills.area");
-    if let Some(path)=args.first().filter(|x|x.ends_with(".area")){
-        state.area_path=path.to_string();
-        state.pending_load=Some(path.to_string());
-    } else if sample.exists() {
+    if let Some(path)=area_arg {
+        state.area_path=path.clone();
+        state.pending_load=Some(path);
+    } else if sample.is_file(){
         state.area_path=sample.to_string_lossy().into_owned();
         state.pending_load=Some(state.area_path.clone());
     }
 }
 fn load_raw_area(
     mut state: ResMut<GenesisState>,
+    client: Res<client_data::ClientFiles>,
     mut loaded: ResMut<LoadedArea>,
     mut orbit: ResMut<OrbitCamera>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // Never load an AREA before its WildStar client asset root is indexed.
+    if !client.ready(){return;}
     let Some(path)=state.pending_load.take() else {return;};
     match area::RawArea::from_path(Path::new(&path)) {
         Ok(tile)=>{
@@ -241,6 +262,7 @@ fn main() {
         .insert_resource(GenesisState::default())
         .insert_resource(LoadedArea::default())
         .insert_resource(OrbitCamera::default())
+        .insert_resource(client_data::ClientFiles::default())
         // Explicitly attach PrimaryEguiContext to the full-window 2D camera.
         .insert_resource(EguiGlobalSettings {
             auto_create_primary_context: false,
@@ -258,7 +280,8 @@ fn main() {
         }))
         .add_plugins(EguiPlugin::default())
         .add_systems(Startup, setup_scene)
-        .add_systems(Update, (load_raw_area, refresh_terrain_view, update_camera).chain())
+        .add_systems(Update, (client_data::poll_system, load_raw_area,
+            refresh_terrain_view, update_camera).chain())
         .add_systems(EguiPrimaryContextPass, editor_ui)
         .run();
 }
@@ -315,7 +338,8 @@ fn load_scenes(ctx: &egui::Context, previews: &mut Viewports) {
 }
 fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
              mut previews: Local<Viewports>, mut initialized: Local<bool>,
-             mut orbit: ResMut<OrbitCamera>, loaded: Res<LoadedArea>) -> Result {
+             mut orbit: ResMut<OrbitCamera>, loaded: Res<LoadedArea>,
+             mut client: ResMut<client_data::ClientFiles>) -> Result {
     let ctx = contexts.ctx_mut()?;
     if !*initialized { classic_visuals(ctx); *initialized = true; }
     if previews.textures.is_empty() { load_scenes(ctx, &mut previews); }
@@ -338,29 +362,51 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 menu_and_toolbars(ui, &mut state);
                 bottom_strip(ui, &mut state, &loaded, &orbit);
                 if state.dock_visible && !state.floating_mode {
-                    dock_panels(ui, &mut state, &loaded);
+                    dock_panels(ui, &mut state, &loaded, &client);
                 }
                 viewport(ui, &mut state, &previews, &mut orbit, &loaded);
             });
         });
     if state.floating_mode { floating_panels(ctx, &mut state); }
     area_inspector_panel(ctx, &mut state, &loaded);
-    if state.open_area_dialog {
-        let mut open=true;
-        egui::Window::new("Open WildStar AREA")
-            .collapsible(false).resizable(false)
-            .default_pos(egui::pos2(220.,190.)).open(&mut open)
-            .show(ctx, |ui| {
-                ui.label("Original .area path (raw binary):");
-                ui.add(egui::TextEdit::singleline(&mut state.area_path).desired_width((ctx.content_rect().width()-60.0).clamp(150.0, 485.0)));
-                if ui.button("Load AREA").clicked() {
-                    state.pending_load=Some(state.area_path.clone());
-                    state.open_area_dialog=false;
-                }
-                ui.label("Input remains unchanged; meshes are rebuilt in memory.");
-            });
-        if !open {state.open_area_dialog=false;}
+    if state.change_client_root {
+        client.setup_open=true;
+        state.change_client_root=false;
     }
+    if state.open_area_dialog {
+        // Native Microsoft Windows Explorer file picker, not a hand-typed path.
+        state.open_area_dialog=false;
+        if client.ready() {
+            if let Some(file)=client.choose_area(&state.area_path) {
+                state.area_path=file.to_string_lossy().into_owned();
+                state.pending_load=Some(state.area_path.clone());
+            }
+        } else {
+            client.setup_open=true;
+            state.status="Select and index the WildStar client root before opening AREA.".into();
+        }
+    }
+    if state.open_area_path_dialog {
+        let mut open=true;
+        egui::Window::new("Open WildStar AREA – manual path")
+            .collapsible(false).resizable(true)
+            .default_pos(egui::pos2(220.,190.)).open(&mut open)
+            .show(ctx,|ui|{
+                ui.label("Original .area path:");
+                ui.add(egui::TextEdit::singleline(&mut state.area_path)
+                    .desired_width((ctx.content_rect().width()-60.).clamp(150.,485.)));
+                if ui.button("Load AREA").clicked() {
+                    if client.ready(){
+                        state.pending_load=Some(state.area_path.clone());
+                        state.open_area_path_dialog=false;
+                    }else{
+                        client.setup_open=true;
+                    }
+                }
+            });
+        if !open{state.open_area_path_dialog=false;}
+    }
+    client_data::startup_prompt(ctx,&mut client);
     Ok(())
 }
 fn command(state: &mut GenesisState, name: &'static str) {
@@ -387,6 +433,8 @@ fn command(state: &mut GenesisState, name: &'static str) {
         "Land Chunk Grid" => state.grid = !state.grid,
         "3D AREA View" => state.raw_view = true,
         "Open AREA..." => state.open_area_dialog = true,
+        "Open AREA by path..." => state.open_area_path_dialog = true,
+        "Choose Client Root..." => state.change_client_root = true,
         "Grimvault Preview" => { state.scene = 0; state.raw_view=false; },
         "Aurora Preview" => { state.scene = 1; state.raw_view=false; },
         "Blue Forest Preview" => { state.scene = 2; state.raw_view=false; },
@@ -463,7 +511,8 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing.x=5.0;
                 for (title, entries) in [
-                    ("File",&["New","Open AREA...","Save","Save As","Save Package","Exit"][..]),
+                    ("File",&["New","Open AREA...","Open AREA by path...","Choose Client Root...",
+                        "Save","Save As","Save Package","Exit"][..]),
                     ("Edit",&["Undo","Redo","Cut","Copy","Paste","Delete","Select","Align Selection"][..]),
                     ("View",&["3D AREA View","Land Wireframe","Object Wireframe","Land Chunk Grid",
                         "Land Area Grid","Land Layer ID","Hide Land Color","Hide Land Layers",
@@ -485,7 +534,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                     ("Window",&["Dock Properties","Float Properties","Hide Properties",
                         "Bottom Workspace","Header Toolbars","Color Brush Properties",
                         "Color Palette","Texture Brush Properties","Clutter Preset",
-                        "Object List","AREA Inspector","Named Region Editor"][..]),
+                        "Object List","AREA Inspector","Choose Client Root...","Named Region Editor"][..]),
                     ("Help",&["About Genesis","Keyboard Shortcuts"][..]),
                 ] {
                     ui.menu_button(egui::RichText::new(title).size(10.0),|ui| {
@@ -781,7 +830,8 @@ fn area_inspector_panel(
 
 // A resizable dock replaces fixed-position floating tools in the default layout.
 // Classic floating property windows can still be enabled from Window > Float Properties.
-fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedArea) {
+fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState,
+              loaded:&LoadedArea,client:&client_data::ClientFiles) {
     if ui_root.available_width()<610.0 {
         // Keep the entire center visible on small windows. Open floating mode if needed.
         return;
@@ -804,7 +854,7 @@ fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAre
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing.x=3.;
                 for (i,title) in ["Brush","Palette","Texture","Clutter",
-                    "Objects","World","AREA"].iter().enumerate() {
+                    "Objects","World","AREA","Assets"].iter().enumerate() {
                     if ui.selectable_label(state.dock_tab==i,
                         egui::RichText::new(*title).size(9.)).clicked() {
                         state.dock_tab=i;
@@ -823,7 +873,13 @@ fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAre
                         3=>dock_clutter(ui,state),
                         4=>dock_objects(ui,state,loaded),
                         5=>dock_world(ui,state,loaded),
-                        _=>dock_area(ui,state,loaded),
+                        6=>dock_area(ui,state,loaded),
+                        _=>{
+                            if ui.button("Choose Client Root...").clicked(){
+                                command(state,"Choose Client Root...");
+                            }
+                            client_data::asset_summary(ui,client,loaded.tile.as_ref());
+                        },
                     }
                 });
         });

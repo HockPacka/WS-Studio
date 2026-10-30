@@ -3,3 +3,5 @@
 pub mod area;
 
 pub mod assets;
+pub mod tbl;
+pub mod tex;

@@ -67,8 +67,9 @@ fn patches_for_cell(cell:&AreaCell,edit:&ColorCellEdit)
             return Err("AREA BC2 source block has wrong length".into());
         }
         let mut bc2=raw.to_vec();
+        let changed_samples=changes.into_iter().collect::<BTreeSet<_>>();
         let mut blocks=BTreeSet::new();
-        for pixel in changes{
+        for &pixel in &changed_samples{
             let x=pixel%COLOR_SIDE;
             let z=pixel/COLOR_SIDE;
             blocks.insert((z/4)*BLOCK_SIDE+x/4);
@@ -79,8 +80,18 @@ fn patches_for_cell(cell:&AreaCell,edit:&ColorCellEdit)
             let mut colors=[[0u8;3];16];
             for z in 0..4{
                 for x in 0..4{
-                    let offset=(((bz*4+z)*COLOR_SIDE)+(bx*4+x))*4;
-                    colors[z*4+x].copy_from_slice(&edit.after[offset..offset+3]);
+                    let sx=bx*4+x;
+                    let sz=bz*4+z;
+                    let pixel=sz*COLOR_SIDE+sx;
+                    colors[z*4+x]=if changed_samples.contains(&pixel){
+                        let off=pixel*4;
+                        [edit.after[off],edit.after[off+1],edit.after[off+2]]
+                    }else{
+                        // Bit 3 RGB565 can have different original RGB from Bit 13
+                        // BC2. Never recolor every untouched BC2 pixel with the
+                        // Bit 3 preview merely because one pixel was edited.
+                        cell.color_bc2(sx,sz).ok_or("AREA: BC2 original pixel unreadable")?
+                    };
                 }
             }
             let offset=block*16;

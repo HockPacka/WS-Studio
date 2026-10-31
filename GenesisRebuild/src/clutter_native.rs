@@ -10,6 +10,7 @@ use wildstar_formats::{
     tbl::{ClutterAsset,Table,WorldClutter,WorldLayer,world_clutters,world_layers},
 };
 use crate::clutter::{next,sample_height,weight};
+use crate::terrain_paint::TerrainPaint;
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct NativePlacement {
@@ -57,17 +58,22 @@ fn tile_seed(source:&Path)->u32{
     stem.bytes().fold(2166136261u32,|hash,b|
         (hash^(b.to_ascii_lowercase() as u32)).wrapping_mul(16777619))
 }
-fn blended_weights(cell:&AreaCell,x:f32,z:f32)->Option<[f32;4]>{
+fn blended_weights(cell:&AreaCell,cell_index:usize,x:f32,z:f32,
+    paint:Option<&TerrainPaint>)->Option<[f32;4]>{
     let ix=x.floor().min(63.0) as usize;
     let iz=z.floor().min(63.0) as usize;
     let tx=x-ix as f32;
     let tz=z-iz as f32;
     let mut result=[0.0f32;4];
     for (k,out) in result.iter_mut().enumerate(){
-        let v00=weight(cell,ix,iz,k)?;
-        let v10=weight(cell,ix+1,iz,k)?;
-        let v01=weight(cell,ix,iz+1,k)?;
-        let v11=weight(cell,ix+1,iz+1,k)?;
+        let sample=|x,z|{
+            paint.and_then(|p|p.clutter_weight_at(cell_index,x,z,k))
+                .or_else(||weight(cell,x,z,k))
+        };
+        let v00=sample(ix,iz)?;
+        let v10=sample(ix+1,iz)?;
+        let v01=sample(ix,iz+1)?;
+        let v11=sample(ix+1,iz+1)?;
         let a=v00+(v10-v00)*tx;
         let b=v01+(v11-v01)*tx;
         let w=(a+(b-a)*tz).max(0.0);
@@ -101,6 +107,14 @@ fn choose_asset(preset:&WorldClutter,roll:f32)->Option<&ClutterAsset>{
 pub fn generate(
     area:&RawArea,grid:&HeightGrid,catalog:&Catalog,source:&Path,
     trials_per_cell:usize,instance_limit:usize,
+)->NativeGenerated{
+    generate_with_paint(area,grid,catalog,source,trials_per_cell,
+        instance_limit,None)
+}
+/// Identical native selection, but samples live editable WorldLayer weights.
+pub fn generate_with_paint(
+    area:&RawArea,grid:&HeightGrid,catalog:&Catalog,source:&Path,
+    trials_per_cell:usize,instance_limit:usize,paint:Option<&TerrainPaint>,
 )->NativeGenerated{
     let mut out=NativeGenerated::default();
     if trials_per_cell==0||instance_limit==0{return out;}
@@ -146,7 +160,7 @@ pub fn generate(
             if cell.zone_flag(px,pz).is_some_and(|flags|flags&0x20!=0){
                 out.suppressed+=1;continue;
             }
-            let weights=blended_weights(cell,x*2.0,z*2.0)
+            let weights=blended_weights(cell,index,x*2.0,z*2.0,paint)
                 .or_else(||(0..4).find(|&slot|catalog.layers.contains_key(&ids[slot]))
                     .map(|slot|std::array::from_fn(|k|if k==slot{1.0}else{0.0})));
             let Some(weights)=weights else{

@@ -1662,6 +1662,7 @@ fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState) {
 
 fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea,
     client: &client_data::ClientFiles, paint: &mut terrain_paint::TerrainPaint) {
+    if state.paint_tool=="Texture Brush" && paint.ready() {state.terrain_view=5;}
     ui.label(egui::RichText::new("Terrain Paint Properties").strong().size(10.5));
     ui.separator();
     ui.label(egui::RichText::new("Paint Tools").strong().size(9.0));

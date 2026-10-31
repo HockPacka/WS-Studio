@@ -590,8 +590,15 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         height_edits:&[(usize,usize,f32)])
         ->Result<(Vec<u8>,usize),String>
     {
-        let (mut patches,changed_cells)=self.native_texture_edits(source)?;
-        let (color_patches,color_cells)=self.native_color_edits(source)?;
+        // A standalone AREA can have editable heights without a baked
+        // WorldLayer atlas. The bundle exporter must still support that
+        // height-only case rather than requiring texture paint initialization.
+        let (mut patches,changed_cells)=if self.ready(){
+            self.native_texture_edits(source)?
+        }else{(Vec::new(),0)};
+        let (color_patches,color_cells)=if self.ready(){
+            self.native_color_edits(source)?
+        }else{(Vec::new(),0)};
         patches.extend(color_patches);
         if height_edits.is_empty() && patches.is_empty(){
             return Err("No height or texture changes to export".into());
@@ -623,9 +630,11 @@ pixel ({x},{z}), layer {channel}; export cancelled"
             }
         }
         // All blocks/unknown payloads are validated inside with_cell_block_changes.
-        self.verify_native_weight_fidelity(&reread)?;
-        self.verify_native_color_fidelity(source,&reread)?;
-        self.verify_native_edge_samples(&reread)?;
+        if self.ready(){
+            self.verify_native_weight_fidelity(&reread)?;
+            self.verify_native_color_fidelity(source,&reread)?;
+            self.verify_native_edge_samples(&reread)?;
+        }
         Ok((bytes,changed_cells+color_cells))
     }
 
@@ -638,7 +647,7 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         use wildstar_formats::area::cross_tile_write::{
             BorderSample,BorderWeights,
         };
-        if !self.ready(){return Err("No texture workspace loaded".into());}
+        if !self.ready(){return Ok([Vec::new(),Vec::new(),Vec::new()]);}
         let mut out=[Vec::new(),Vec::new(),Vec::new()];
         let sample_at=|x:usize,z:usize|->Option<BorderSample>{
             let idx=(z*MAP_SIDE+x)*4;

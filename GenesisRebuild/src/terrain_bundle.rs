@@ -3,12 +3,21 @@
 //! been prepared, parsed and validated in memory. This is a best-effort
 //! rollback bundle, NOT an atomic multi-file transaction across crashes.
 use std::{fs,io::Write,path::{Path,PathBuf}};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap,BTreeSet};
 use wildstar_formats::area::{RawArea,cross_tile_write::{
     BorderSample,plan_cross_tile_border_edits,validate_cross_tile_border,
+},height_border::{
+    HeightBorderSample,route_source_height_edges,plan_cross_tile_height_edits,
+    validate_cross_tile_heights,
 }};
 use wildstar_formats::zone::ZoneTileCoords;
 use crate::terrain_paint::TerrainPaint;
+
+#[derive(Default)]
+struct NeighbourEdits {
+    color_and_weights:Vec<BorderSample>,
+    heights:Vec<HeightBorderSample>,
+}
 
 fn neighbour_source(source:&Path, coords:ZoneTileCoords)->Result<PathBuf,String>{
     let parent=source.parent().ok_or("AREA bundle: source folder unknown")?;
@@ -54,8 +63,9 @@ fn neighbour_source(source:&Path, coords:ZoneTileCoords)->Result<PathBuf,String>
 /// sources are resolved by exact map prefix and four-digit ZZXX coordinates.
 /// All files are fully validated before creating the bundle directory.
 ///
-/// This currently handles texture/color border samples, not cross-AREA height
-/// vertices. Height edits touching an outer height boundary fail closed.
+/// Handles texture/color 65th samples and 19x19 native height ghost overlap,
+/// including one sample past both tile edges (-1 and 257). All eight
+/// neighbours can be exported if required by the edited height vertices.
 pub fn export_bundle(
     paint:&mut TerrainPaint,source:&RawArea,source_path:&Path,
     height_edits:&[(usize,usize,f32)],destination_parent:&Path,
@@ -72,36 +82,56 @@ pub fn export_bundle(
         !prefix.to_ascii_lowercase().ends_with(&coords.to_hex()){
         return Err("AREA bundle: source filename lacks verified ZZXX suffix".into());
     }
-    if height_edits.iter().any(|&(x,z,_)|
-        x==0||x==256||z==0||z==256){
-        return Err("AREA bundle: height edits on outer tile boundaries need a height-neighbour writer; export blocked".into());
-    }
     let outgoing=paint.external_border_samples()?;
+    let mut jobs=BTreeMap::<(i8,i8),NeighbourEdits>::new();
+    // Texture/color edits only influence the predecessor's duplicated 65th
+    // edge texel. 257x257 height edits additionally need +X/+Z neighbors:
+    // a native 19x19 cell stores one ghost vertex *outside* both tile sides.
+    for (slot,samples) in outgoing.iter().enumerate(){
+        if samples.is_empty(){continue;}
+        let offset=match slot{
+            0=>(-1,0),1=>(0,-1),_=>(-1,-1),
+        };
+        jobs.entry(offset).or_default()
+            .color_and_weights.extend_from_slice(samples);
+    }
+    for (offset,samples) in route_source_height_edges(height_edits)?{
+        jobs.entry(offset).or_default().heights.extend(samples);
+    }
     // Validate source before reading any neighbouring tile or writing files.
     let (base_bytes,_cells)=paint.build_native_bytes(source,height_edits)?;
     let mut outputs=vec![(source_name,base_bytes)];
-    let neighbours=[
-        coords.x.checked_sub(1).map(|x|ZoneTileCoords::new(coords.z,x)),
-        coords.z.checked_sub(1).map(|z|ZoneTileCoords::new(z,coords.x)),
-        coords.x.checked_sub(1).and_then(|x|
-            coords.z.checked_sub(1).map(|z|ZoneTileCoords::new(z,x))),
-    ];
-    for (slot,requests) in outgoing.iter().enumerate(){
-        if requests.is_empty(){continue;}
-        let coords=neighbours[slot].ok_or_else(||format!(
-            "AREA bundle: tile coordinate underflow for neighbour {slot}"
-        ))?;
-        let path=neighbour_source(source_path,coords)?;
-        let neighbor=RawArea::from_path(&path)
-            .map_err(|e|format!("AREA bundle: cannot decode {}: {e}",path.display()))?;
-        let edits=plan_cross_tile_border_edits(&neighbor,requests)?;
-        let bytes=neighbor.with_cell_block_changes(&edits)?;
+    for ((dx,dz),requests) in &jobs{
+        let x=match dx {
+            -1=>coords.x.checked_sub(1),
+            1=>coords.x.checked_add(1),
+            _=>Some(coords.x),
+        }.ok_or("AREA bundle: neighbour X coordinate outside map")?;
+        let z=match dz {
+            -1=>coords.z.checked_sub(1),
+            1=>coords.z.checked_add(1),
+            _=>Some(coords.z),
+        }.ok_or("AREA bundle: neighbour Z coordinate outside map")?;
+        let destination=ZoneTileCoords::new(z,x);
+        let path=neighbour_source(source_path,destination)?;
+        let neighbor=RawArea::from_path(&path).map_err(|e|
+            format!("AREA bundle: cannot decode {}: {e}",path.display()))?;
+        // Process both edit families without duplicate Bit 0/3/17 blocks.
+        let color_plan=plan_cross_tile_border_edits(
+            &neighbor,&requests.color_and_weights)?;
+        let color_bytes=neighbor.with_cell_block_changes(&color_plan)?;
+        let color_stage=RawArea::from_bytes(color_bytes)?;
+        let height_plan=plan_cross_tile_height_edits(
+            &color_stage,&requests.heights)?;
+        let bytes=color_stage.with_cell_block_changes(&height_plan)?;
         let reread=RawArea::from_bytes(bytes.clone())?;
         if reread.cell_count()!=neighbor.cell_count() ||
             reread.prop_count()!=neighbor.prop_count(){
             return Err("AREA bundle: neighbor cell or prop count changed".into());
         }
-        validate_cross_tile_border(&neighbor,&reread,requests)?;
+        validate_cross_tile_border(
+            &neighbor,&reread,&requests.color_and_weights)?;
+        validate_cross_tile_heights(&reread,&requests.heights)?;
         let name=path.file_name().ok_or("AREA bundle: neighbour name missing")?
             .to_string_lossy().into_owned();
         outputs.push((name,bytes));

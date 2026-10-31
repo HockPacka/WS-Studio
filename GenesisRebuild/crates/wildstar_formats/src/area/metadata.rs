@@ -200,10 +200,21 @@ impl AreaCell {
         let nibble=if index%2==0 {byte&15}else{byte>>4};
         Some(nibble*17)
     }
-    /// Compressed weights from Bit 17 (base weights BC1) + Bit 18 (signed corrections BC1).
+    /// Confirmed visual path: Bit 17 BC1 layer weights with Bit 18 correction.
     pub fn compressed_weights(&self,x:usize,z:usize)->Option<[f32;4]>{
+        self.decode_weight_pair(17,18,x,z)
+    }
+    /// Experimental READ-ONLY interpretation of the Bit 19/20 BC1 pair.
+    /// The descriptor links Bit 29 -> 19/20, but its exact numerical
+    /// semantics and native encoder remain unverified; never serialize it.
+    pub fn candidate_weights_19_20(&self,x:usize,z:usize)->Option<[f32;4]>{
+        if self.block(19).is_none() || self.block(20).is_none(){return None;}
+        self.decode_weight_pair(19,20,x,z)
+    }
+    fn decode_weight_pair(&self,base_bit:usize,correction_bit:usize,
+        x:usize,z:usize)->Option<[f32;4]> {
         if x>=65||z>=65{return None;}
-        let b17=self.block(17)?;
+        let b17=self.block(base_bit)?;
         if b17.len()<2312{return None;}
         let bx=(x/4).min(16);
         let by=(z/4).min(16);
@@ -233,7 +244,7 @@ impl AreaCell {
         let mut r=base[0];
         let mut g=base[1];
         let mut b=base[2];
-        if let Some(b18)=self.block(18){
+        if let Some(b18)=self.block(correction_bit){
             if b18.len()>=2312{
                 let corr=decode_bc1_rgb(&b18[off..off+8]);
                 let cr=(corr[0]*(31.0/15.0)-1.0)*0.5;

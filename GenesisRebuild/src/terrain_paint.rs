@@ -584,21 +584,12 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         Ok(())
     }
 
-    /// Export a combined height+texture AREA into a NEW file. Supports only
-    /// recognized native texture weight layouts. Unknown compressed companion
-    /// formats (e.g. bit 19/20) fail closed BEFORE any file is created.
-    pub fn save_native_as(&mut self,source:&RawArea,
-        height_edits:&[(usize,usize,f32)],destination:&std::path::Path)
-        ->Result<(usize,usize),String>
+    /// Build and validate a native AREA in memory without creating a file.
+    /// The bundle exporter uses this to validate ALL tiles before any write.
+    pub(crate) fn build_native_bytes(&mut self,source:&RawArea,
+        height_edits:&[(usize,usize,f32)])
+        ->Result<(Vec<u8>,usize),String>
     {
-        use std::io::Write;
-        if destination.extension().and_then(|x|x.to_str())
-            .is_none_or(|x|!x.eq_ignore_ascii_case("area")) {
-            return Err("Choose an .area destination".into());
-        }
-        if destination.exists(){
-            return Err("Save As refuses to overwrite existing files".into());
-        }
         let (mut patches,changed_cells)=self.native_texture_edits(source)?;
         let (color_patches,color_cells)=self.native_color_edits(source)?;
         patches.extend(color_patches);
@@ -635,6 +626,73 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         self.verify_native_weight_fidelity(&reread)?;
         self.verify_native_color_fidelity(source,&reread)?;
         self.verify_native_edge_samples(&reread)?;
+        Ok((bytes,changed_cells+color_cells))
+    }
+
+    /// The first visible row/column of a tile is duplicated in the trailing
+    /// ghost row/column of its left/top predecessor AREA. Emit only modified
+    /// samples and never infer adjacent material slot layouts.
+    pub(crate) fn external_border_samples(&self)->Result<[Vec<
+        wildstar_formats::area::cross_tile_write::BorderSample>;3],String>
+    {
+        use wildstar_formats::area::cross_tile_write::{
+            BorderSample,BorderWeights,
+        };
+        if !self.ready(){return Err("No texture workspace loaded".into());}
+        let mut out=[Vec::new(),Vec::new(),Vec::new()];
+        let sample_at=|x:usize,z:usize|->Option<BorderSample>{
+            let idx=(z*MAP_SIDE+x)*4;
+            let cell=z/64*16+x/64;
+            if !self.present[cell]{return None;}
+            let changed_weight=self.weights[idx..idx+4]!=self.baseline[idx..idx+4]
+                || self.slots[cell]!=self.baseline_slots[cell];
+            let changed_rgb=self.colors_ready() &&
+                self.colors[idx..idx+3]!=self.baseline_colors[idx..idx+3];
+            if !changed_weight && !changed_rgb{return None;}
+            Some(BorderSample{
+                x,z,
+                weights:changed_weight.then(||BorderWeights{
+                    layer_ids:self.slots[cell],
+                    rgba:self.weights[idx..idx+4].try_into().unwrap(),
+                }),
+                rgb:changed_rgb.then(||{
+                    self.colors[idx..idx+3].try_into().unwrap()
+                }),
+            })
+        };
+        for z in 0..MAP_SIDE{
+            if let Some(mut s)=sample_at(0,z){
+                s.x=MAP_SIDE;
+                out[0].push(s);
+            }
+        }
+        for x in 0..MAP_SIDE{
+            if let Some(mut s)=sample_at(x,0){
+                s.z=MAP_SIDE;
+                out[1].push(s);
+            }
+        }
+        if let Some(mut s)=sample_at(0,0){
+            s.x=MAP_SIDE;s.z=MAP_SIDE;
+            out[2].push(s);
+        }
+        Ok(out)
+    }
+
+    /// Single-file Save As intentionally does not write adjacent AREA tiles.
+    pub fn save_native_as(&mut self,source:&RawArea,
+        height_edits:&[(usize,usize,f32)],destination:&std::path::Path)
+        ->Result<(usize,usize),String>
+    {
+        use std::io::Write;
+        if destination.extension().and_then(|x|x.to_str())
+            .is_none_or(|x|!x.eq_ignore_ascii_case("area")) {
+            return Err("Choose an .area destination".into());
+        }
+        if destination.exists(){
+            return Err("Save As refuses to overwrite existing files".into());
+        }
+        let (bytes,changed_cells)=self.build_native_bytes(source,height_edits)?;
         let mut file=std::fs::OpenOptions::new().write(true).create_new(true)
             .open(destination).map_err(|e|format!("Cannot create {}: {e}",destination.display()))?;
         if let Err(error)=file.write_all(&bytes).and_then(|_|file.sync_all()){
@@ -642,7 +700,7 @@ pixel ({x},{z}), layer {channel}; export cancelled"
             let _=std::fs::remove_file(destination);
             return Err(format!("Cannot write AREA: {error}"));
         }
-        Ok((height_edits.len(),changed_cells+color_cells))
+        Ok((height_edits.len(),changed_cells))
     }
 
     /// Original AREA remains byte-for-byte unchanged: build only a transient

@@ -15,6 +15,7 @@ mod terrain_paint;
 mod terrain_bundle;
 mod clutter;
 mod clutter_native;
+mod clutter_rebuild;
 mod clutter_paint;
 mod terrain_material;
 mod water;

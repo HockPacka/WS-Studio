@@ -235,6 +235,57 @@ impl TerrainPaint {
         Ok((plan_texture_edits(source,&edits)?,total))
     }
 
+    /// Reject exports whose decompressed layer weights deviate excessively
+    /// from the edited preview. BC1 is lossy: better to refuse a poor result
+    /// than silently write a visibly different painted surface.
+    fn verify_native_weight_fidelity(&self, area:&RawArea)->Result<(),String>{
+        const MAX_ERROR:f32=0.20;
+        for index in 0..256 {
+            if !self.present[index]{continue;}
+            let Some(cell)=area.cells[index].as_ref() else {
+                return Err("Texture validation: cell missing after export".into());
+            };
+            let cx=index%16*64;
+            let cz=index/16*64;
+            let mut affected=false;
+            for z in 0..64 {
+                for x in 0..64 {
+                    let off=((cz+z)*MAP_SIDE+cx+x)*4;
+                    if self.baseline[off..off+4]!=self.weights[off..off+4]{
+                        affected=true;
+                        break;
+                    }
+                }
+                if affected{break;}
+            }
+            if !affected{continue;}
+            for z in 0..64 {
+                for x in 0..64 {
+                    let off=((cz+z)*MAP_SIDE+cx+x)*4;
+                    let actual=cell.compressed_weights(x,z).or_else(||{
+                        cell.normalized_weights(x,z)
+                            .or_else(||cell.authoring_weights(x,z))
+                            .map(|raw|{
+                                let total=raw.iter().map(|&w|w as f32).sum::<f32>();
+                                if total<=0.0{[1.0,0.0,0.0,0.0]}
+                                else{raw.map(|w|w as f32/total)}
+                            })
+                    }).ok_or("Texture validation: no readable weight block")?;
+                    for channel in 0..4 {
+                        let expected=self.weights[off+channel] as f32/255.0;
+                        if (actual[channel]-expected).abs()>MAX_ERROR{
+                            return Err(format!(
+                                "Texture compression exceeds 20% error at cell {index} \
+pixel ({x},{z}), layer {channel}; export cancelled"
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Export a combined height+texture AREA into a NEW file. Supports only
     /// recognized native texture weight layouts. Unknown compressed companion
     /// formats (e.g. bit 19/20) fail closed BEFORE any file is created.
@@ -281,6 +332,7 @@ impl TerrainPaint {
             }
         }
         // All blocks/unknown payloads are validated inside with_cell_block_changes.
+        self.verify_native_weight_fidelity(&reread)?;
         let mut file=std::fs::OpenOptions::new().write(true).create_new(true)
             .open(destination).map_err(|e|format!("Cannot create {}: {e}",destination.display()))?;
         if let Err(error)=file.write_all(&bytes).and_then(|_|file.sync_all()){

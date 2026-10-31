@@ -1708,6 +1708,44 @@ fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea,
         }
     });
     ui.separator();
+    if let Some(area)=loaded.tile.as_ref(){
+        ui.collapsing("Native AREA Format Status",|ui|{
+            let cells=area.cells.iter().flatten().count();
+            let mut native_weight=0usize;
+            let mut unknown_companion=0usize;
+            let mut color=0usize;
+            let mut bc2=0usize;
+            for cell in area.cells.iter().flatten(){
+                let uncertain=cell.block(19).is_some()||cell.block(20).is_some();
+                if uncertain{unknown_companion+=1;}
+                if !uncertain && (cell.block(2).is_some()||
+                    cell.block(29).is_some()||cell.block(17).is_some()){
+                    native_weight+=1;
+                }
+                if cell.block(3).is_some() || cell.block(13).is_some(){color+=1;}
+                if cell.block(13).is_some(){bc2+=1;}
+            }
+            ui.label(format!("Cells: {cells} | Writable weights: {native_weight}"));
+            ui.label(format!("Unresolved 19/20 companions: {unknown_companion}"));
+            ui.label(format!("Writable macro-color cells: {color} (BC2: {bc2})"));
+            if let Some(cell)=area.cells.get(state.selected_cell.min(255))
+                .and_then(Option::as_ref){
+                let blocks=[1usize,2,3,13,17,18,19,20,29];
+                let present=blocks.iter().filter(|&&bit|cell.block(bit).is_some())
+                    .map(|bit|bit.to_string()).collect::<Vec<_>>().join(", ");
+                ui.label(format!("Selected cell {}: bits [{}]",cell.index,present));
+                let weight_blocked=cell.block(19).is_some()||
+                    cell.block(20).is_some();
+                if weight_blocked{
+                    ui.colored_label(egui::Color32::DARK_RED,
+                        "Weight export blocked here: bit 19/20 not decoded.");
+                }
+                if cell.block(3).is_none() && cell.block(13).is_none(){
+                    ui.label("No native RGB color attributes for this cell.");
+                }
+            }
+        });
+    }
     match state.paint_tool {
         "Texture Brush" => {
             ui.label(egui::RichText::new("Texture Layer Splatting").strong().size(9.5).color(INK));

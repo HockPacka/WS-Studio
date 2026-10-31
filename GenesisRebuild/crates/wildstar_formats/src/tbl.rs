@@ -123,6 +123,8 @@ pub struct WorldLayer {
     pub color_map:String,
     pub normal_map:String,
     pub meters_per_tile:f32,
+    /// Exact WorldLayer.tbl columns worldClutterId00..03.
+    pub clutter_ids:[u32;4],
 }
 pub fn world_layers(table:&Table)->Result<HashMap<u32,WorldLayer>,String>{
     for mandatory in ["ID","ColorMapPath"]{
@@ -137,14 +139,129 @@ pub fn world_layers(table:&Table)->Result<HashMap<u32,WorldLayer>,String>{
         let normal_map=table.get(row,"NormalMapPath").and_then(Value::as_text).unwrap_or("");
         let meters=table.get(row,"MetersPerTextureTile").and_then(Value::as_float).unwrap_or(8.);
         let meters_per_tile=if meters.is_finite()&&meters>0.001{meters}else{8.};
+        let clutter_ids=std::array::from_fn(|n|{
+            table.get(row,&format!("worldClutterId0{n}"))
+                .and_then(Value::as_id).unwrap_or(0)
+        });
         result.insert(id,WorldLayer{id,color_map:color_map.to_string(),
-            normal_map:normal_map.to_string(),meters_per_tile});
+            normal_map:normal_map.to_string(),meters_per_tile,clutter_ids});
     }
     Ok(result)
 }
+/// WorldClutter.tbl: six weighted M3 asset options per preset.
+/// Data is parsed exactly from the named TBL columns, not from AREA bit27
+/// directly (that bit selects one of the four WorldLayer clutter IDs).
+#[derive(Debug,Clone,Default)]
+pub struct ClutterAsset {
+    pub path:String,
+    pub weight:f32,
+    pub min_scale:f32,
+    pub rotation_min:f32,
+    pub rotation_max:f32,
+    pub flags:u32,
+    pub emissive_glow:u32,
+}
+#[derive(Debug,Clone)]
+pub struct WorldClutter {
+    pub id:u32,
+    pub density:f32,
+    pub flags:u32,
+    pub assets:[ClutterAsset;6],
+}
+pub fn world_clutters(table:&Table)->Result<HashMap<u32,WorldClutter>,String>{
+    // Fail explicitly on the wrong table/schema rather than silently
+    // filling in a plausible-looking empty Clutter database.
+    for name in ["ID","density","assetPath0","assetWeight0"]{
+        if table.column(name).is_none(){
+            return Err(format!("WorldClutter: mandatory column {name} absent"));
+        }
+    }
+    let number=|row:&[Value],key:&str,default:f32|->f32{
+        table.get(row,key).and_then(Value::as_float).unwrap_or(default)
+    };
+    let int=|row:&[Value],key:&str|->u32{
+        table.get(row,key).and_then(Value::as_id).unwrap_or(0)
+    };
+    let mut result=HashMap::new();
+    for row in &table.rows{
+        let Some(id)=table.get(row,"ID").and_then(Value::as_id) else{continue;};
+        if id==0 {continue;}
+        let density=number(row,"density",0.0);
+        let flags=int(row,"clutterFlags");
+        let assets=std::array::from_fn(|i|{
+            let suffix=if i==0{"0".to_string()}else{format!("0{i}")};
+            ClutterAsset{
+                path:table.get(row,&format!("assetPath{suffix}"))
+                    .and_then(Value::as_text).unwrap_or("").to_string(),
+                weight:number(row,&format!("assetWeight{suffix}"),0.0),
+                min_scale:number(row,&format!("minScale{suffix}"),1.0),
+                rotation_min:number(row,&format!("rotationMin{suffix}"),0.0),
+                rotation_max:number(row,&format!("rotationMax{suffix}"),0.0),
+                flags:int(row,&format!("flag{suffix}")),
+                emissive_glow:int(row,&format!("emissiveGlow0{i}")),
+            }
+        });
+        result.insert(id,WorldClutter{id,density,flags,assets});
+    }
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests{
     use super::*;
+    #[test]
+    fn maps_worldlayer_4_native_clutter_ids(){
+        let mut cols=vec!["ID".into(),"ColorMapPath".into()];
+        cols.extend((0..4).map(|k|format!("worldClutterId0{k}")));
+        let table=Table{columns:cols,rows:vec![vec![
+            Value::Integer(42),Value::Text("Terrain/Grass.tex".into()),
+            Value::Integer(100),Value::Integer(101),Value::Integer(0),
+            Value::Integer(103),
+        ]]};
+        let data=world_layers(&table).unwrap();
+        assert_eq!(data[&42].clutter_ids,[100,101,0,103]);
+    }
+    #[test]
+    fn six_weighted_worldclutter_assets_use_exact_column_names(){
+        let mut columns=vec![
+            "ID".to_string(),"density".to_string(),
+            "clutterFlags".to_string()
+        ];
+        let mut row=vec![
+            Value::Integer(88),Value::Float(125.0),Value::Integer(3)
+        ];
+        for i in 0..6{
+            let suffix=if i==0{"0".into()}else{format!("0{i}")};
+            columns.extend([
+                format!("assetPath{suffix}"),
+                format!("assetWeight{suffix}"),
+                format!("minScale{suffix}"),
+                format!("rotationMin{suffix}"),
+                format!("rotationMax{suffix}"),
+                format!("flag{suffix}"),
+                format!("emissiveGlow0{i}"),
+            ]);
+            row.extend([
+                Value::Text(format!("Art/Clutter/{i}.m3")),
+                Value::Float((i+1) as f32),
+                Value::Float(0.3),
+                Value::Float(-1.0),
+                Value::Float(1.0),
+                Value::Integer(i as i64),
+                Value::Integer((i*2) as i64),
+            ]);
+        }
+        let data=world_clutters(&Table{columns,rows:vec![row]}).unwrap();
+        assert_eq!(data[&88].density,125.0);
+        assert_eq!(data[&88].flags,3);
+        assert_eq!(data[&88].assets[0].path,"Art/Clutter/0.m3");
+        assert_eq!(data[&88].assets[5].weight,6.0);
+        assert_eq!(data[&88].assets[5].flags,5);
+        assert_eq!(data[&88].assets[5].emissive_glow,10);
+        assert_eq!(data[&88].assets[2].rotation_min,-1.0);
+        assert!(world_clutters(&Table{columns:vec!["ID".into()],
+            rows:vec![]}).unwrap_err().contains("density"));
+    }
     #[test]
     fn rejects_short_or_invalid_tables(){
         assert!(Table::from_bytes(b"LBTD").is_err());

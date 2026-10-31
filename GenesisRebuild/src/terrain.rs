@@ -7,6 +7,12 @@ use wildstar_formats::area::{HeightGrid, RawArea, tile_heights};
 
 pub fn terrain_mesh(area:&RawArea, preview:usize, layer:usize)->Result<(Mesh,Vec3),String>{
     let grid=tile_heights(area);
+    terrain_mesh_from_grid(area,preview,layer,&grid)
+}
+
+/// Render a live sculpted heightfield using the original AREA metadata and masks.
+pub fn terrain_mesh_from_grid(area:&RawArea, preview:usize, layer:usize,
+    grid:&HeightGrid)->Result<(Mesh,Vec3),String>{
     if grid.cells==0 {return Err("AREA contains no heightmap blocks".into());}
     let mut positions=Vec::with_capacity(257*257);
     let mut normals=Vec::with_capacity(257*257);

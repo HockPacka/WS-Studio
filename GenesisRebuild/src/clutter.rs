@@ -44,6 +44,8 @@ pub struct ClutterPreview {
     last_height_revision:u64,
     last_texture_revision:u64,
     last_clutter_revision:u64,
+    catalog_root:String,
+    cached_catalog:Option<crate::clutter_native::Catalog>,
 }
 pub(crate) fn next(random:&mut u32)->f32{
     *random^=*random<<13;
@@ -183,6 +185,9 @@ pub fn update_preview(
     if preview.source!=edit.source {
         destroy(&mut commands,&mut preview);
         preview.source=edit.source.clone();
+        preview.last_height_revision=0;
+        preview.last_texture_revision=0;
+        preview.last_clutter_revision=0;
         preview.status="Open a standalone AREA and select a native M3 model.".into();
     }
     let revisions=(edit.revision,paint.revision,clutter_paint.revision);
@@ -208,10 +213,21 @@ pub fn update_preview(
             let area=clutter_paint.preview_area(&area);
             if state.clutter_native_mode {
                 let source=edit.source.as_deref().unwrap_or(std::path::Path::new(""));
-                match crate::clutter_native::load_catalog(index) {
-                    Ok(catalog)=>{
+                if preview.catalog_root!=client.root_text{
+                    preview.catalog_root=client.root_text.clone();
+                    preview.cached_catalog=None;
+                }
+                if preview.cached_catalog.is_none(){
+                    match crate::clutter_native::load_catalog(index){
+                        Ok(db)=>preview.cached_catalog=Some(db),
+                        Err(error)=>preview.status=format!(
+                            "Native clutter database unavailable: {error}"
+                        ),
+                    }
+                }
+                if let Some(catalog)=preview.cached_catalog.as_ref(){
                         let native=crate::clutter_native::generate_with_paint(
-                            &area,&grid,&catalog,source,
+                            &area,&grid,catalog,source,
                             state.clutter_density as usize,
                             state.clutter_instance_limit as usize,
                             paint.ready().then_some(paint.as_ref())
@@ -302,11 +318,7 @@ pub fn update_preview(
                             preview.instances,count,loaded_models,missing_models,
                             preview.opaque_parts,skipped_transparent,native.populated_cells
                         );
-                    },
-                    Err(error)=>preview.status=format!(
-                        "Native clutter database unavailable: {error}"
-                    ),
-                }
+                    }
             }else{
             let path=state.clutter_model_path.trim();
             let mut budget=1;

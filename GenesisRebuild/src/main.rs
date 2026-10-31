@@ -5,6 +5,7 @@ use wildstar_formats::zone::{MapDiscovery, ZoneTileCoords};
 mod area_ui;
 mod client_data;
 mod props;
+mod prop_viewer;
 mod terrain_splat;
 mod splat_demo;
 mod streaming;
@@ -248,6 +249,7 @@ fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>,
 }
 fn load_raw_area(
     mut state: ResMut<GenesisState>,
+    mut viewer: ResMut<prop_viewer::PropViewer>,
     client: Res<client_data::ClientFiles>,
     mut loaded: ResMut<LoadedArea>,
     mut orbit: ResMut<OrbitCamera>,
@@ -290,6 +292,7 @@ fn load_raw_area(
     match area::RawArea::from_path(Path::new(&path)) {
         Ok(tile)=>{
             loaded.preview_model=None;
+            viewer.clear_preview();
             let water_bodies=tile.all_water_bodies();
             loaded.water_count=water_bodies.len();
             let decoded_props=tile.prop_placements();
@@ -431,6 +434,7 @@ fn load_raw_area(
 /// Open a single model in the world viewport independently of an AREA tile.
 fn load_model_preview(
     mut state: ResMut<GenesisState>,
+    mut viewer: ResMut<prop_viewer::PropViewer>,
     client: Res<client_data::ClientFiles>,
     mut loaded: ResMut<LoadedArea>,
     mut orbit: ResMut<OrbitCamera>,
@@ -467,7 +471,9 @@ fn load_model_preview(
     }
     match props::spawn_model_preview(&mut commands, &mut meshes, &mut materials,
         &mut images, index, &client.prop_models, &virtual_path) {
-        Ok((entities, min, max)) => {
+        Ok(scene) => {
+            let min = scene.min;
+            let max = scene.max;
             streaming.clear_all(&mut commands);
             streaming.active_map = None;
             streaming.camera_tile = None;
@@ -480,7 +486,8 @@ fn load_model_preview(
             for old in loaded.prop_entities.drain(..) {
                 if let Ok(mut e) = commands.get_entity(old) { e.despawn(); }
             }
-            loaded.prop_entities = entities;
+            loaded.prop_entities = scene.entities.clone();
+            viewer.set_preview(virtual_path.clone(), &scene);
             loaded.tile = None;
             loaded.props.clear();
             loaded.preview_model = Some(virtual_path.clone());
@@ -494,7 +501,7 @@ fn load_model_preview(
             orbit.is_first_person = false;
             orbit.eye = center + Vec3::new(0.0, orbit.distance * 0.25, orbit.distance);
             state.raw_view = true;
-            state.dock_tab = 8; // Objects -> model details
+            state.dock_tab = 10; // Dedicated Prop Viewer
             state.status = format!("MODEL PREVIEW | {virtual_path} | bounds {min:?} .. {max:?}");
         }
         Err(error) => state.status = format!("MODEL: {error} | {virtual_path}"),
@@ -601,6 +608,7 @@ fn main() {
         .insert_resource(LoadedArea::default())
         .insert_resource(OrbitCamera::default())
         .insert_resource(client_data::ClientFiles::default())
+        .insert_resource(prop_viewer::PropViewer::default())
         .insert_resource(streaming::WorldStreaming::default())
         .init_resource::<sky::SkyManager>()
         // Explicitly attach PrimaryEguiContext to the full-window 2D camera.
@@ -622,6 +630,7 @@ fn main() {
         .add_plugins(terrain_splat::TerrainSplatPlugin)
         .add_systems(Startup, setup_scene)
         .add_systems(Update, (client_data::poll_system, load_raw_area, load_model_preview,
+            prop_viewer::update,
             streaming::update_world_streaming,
             update_camera,
             refresh_terrain_view, apply_tint_settings, sky::update_sky_lighting, sky::update_skybox_position, sky::update_skybox_celestials, sky::update_camera_fog, water::update_water_color).chain())
@@ -685,7 +694,8 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
              mut streaming: ResMut<streaming::WorldStreaming>,
              sky_mgr: Res<sky::SkyManager>,
              mut commands: Commands,
-             mut client: ResMut<client_data::ClientFiles>) -> Result {
+             mut client: ResMut<client_data::ClientFiles>,
+             mut viewer: ResMut<prop_viewer::PropViewer>) -> Result {
     let ctx = contexts.ctx_mut()?;
     if !*initialized { classic_visuals(ctx); *initialized = true; }
     if previews.textures.is_empty() { load_scenes(ctx, &mut previews); }
@@ -708,7 +718,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 menu_and_toolbars(ui, &mut state);
                 bottom_strip(ui, &mut state, &loaded, orbit.as_mut(), streaming.as_ref());
                 if state.dock_visible && !state.floating_mode {
-                    dock_panels(ui, &mut state, &loaded, &client, streaming.as_mut(), orbit.as_mut(), &sky_mgr, &mut commands);
+                    dock_panels(ui, &mut state, &loaded, &client, viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &mut commands);
                 }
                 viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref(), &sky_mgr);
             });
@@ -856,6 +866,11 @@ fn command(state: &mut GenesisState, name: &'static str) {
         }
         "Open AREA..." => state.open_area_dialog = true,
         "Open Model (.m3/.i3)..." => state.open_model_dialog = true,
+        "Prop Viewer" => {
+            state.dock_tab = 10;
+            state.dock_visible = true;
+            state.floating_mode = false;
+        },
         "Open AREA by path..." => state.open_area_path_dialog = true,
         "Choose Client Root..." => state.change_client_root = true,
         "Grimvault Preview" => { state.scene = 0; state.raw_view = false; }
@@ -916,7 +931,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                         "Align Selection","Group","Ungroup"][..]),
                     ("Terrain",&["Height Brush","Smooth","Flatten","Noise","Clone","Stamp",
                         "Texture Brush","Color Brush","Land Chunk Grid","Chunk Inspector"][..]),
-                    ("Objects",&["Prop Models","Prop Interiors","Object List",
+                    ("Objects",&["Prop Viewer","Prop Models","Prop Interiors","Object List",
                         "Snap Points Properties","Group","Ungroup"][..]),
                     ("Clutter",&["Clutter Preset","Clutter","Hide Canopy","Fade Unused Props"][..]),
                     ("Water",&["Water","Simple Water","Water Grid","Water Sphere",
@@ -928,7 +943,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                     ("Window",&["Dock Properties","Float Properties","Hide Properties",
                         "Bottom Workspace","Header Toolbars","Color Brush Properties",
                         "Color Palette","Texture Brush Properties","Clutter Preset",
-                        "Object List","AREA Inspector","Choose Client Root...","Named Region Editor"][..]),
+                        "Object List","Prop Viewer","AREA Inspector","Choose Client Root...","Named Region Editor"][..]),
                     ("Help",&["About Genesis","Keyboard Shortcuts"][..]),
                 ] {
                     ui.menu_button(egui::RichText::new(title).size(10.0),|ui| {
@@ -955,6 +970,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                 if ui.button("Open Zone...").clicked() {command(state,"Open Zone...");}
                 if ui.button("Open AREA...").clicked() {command(state,"Open AREA...");}
                 if ui.button("Open Model...").clicked() {command(state,"Open Model (.m3/.i3)...");}
+                if ui.button("Prop Viewer").clicked() {command(state,"Prop Viewer");}
                 if ui.button("3D View").clicked() {command(state,"3D AREA View");}
                 ui.separator();
                 ui.label(egui::RichText::new("Time of Day").size(9.));
@@ -1277,7 +1293,7 @@ fn area_inspector_panel(
 // A resizable dock replaces fixed-position floating tools in the default layout.
 // Classic floating property windows can still be enabled from Window > Float Properties.
 const DOCK_TABS: &[&str] = &[
-    "Sculpt", "Paint", "Clutter", "Props", "Water", "Env", "World", "Zones", "Inspect", "Assets"
+    "Sculpt", "Paint", "Clutter", "Props", "Water", "Env", "World", "Zones", "Inspect", "Assets", "Prop Viewer"
 ];
 
 fn dock_panels(
@@ -1285,6 +1301,7 @@ fn dock_panels(
     state: &mut GenesisState,
     loaded: &LoadedArea,
     client: &client_data::ClientFiles,
+    viewer: &mut prop_viewer::PropViewer,
     streaming: &mut streaming::WorldStreaming,
     orbit: &mut OrbitCamera,
     sky_mgr: &sky::SkyManager,
@@ -1333,6 +1350,15 @@ fn dock_panels(
                         6 => dock_world(ui, state, loaded, streaming, orbit, commands),
                         7 => dock_zones(ui, state, sky_mgr),
                         8 => dock_area(ui, state, loaded),
+                        10 => {
+                            let report = viewer.preview.as_ref().and_then(|preview| {
+                                client.index.as_ref().map(|index| {
+                                    client.prop_models.report(index, &preview.path)
+                                })
+                            }).unwrap_or_default();
+                            viewer.show(ui, client.index.as_ref(), &report, commands,
+                                &mut state.pending_model_load);
+                        },
                         _ => {
                             if ui.button("Choose Client Root...").clicked() {
                                 command(state, "Choose Client Root...");

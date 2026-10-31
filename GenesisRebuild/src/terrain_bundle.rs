@@ -1,10 +1,10 @@
 //! Multi-AREA terrain export. Never overwrite source ClientData. Produce an
 //! isolated folder with original AREA filenames, after all output tiles have
-//! been prepared, parsed and validated in memory. This is a best-effort
-//! rollback bundle, NOT an atomic multi-file transaction across crashes.
-use std::{fs,io::Write,path::{Path,PathBuf}};
+//! been prepared, parsed and validated in memory. Fully staged files are
+//! published with one directory rename. Power-loss durability is not guaranteed.
+use std::{fs,path::{Path,PathBuf}};
 use std::collections::{BTreeMap,BTreeSet};
-use wildstar_formats::area::{RawArea,cross_tile_write::{
+use wildstar_formats::area::{RawArea,bundle_io::publish_area_bundle,cross_tile_write::{
     BorderSample,plan_cross_tile_border_edits,validate_cross_tile_border,
 },height_border::{
     HeightBorderSample,route_source_height_edges,plan_cross_tile_height_edits,
@@ -140,39 +140,10 @@ pub fn export_bundle(
     if outputs.iter().any(|(name,_)|!unique.insert(name.to_ascii_lowercase())){
         return Err("AREA bundle: output filenames collide".into());
     }
-    // The destination is always a new directory, so it cannot be confused
-    // with a game's native Map directory nor replace any existing files.
-    let bundle_root=destination_parent.join(format!(
-        "{}_GenesisBundle",source_path.file_stem()
-            .and_then(|v|v.to_str()).unwrap_or("Terrain")
-    ));
-    if bundle_root.exists(){
-        return Err(format!(
-            "AREA bundle: {} already exists; choose an unused output location",
-            bundle_root.display()
-        ));
-    }
-    fs::create_dir(&bundle_root).map_err(|e|
-        format!("AREA bundle: cannot create {}: {e}",bundle_root.display()))?;
-    let mut created=Vec::new();
-    let result=(||->Result<(),String>{
-        for (name,bytes) in &outputs{
-            let path=bundle_root.join(name);
-            let mut file=fs::OpenOptions::new().write(true).create_new(true)
-                .open(&path).map_err(|e|format!(
-                    "AREA bundle: cannot create {}: {e}",path.display()
-                ))?;
-            created.push(path.clone());
-            file.write_all(bytes).and_then(|_|file.sync_all())
-                .map_err(|e|format!("AREA bundle: write failed at {}: {e}",path.display()))?;
-        }
-        Ok(())
-    })();
-    if let Err(err)=result {
-        // Best-effort rollback only for files created by this operation.
-        for path in created {let _=fs::remove_file(path);}
-        let _=fs::remove_dir(&bundle_root);
-        return Err(err);
-    }
-    Ok(outputs.iter().map(|(name,_)|bundle_root.join(name)).collect())
+    // No final output folder is exposed until the separate staging folder
+    // contains every byte-verified, reparsed AREA. A single directory rename
+    // commits the completed bundle to the destination filesystem.
+    let name=format!("{}_GenesisBundle",source_path.file_stem()
+        .and_then(|v|v.to_str()).unwrap_or("Terrain"));
+    publish_area_bundle(destination_parent,&name,&outputs)
 }

@@ -391,6 +391,13 @@ fn load_raw_area(
                                         state.status=format!("Texture paint initialization: {error}");
                                     }
                                 }
+                                if paint.ready() {
+                                    if let Some(colors)=data.tint.data.as_deref() {
+                                        if let Err(error)=paint.load_colors(colors){
+                                            state.status=format!("Terrain color initialization: {error}");
+                                        }
+                                    }
+                                }
                                 splat_ext=data.into_extension(&mut images,state.terrain_view==5);
                                 loaded.terrain_splat=true;
                             }
@@ -589,6 +596,7 @@ fn refresh_painted_splat(
                     return;
                 };
                 data.weights.data=Some(paint.weights.clone());
+                if paint.colors_ready(){data.tint.data=Some(paint.colors.clone());}
                 material.extension=data.into_extension(&mut images,state.terrain_view==5);
                 material.extension.params.tint_strength=state.tint.strength;
                 material.extension.params.tint_gamma=state.tint.gamma_space as u32;
@@ -598,11 +606,22 @@ fn refresh_painted_splat(
             }
             Err(err)=>{paint.error=format!("WorldLayer preview rebuild failed: {err}");}
         }
-    }else if let Some(handle)=material.extension.weights.as_ref(){
-        if let Some(mut image)=images.get_mut(handle){
-            image.data=Some(paint.weights.clone());
-            paint.gpu_revision=paint.revision;
+    }else{
+        let mut uploaded=false;
+        if let Some(handle)=material.extension.weights.as_ref(){
+            if let Some(mut image)=images.get_mut(handle){
+                image.data=Some(paint.weights.clone());
+                uploaded=true;
+            }
         }
+        if paint.colors_ready(){
+            if let Some(handle)=material.extension.tint.as_ref(){
+                if let Some(mut image)=images.get_mut(handle){
+                    image.data=Some(paint.colors.clone());
+                }else{uploaded=false;}
+            }else{uploaded=false;}
+        }
+        if uploaded{paint.gpu_revision=paint.revision;}
     }
 }
 /// Push the macro tint settings to every terrain material (single tile and streamed tiles).
@@ -843,13 +862,13 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
     }
     if state.terrain_undo_request {
         state.terrain_undo_request=false;
-        state.status=if state.dock_tab==1 && state.paint_tool=="Texture Brush" {
+        state.status=if state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush") {
             if paint.undo(){"Texture Undo".into()}else{"Nothing to undo".into()}
         }else if edit.undo(){"Height Undo".into()}else{"Nothing to undo".into()};
     }
     if state.terrain_redo_request {
         state.terrain_redo_request=false;
-        state.status=if state.dock_tab==1 && state.paint_tool=="Texture Brush" {
+        state.status=if state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush") {
             if paint.redo(){"Texture Redo".into()}else{"Nothing to redo".into()}
         }else if edit.redo(){"Height Redo".into()}else{"Nothing to redo".into()};
     }
@@ -1302,7 +1321,8 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                     }
                 }
                 if paint.ready() && edit.is_ready() && streaming.active_map.is_none() &&
-                    state.dock_tab==1 && state.paint_tool=="Texture Brush" && response.hovered() {
+                    state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush")
+                    && response.hovered() {
                     if let Some(pointer)=ui.input(|i|i.pointer.interact_pos()) {
                         let physical=(pointer-rect.min)*orbit.ui_pixels_per_point;
                         if let Ok((camera,transform))=camera_query.single() {
@@ -1318,11 +1338,15 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                     }
                                     let radius=(state.brush_size*10.0).clamp(1.0,50.0);
                                     if primary {
-                                        if let Some(id)=paint.selected_id{
+                                        let restricted=if state.restricted{Some(selected_before)}else{None};
+                                        if state.paint_tool=="Color Brush"{
+                                            if paint.colors_ready(){
+                                                paint.begin();
+                                                paint.color_brush(world,radius,state.power.abs(),
+                                                    state.falloff,dt,restricted);
+                                            }
+                                        }else if let Some(id)=paint.selected_id{
                                             paint.begin();
-                                            let restricted=if state.restricted{
-                                                Some(selected_before)
-                                            }else{None};
                                             paint.brush(world,id,radius,state.power.abs(),
                                                 state.falloff,dt,restricted);
                                         }
@@ -1670,7 +1694,7 @@ fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState) {
 
 fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea,
     client: &client_data::ClientFiles, paint: &mut terrain_paint::TerrainPaint) {
-    if state.paint_tool=="Texture Brush" && paint.ready() {state.terrain_view=5;}
+    if (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush") && paint.ready() {state.terrain_view=5;}
     ui.label(egui::RichText::new("Terrain Paint Properties").strong().size(10.5));
     ui.separator();
     ui.label(egui::RichText::new("Paint Tools").strong().size(9.0));
@@ -1725,26 +1749,29 @@ fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea,
             row_slider(ui, "Size", &mut state.brush_size, 0.01..=5.0);
             row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
             row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
-            ui.horizontal_wrapped(|ui| {
-                for (i, title) in ["Circle", "Chunk", "Selection"].iter().enumerate() {
-                    ui.radio_value(&mut state.circle, i, *title);
+            ui.horizontal(|ui|{
+                ui.label("RGB Brush");
+                ui.color_edit_button_srgb(&mut paint.color);
+            });
+            ui.horizontal_wrapped(|ui|{
+                ui.radio_value(&mut paint.color_mode,terrain_paint::ColorMode::Color,"Color");
+                ui.radio_value(&mut paint.color_mode,terrain_paint::ColorMode::Darken,"Darken");
+                ui.radio_value(&mut paint.color_mode,terrain_paint::ColorMode::Lighten,"Lighten");
+                ui.radio_value(&mut paint.color_mode,terrain_paint::ColorMode::Smooth,"Smooth");
+            });
+            ui.checkbox(&mut state.restricted,"Restrict to Selection");
+            ui.label("Color edits native RGB565 / BC2 only; BC2 alpha stays unchanged.");
+            ui.label(format!("Tint map: {}",if paint.colors_ready(){"ready"}else{"unavailable"}));
+            ui.horizontal(|ui|{
+                if ui.button("Undo Color").clicked(){
+                    state.status=if paint.undo(){"Paint Undo".into()}else{"Nothing to undo".into()};
+                }
+                if ui.button("Redo Color").clicked(){
+                    state.status=if paint.redo(){"Paint Redo".into()}else{"Nothing to redo".into()};
                 }
             });
-            ui.checkbox(&mut state.restricted, "Restrict to Selection");
-            ui.horizontal(|ui| {
-                ui.radio_value(&mut state.custom_tip, false, "Normal Tip");
-                ui.radio_value(&mut state.custom_tip, true, "Custom Tip");
-            });
-            ui.separator();
-            ui.label(egui::RichText::new("Color Modes").strong().size(9.0));
-            for (i, title) in [
-                "Normal", "Burn Tool", "Dodge Tool", "Overlay",
-                "Saturate Sponge", "Desaturate Sponge", "Color"
-            ].iter().enumerate() {
-                ui.radio_value(&mut state.mode, i, *title);
-            }
-            ui.separator();
-            if ui.button("Clear Selection").clicked() { command(state, "Clear Selection"); }
+            if !paint.error.is_empty(){ui.colored_label(egui::Color32::DARK_RED,&paint.error);}
+            ui.label("Save AREA As exports supported RGB changes into a new AREA.");
         }
         "Color Palette" => {
             dock_palette(ui, state);

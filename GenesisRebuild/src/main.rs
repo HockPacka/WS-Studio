@@ -690,7 +690,7 @@ fn load_scenes(ctx: &egui::Context, previews: &mut Viewports) {
 }
 fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
              mut previews: Local<Viewports>, mut initialized: Local<bool>,
-             mut orbit: ResMut<OrbitCamera>, loaded: Res<LoadedArea>,
+             mut orbit: ResMut<OrbitCamera>, mut loaded: ResMut<LoadedArea>,
              mut streaming: ResMut<streaming::WorldStreaming>,
              sky_mgr: Res<sky::SkyManager>,
              mut commands: Commands,
@@ -777,7 +777,8 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
             });
         if !open{state.open_area_path_dialog=false;}
     }
-    zone_browser_dialog(ctx, &mut state, streaming.as_mut(), &client, orbit.as_mut(), &mut commands);
+    zone_browser_dialog(ctx, &mut state, streaming.as_mut(), &client, orbit.as_mut(), &mut commands,
+        loaded.as_mut(), viewer.as_mut());
     client_data::startup_prompt(ctx,&mut client);
     Ok(())
 }
@@ -1856,6 +1857,8 @@ fn zone_browser_dialog(
     client: &client_data::ClientFiles,
     orbit: &mut OrbitCamera,
     commands: &mut Commands,
+    loaded: &mut LoadedArea,
+    viewer: &mut prop_viewer::PropViewer,
 ) {
     if !state.open_zone_dialog {
         return;
@@ -1906,6 +1909,20 @@ fn zone_browser_dialog(
                         if ui.button(egui::RichText::new(&map_name).strong()).clicked() {
                             match streaming.open_map(&map_name, client, orbit, commands) {
                                 Ok(_) => {
+                                    // A zone and standalone model must not coexist in the viewport.
+                                    for entity in loaded.prop_entities.drain(..) {
+                                        if let Ok(mut e) = commands.get_entity(entity) { e.despawn(); }
+                                    }
+                                    if let Some(entity) = loaded.mesh_entity.take() {
+                                        if let Ok(mut e) = commands.get_entity(entity) { e.despawn(); }
+                                    }
+                                    if let Some(entity) = loaded.water_entity.take() {
+                                        if let Ok(mut e) = commands.get_entity(entity) { e.despawn(); }
+                                    }
+                                    loaded.tile = None;
+                                    loaded.props.clear();
+                                    loaded.preview_model = None;
+                                    viewer.clear_preview();
                                     state.status = format!("Loaded zone {map_name}");
                                     state.dock_tab = 6;
                                     state.open_zone_dialog = false;

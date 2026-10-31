@@ -200,6 +200,11 @@ pub fn inspect_cell(cell:&AreaCell)->CellWeightResearch {
                 }
             }
             let Some(target)=raw29(cell,x,z) else{continue;};
+            // Count only genuinely comparable samples: a present but
+            // malformed 19/20 pair must never inflate the evidence count.
+            if sample_pair(cell,19,20,x,z,CorrectionHypothesis::Direct).is_none(){
+                continue;
+            }
             result.compared_samples+=1;
             for (i,model) in CorrectionHypothesis::ALL.iter().enumerate(){
                 let Some((sample,_))=sample_pair(cell,19,20,x,z,*model)
@@ -224,13 +229,27 @@ pub fn inspect_cell(cell:&AreaCell)->CellWeightResearch {
             result.errors[i].mean_abs_error=sum[i]/(n*4) as f64;
         }
     }
-    result.best_model=CorrectionHypothesis::ALL.iter().copied()
-        .filter(|m|result.errors[m.index()].sample_count>0)
-        .min_by(|a,b|{
-            result.errors[a.index()].mean_abs_error.total_cmp(
-                &result.errors[b.index()].mean_abs_error)
-        });
+    result.best_model=unique_best_model(&result.errors);
     result
+}
+
+/// Do not declare a winner when two hypotheses make numerically
+/// indistinguishable predictions. A neutral correction texture, for example,
+/// cannot prove direct vs half correction from reconstruction error alone.
+fn unique_best_model(errors:&[ModelError;4])->Option<CorrectionHypothesis>{
+    let mut ranked=CorrectionHypothesis::ALL.iter().copied()
+        .filter(|m|errors[m.index()].sample_count>0)
+        .collect::<Vec<_>>();
+    ranked.sort_by(|a,b|errors[a.index()].mean_abs_error
+        .total_cmp(&errors[b.index()].mean_abs_error));
+    let best=*ranked.first()?;
+    if let Some(&second)=ranked.get(1) {
+        if errors[second.index()].mean_abs_error
+            -errors[best.index()].mean_abs_error<=1e-6{
+            return None;
+        }
+    }
+    Some(best)
 }
 
 #[derive(Debug,Clone)]
@@ -269,12 +288,7 @@ impl AreaWeightResearch{
                 metric.mean_abs_error/=(metric.sample_count*4) as f64;
             }
         }
-        let best_model=CorrectionHypothesis::ALL.iter().copied()
-            .filter(|m|aggregate[m.index()].sample_count>0)
-            .min_by(|a,b|{
-                aggregate[a.index()].mean_abs_error.total_cmp(
-                    &aggregate[b.index()].mean_abs_error)
-            });
+        let best_model=unique_best_model(&aggregate);
         Self{cells,present_pairs,paired_with_bit29,
             compared_samples,aggregate,best_model}
     }
@@ -363,6 +377,23 @@ mod tests{
         assert_eq!(inspect_cell(&missing).compared_samples,0);
         missing.blocks[29]=Some(vec![0u8;65*65*2]);
         assert_eq!(inspect_cell(&missing).compared_samples,0);
+    }
+    #[test]
+    fn neutral_correction_does_not_claim_a_unique_best_hypothesis(){
+        let data=cell();
+        let result=inspect_cell(&data);
+        assert!(result.compared_samples>0);
+        assert!(result.best_model.is_none(),
+            "a tied baseline does not identify a retail shader permutation");
+    }
+    #[test]
+    fn malformed_pair_never_inflates_comparable_sample_count(){
+        let mut data=cell();
+        data.blocks[20]=Some(vec![0u8;8]);
+        let result=inspect_cell(&data);
+        assert_eq!(result.compared_samples,0);
+        assert_eq!(result.errors[0].sample_count,0);
+        assert_eq!(result.best_model,None);
     }
     #[test]
     fn report_counts_cells_and_has_parseable_fixed_column_csv(){

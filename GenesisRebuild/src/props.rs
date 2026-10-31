@@ -113,11 +113,15 @@ pub(crate) struct PartGeometry {
     pub(crate) positions: Vec<[f32; 3]>,
     normals: Vec<[f32; 3]>,
     uvs: Vec<[f32; 2]>,
+    uv1: Vec<[f32; 2]>,
+    colors: Vec<[f32; 4]>,
     indices: Vec<u32>,
-    remap: HashMap<u32, u32>,
+    // A sector can have any u32 vertex index; use the full 64-bit (sector,index) key.
+    remap: HashMap<u64, u32>,
 }
 impl PartGeometry {
-    fn push_vertex(&mut self, source: u32, pos: [f32; 3], normal: [f32; 3], uv: [f32; 2]) -> u32 {
+    fn push_vertex(&mut self, source: u64, pos: [f32; 3], normal: [f32; 3],
+        uv: [f32; 2], uv1: [f32; 2], color: [f32; 4]) -> u32 {
         if let Some(&i) = self.remap.get(&source) {
             return i;
         }
@@ -125,6 +129,8 @@ impl PartGeometry {
         self.positions.push(pos);
         self.normals.push(normal);
         self.uvs.push(uv);
+        self.uv1.push(uv1);
+        self.colors.push(color);
         self.remap.insert(source, i);
         i
     }
@@ -133,6 +139,8 @@ impl PartGeometry {
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, self.positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, self.uvs);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, self.uv1);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, self.colors);
         mesh.insert_indices(Indices::U32(self.indices));
         mesh
     }
@@ -239,7 +247,11 @@ pub(crate) fn m3_geometry(data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial
         let start = mesh.start_index as usize;
         for &ix in &model.indices[start..start + mesh.index_count as usize] {
             let v = model.vertices[ix as usize];
-            let i = geometry.push_vertex(ix, v.pos, v.normal, v.uv);
+            // M3 ModelVS applies vertex color RGB * 2, while alpha is unscaled.
+            let c = v.color0;
+            let color = [c[0] as f32 / 128.0, c[1] as f32 / 128.0,
+                c[2] as f32 / 128.0, c[3] as f32 / 255.0];
+            let i = geometry.push_vertex(u64::from(ix), v.pos, v.normal, v.uv, v.uv1, color);
             geometry.indices.push(i);
         }
     }
@@ -276,59 +288,81 @@ pub(crate) fn m3_geometry(data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial
     Ok(parts)
 }
 
-/// One geometry per material of material set 0 over all sectors of a FEDI model.
+/// Geometry of a FEDI structure assembled from its FEDS sectors, or of a FEDS
+/// file opened directly. Material pass and material index are distinct.
 fn i3_geometry(index: &AssetIndex, model_path: &str, data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial)>, String> {
-    let model = i3::read_model(data)?;
-    let set = model.sets.first();
-    let mut by_material: Vec<(usize, PartGeometry)> = Vec::new();
+    let model = if i3::is_sector(data) { None } else { Some(i3::read_model(data)?) };
+    let mut sectors: Vec<(usize, i3::SectorMesh)> = Vec::new();
+    if let Some(model) = &model {
+        for sector_index in 0..model.sectors.len() {
+            let Some(path) = model.sector_path(model_path, sector_index) else { continue };
+            let Some(bytes) = read_asset(index, &path) else { continue };
+            let Ok(mesh) = i3::read_sector(&bytes) else { continue };
+            sectors.push((sector_index, mesh));
+        }
+    } else {
+        sectors.push((0, i3::read_sector(data)?));
+    }
+    if sectors.is_empty() {
+        return Err("I3 has no readable sectors; check ClientData for the companion FEDS files".into());
+    }
+
+    // The first set is generally Default_Pass. Prefer it by name when present.
+    let set = model.as_ref().and_then(|m| m.sets.iter()
+        .find(|s| s.name.eq_ignore_ascii_case("Default_Pass"))
+        .or_else(|| m.sets.first()));
+    let mut by_material: Vec<((usize, usize), PartGeometry)> = Vec::new();
     let mut triangles = 0usize;
-    for sector in 0..model.sectors.len() {
-        let Some(path) = model.sector_path(model_path, sector) else { continue };
-        let Some(bytes) = read_asset(index, &path) else { continue };
-        let Ok(mesh) = i3::read_sector(&bytes) else { continue };
-        for sub in mesh.submeshes.iter() {
-            let Some(material) = sub.material() else { continue };
-            let slot = match by_material.iter().position(|(m, _)| *m == material) {
+    for (sector, mesh) in &sectors {
+        for sub in &mesh.submeshes {
+            let (Some(material), Some(pass)) = (sub.material(), sub.pass()) else { continue };
+            let key = (pass, material);
+            let slot = match by_material.iter().position(|(m, _)| *m == key) {
                 Some(i) => i,
                 None => {
-                    by_material.push((material, PartGeometry::default()));
+                    by_material.push((key, PartGeometry::default()));
                     by_material.len() - 1
                 }
             };
             let geometry = &mut by_material[slot].1;
             for tri in sub.triangles() {
+                if triangles >= MAX_MODEL_TRIANGLES {
+                    return Err("I3 exceeds the supported triangle budget".into());
+                }
                 for &ix in &mesh.indices[tri * 3..tri * 3 + 3] {
-                    // Vertex ids are per sector; keep them distinct between sectors.
-                    let key = ix ^ ((sector as u32) << 24);
                     let u = ix as usize;
-                    let i = geometry.push_vertex(key, mesh.positions[u], mesh.normals[u], mesh.uv0[u]);
+                    let source = ((*sector as u64) << 32) | u64::from(ix);
+                    let c = mesh.colors[u];
+                    let color = [c[0] as f32 / 255.0, c[1] as f32 / 255.0,
+                        c[2] as f32 / 255.0, c[3] as f32 / 255.0];
+                    let i = geometry.push_vertex(source, mesh.positions[u], mesh.normals[u],
+                        mesh.uv0[u], mesh.uv1[u], color);
                     geometry.indices.push(i);
                 }
                 triangles += 1;
             }
         }
-        if triangles > MAX_MODEL_TRIANGLES {
-            break;
-        }
     }
-    let parts: Vec<_> = by_material
-        .into_iter()
-        .map(|(material, g)| {
-            let record = set.and_then(|s| s.passes.first()).and_then(|p| p.materials.get(material));
+
+    let parts: Vec<_> = by_material.into_iter()
+        .filter(|(_, g)| !g.indices.is_empty())
+        .map(|((pass, material), g)| {
+            let record = set.and_then(|s| s.passes.get(pass))
+                .and_then(|p| p.materials.get(material));
             let texture = |tex: Option<u16>| {
                 let tex = tex.filter(|&t| t != 0xFFFF)?;
                 set?.textures.get(tex as usize).filter(|t| !t.is_empty()).cloned()
             };
-            let mut m = PartMaterial::plain(texture(record.map(|r| r.color_tex)), texture(record.map(|r| r.normal_tex)));
-            // Kind 5 = decal: alpha blended (docs/i3_dgn_format.md).
+            let mut desc = PartMaterial::plain(texture(record.map(|r| r.color_tex)),
+                texture(record.map(|r| r.normal_tex)));
+            // Decal kind 5 uses alpha blending; retain the visible sector colors.
             if record.is_some_and(|r| r.kind == 5) {
-                m.blend = PropBlend::Alpha;
+                desc.blend = PropBlend::Alpha;
             }
-            (g, m)
-        })
-        .collect();
+            (g, desc)
+        }).collect();
     if parts.is_empty() {
-        return Err("no drawable I3 sector geometry".into());
+        return Err("I3 contains no visible sector geometry".into());
     }
     Ok(parts)
 }
@@ -510,8 +544,9 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
             Err(e) => {
                 // A FEDS sector opened directly.
                 match i3::read_sector(&data) {
-                    Ok(s) => out.push(format!("I3 sector '{}': {} vertices, {} triangles, {} submeshes",
-                        s.name, s.positions.len(), s.triangle_count(), s.submeshes.len())),
+                    Ok(s) => out.push(format!("I3 sector '{}': {} vertices, {} triangles, {} submeshes ({} collision-only), UV1 + vertex colours available",
+                        s.name, s.positions.len(), s.triangle_count(), s.submeshes.len(),
+                        s.submeshes.iter().filter(|sub| sub.is_collision_only()).count())),
                     Err(_) => out.push(format!("I3 read error: {e}")),
                 }
             }

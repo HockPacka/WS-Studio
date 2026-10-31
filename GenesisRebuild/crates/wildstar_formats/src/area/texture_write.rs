@@ -318,6 +318,8 @@ fn make_cell_edits(cell:&AreaCell, edit:&TextureCellEdit)
     if has17 {
         let mut base=cell.block(17).unwrap().to_vec();
         let mut correction=cell.block(18).map(|b|b.to_vec());
+        let changed_samples=changed.iter().copied()
+            .collect::<std::collections::BTreeSet<_>>();
         let mut dirty_blocks=std::collections::BTreeSet::new();
         for &pixel in &changed {
             let x=pixel%CELL_SIDE;
@@ -332,8 +334,20 @@ fn make_cell_edits(cell:&AreaCell, edit:&TextureCellEdit)
                 for dx in 0..4{
                     let x=bx*4+dx;
                     let z=bz*4+dz;
-                    let rgba=px4(&edit.weights,z*CELL_SIDE+x);
-                    px[dz*4+dx]=[rgba[0],rgba[1],rgba[2]];
+                    let index=z*CELL_SIDE+x;
+                    px[dz*4+dx]=if changed_samples.contains(&index){
+                        let rgba=px4(&edit.weights,index);
+                        [rgba[0],rgba[1],rgba[2]]
+                    }else{
+                        // The raw map and preview can differ from the compressed
+                        // Bit 17/18 pair. Preserve original BC1 appearance of
+                        // untouched samples rather than importing another
+                        // representation into an entire 4x4 compressed block.
+                        let original=cell.compressed_weights(x,z)
+                            .ok_or("Texture codec: missing original BC1 pixel")?;
+                        std::array::from_fn(|i|
+                            (original[i].clamp(0.0,1.0)*255.0).round() as u8)
+                    };
                 }
             }
             base[block*8..block*8+8].copy_from_slice(&bc1_encode(px));

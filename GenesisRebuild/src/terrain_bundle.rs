@@ -12,6 +12,7 @@ use wildstar_formats::area::{RawArea,bundle_io::publish_area_bundle,cross_tile_w
 }};
 use wildstar_formats::zone::ZoneTileCoords;
 use crate::terrain_paint::TerrainPaint;
+use crate::clutter_paint::ClutterPaint;
 
 #[derive(Default)]
 struct NeighbourEdits {
@@ -67,7 +68,7 @@ fn neighbour_source(source:&Path, coords:ZoneTileCoords)->Result<PathBuf,String>
 /// including one sample past both tile edges (-1 and 257). All eight
 /// neighbours can be exported if required by the edited height vertices.
 pub fn export_bundle(
-    paint:&mut TerrainPaint,source:&RawArea,source_path:&Path,
+    paint:&mut TerrainPaint,clutter:&ClutterPaint,source:&RawArea,source_path:&Path,
     height_edits:&[(usize,usize,f32)],destination_parent:&Path,
 )->Result<Vec<PathBuf>,String>{
     let source_name=source_path.file_name()
@@ -99,7 +100,13 @@ pub fn export_bundle(
         jobs.entry(offset).or_default().heights.extend(samples);
     }
     // Validate source before reading any neighbouring tile or writing files.
-    let (base_bytes,_cells)=paint.build_native_bytes(source,height_edits)?;
+    let base_bytes=if height_edits.is_empty()&&!paint.dirty(){
+        if !clutter.dirty(){return Err("No terrain or Clutter changes to export".into());}
+        source.original.clone()
+    }else{
+        paint.build_native_bytes(source,height_edits)?.0
+    };
+    let base_bytes=clutter.merge_bytes(base_bytes)?;
     let mut outputs=vec![(source_name,base_bytes)];
     for ((dx,dz),requests) in &jobs{
         let x=match dx {

@@ -424,6 +424,20 @@ mod tests {
         c.blocks[17] = Some(b17);
         let w = c.compressed_weights(0, 0).unwrap();
         assert!(w[0] > 0.9);
+        assert!(c.candidate_weights_19_20(0,0).is_none());
+        c.blocks[19]=c.blocks[17].clone();
+        let mut neutral=vec![0u8;2312];
+        for block in neutral.chunks_exact_mut(8){
+            block[..2].copy_from_slice(&0x7BF0u16.to_le_bytes());
+            block[2..4].copy_from_slice(&0x7BEFu16.to_le_bytes());
+            block[4..].copy_from_slice(&0x5555_5555u32.to_le_bytes());
+        }
+        c.blocks[20]=Some(neutral);
+        let candidate=c.candidate_weights_19_20(0,0).unwrap();
+        assert!(candidate[0]>0.9);
+        assert_eq!(candidate.iter().sum::<f32>().round() as usize,1);
+        // Read-only experiment does not affect the known bit17/18 result.
+        assert_eq!(c.compressed_weights(0,0),Some(w));
     }
     #[test]
     fn real_tile_is_still_readable() {

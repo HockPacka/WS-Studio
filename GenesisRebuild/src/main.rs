@@ -12,6 +12,7 @@ mod streaming;
 mod terrain;
 mod terrain_edit;
 mod terrain_paint;
+mod terrain_bundle;
 mod terrain_material;
 mod water;
 mod sky;
@@ -67,6 +68,7 @@ struct GenesisState {
     terrain_view: usize,
     area_standalone: bool,
     terrain_save_dialog: bool,
+    terrain_bundle_dialog: bool,
     terrain_undo_request: bool,
     terrain_redo_request: bool,
 }
@@ -107,6 +109,7 @@ impl Default for GenesisState {
             terrain_view: 5,
             area_standalone: true,
             terrain_save_dialog: false,
+            terrain_bundle_dialog: false,
             terrain_undo_request: false,
             terrain_redo_request: false,
         }
@@ -910,6 +913,27 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
             state.status="Open a standalone AREA before using Save As".into();
         }
     }
+    if state.terrain_bundle_dialog {
+        state.terrain_bundle_dialog=false;
+        if let (Some(area),Some(source))=(loaded.tile.as_ref(),edit.source.as_ref()){
+            let mut picker=rfd::FileDialog::new()
+                .set_title("Choose a parent folder for a NEW seam-safe AREA bundle");
+            if let Some(parent)=source.parent(){picker=picker.set_directory(parent);}
+            if let Some(parent)=picker.pick_folder(){
+                let heights=edit.changes();
+                state.status=match terrain_bundle::export_bundle(
+                    paint.as_mut(),area,source,&heights,&parent,
+                ){
+                    Ok(paths)=>format!("Exported {} AREA tiles into new isolated bundle: {}",
+                        paths.len(),paths.first().and_then(|p|p.parent())
+                            .map(|p|p.display().to_string()).unwrap_or_default()),
+                    Err(err)=>format!("AREA bundle export blocked: {err}"),
+                };
+            }
+        }else{
+            state.status="Open an editable standalone AREA first".into();
+        }
+    }
     if state.floating_mode { floating_panels(ctx, &mut state); }
     area_inspector_panel(ctx, &mut state, &loaded);
     if state.change_client_root {
@@ -1699,6 +1723,9 @@ fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState) {
         if ui.button("Undo").clicked(){command(state,"Undo");}
         if ui.button("Redo").clicked(){command(state,"Redo");}
         if ui.button("Save AREA As...").clicked(){command(state,"Save As");}
+        if ui.button("Export AREA Bundle...").clicked(){
+            state.terrain_bundle_dialog=true;
+        }
     });
 }
 
@@ -1829,6 +1856,11 @@ fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea,
         }
         _ => {}
     }
+    ui.separator();
+    if ui.button("Export AREA Bundle (sync neighbour borders)...").clicked(){
+        state.terrain_bundle_dialog=true;
+    }
+    ui.label("Creates a NEW folder. Never overwrites original AREA files.");
 }
 fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState) {
     ui.label(egui::RichText::new("Color Palette").strong().size(10.));

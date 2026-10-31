@@ -476,6 +476,66 @@ mod tests {
         assert!(patch.iter().all(|(index,_,_)|*index==0));
     }
     #[test]
+    fn weight_seam_roundtrips_real_area_container_in_raw_and_zlib_modes(){
+        use flate2::{Compression,write::ZlibEncoder};
+        use std::io::Write;
+        let make_record=||{
+            let c=populated_cell(0);
+            let mut result=(c.blocks.iter().enumerate().fold(0u32,|flags,(i,b)|{
+                if b.is_some(){flags | (1u32<<i)}else{flags}
+            })).to_le_bytes().to_vec();
+            for block in c.blocks.iter().flatten(){result.extend_from_slice(block);}
+            result
+        };
+        let record=make_record();
+        for compressed in [false,true]{
+            let mut stream=Vec::new();
+            if compressed{
+                let zip=|raw:&[u8]|{
+                    let mut enc=ZlibEncoder::new(Vec::new(),Compression::default());
+                    enc.write_all(raw).unwrap();
+                    enc.finish().unwrap()
+                };
+                stream.extend(3u32.to_le_bytes());
+                stream.extend(zip(b"LOD"));
+                for _ in 0..2{
+                    stream.extend((record.len() as u32).to_le_bytes());
+                    stream.extend(zip(&record));
+                }
+            }else{
+                for _ in 0..2{
+                    stream.extend((record.len() as u32).to_le_bytes());
+                    stream.extend(&record);
+                }
+            }
+            let mut bytes=if compressed{b"AERA".to_vec()}else{b"aera".to_vec()};
+            bytes.extend(0u32.to_le_bytes());
+            bytes.extend(b"KNHC");
+            bytes.extend((stream.len() as u32).to_le_bytes());
+            bytes.extend(stream);
+            bytes.extend(b"KEEP");
+            bytes.extend(5u32.to_le_bytes());
+            bytes.extend(b"untch");
+            let area=RawArea::from_bytes(bytes).unwrap();
+            assert_eq!(area.cell_count(),2);
+            let mut change=edit();
+            change.index=1;
+            let patches=plan_texture_edits(&area,&[change]).unwrap();
+            assert_eq!(patches.len(),8);
+            let written=area.with_cell_block_changes(&patches).unwrap();
+            let reloaded=RawArea::from_bytes(written).unwrap();
+            assert_eq!(reloaded.cells[1].as_ref().unwrap().normalized_weights(0,0),
+                Some([0,15,0,0]));
+            assert_eq!(reloaded.cells[0].as_ref().unwrap().normalized_weights(64,0),
+                Some([0,15,0,0]));
+            assert!(reloaded.cells[0].as_ref().unwrap()
+                .compressed_weights(64,0).unwrap()[1]>0.9);
+            assert_eq!(reloaded.chunks[1].data,b"untch");
+            assert_eq!(area.cells[0].as_ref().unwrap().normalized_weights(64,0),
+                Some([15,0,0,0]));
+        }
+    }
+    #[test]
     fn ghost_write_refuses_unresolved_19_20_neighbour(){
         let mut cells=vec![None;256];
         let mut neighbour=populated_cell(0);

@@ -912,7 +912,7 @@ mod tests{
         for px in pixels.chunks_exact_mut(4){px[0]=255;}
         p.load(&source,&pixels,Vec2::ZERO).unwrap();
         p.library.push(WorldLayer{id:99,color_map:"x.tex".into(),
-            normal_map:String::new(),meters_per_tile:4.0});
+            normal_map:String::new(),meters_per_tile:4.0,clutter_ids:[0;4]});
         assert!(p.assign(0,2,99).is_ok());
         assert!(p.rebuild_pending);
         assert_eq!(p.preview_area(&source).cells[0].as_ref().unwrap().layers().unwrap()[2],99);

@@ -356,6 +356,59 @@ mod tests{
             }
         }
     }
+    fn sample_area()->RawArea{
+        use wildstar_formats::area::AreaCell;
+        let mut blocks=vec![None;32];
+        let mut ids=Vec::new();
+        for id in [1u32,2,3,4]{ids.extend(id.to_le_bytes());}
+        blocks[1]=Some(ids);
+        let cell=AreaCell{index:0,flags:1<<1,blocks,subchunks:Vec::new()};
+        let mut cells=vec![None;256];
+        cells[0]=Some(cell);
+        RawArea{version:0,compressed:false,original:Vec::new(),chunks:Vec::new(),
+                cells,lod_prefix:None}
+    }
+    #[test]
+    fn painting_undo_redo_and_missing_cell_guards(){
+        let mut p=TerrainPaint::default();
+        let mut pixels=vec![0u8;MAP_SIDE*MAP_SIDE*4];
+        for px in pixels.chunks_exact_mut(4){px[0]=255;}
+        p.load(&sample_area(),&pixels,Vec2::ZERO).unwrap();
+        assert!(p.ready());
+        assert_eq!(p.cell_at(Vec2::new(-247.0,-247.0)),Some(0));
+        assert_eq!(p.cell_at(Vec2::new(0.0,0.0)),None);
+        p.begin();
+        assert!(p.brush(Vec2::new(-248.0,-248.0),2,5.0,2.0,0.3,0.1,None));
+        p.end();
+        assert!(p.dirty());
+        assert!(p.can_undo());
+        assert!(p.undo());
+        assert!(!p.dirty());
+        assert_eq!(p.weights,pixels);
+        assert!(p.redo());
+        assert!(p.dirty());
+        p.begin();
+        assert!(!p.brush(Vec2::ZERO,2,4.0,2.0,0.5,0.1,None));
+        p.end();
+    }
+    #[test]
+    fn layer_assignment_is_per_cell_undoable_and_never_mutates_raw_area(){
+        let source=sample_area();
+        let mut p=TerrainPaint::default();
+        let mut pixels=vec![0u8;MAP_SIDE*MAP_SIDE*4];
+        for px in pixels.chunks_exact_mut(4){px[0]=255;}
+        p.load(&source,&pixels,Vec2::ZERO).unwrap();
+        p.library.push(WorldLayer{id:99,color_map:"x.tex".into(),
+            normal_map:String::new(),meters_per_tile:4.0});
+        assert!(p.assign(0,2,99).is_ok());
+        assert!(p.rebuild_pending);
+        assert_eq!(p.preview_area(&source).cells[0].as_ref().unwrap().layers().unwrap()[2],99);
+        assert_eq!(source.cells[0].as_ref().unwrap().layers().unwrap()[2],3);
+        assert!(p.assign(0,0,99).is_err());
+        assert!(p.undo());
+        assert_eq!(p.slots[0][2],3);
+        assert!(!p.dirty());
+    }
     #[test]
     fn editing_requires_a_valid_tile(){
         let mut p=TerrainPaint::default();

@@ -231,9 +231,6 @@ pub fn update(
         if spin {
             transform.rotate_y(spin_speed.to_radians() * time.delta_secs());
         }
-    } else {
-        // The scene was unloaded outside the viewer: never keep a stale root.
-        viewer.clear_preview();
     }
 }
 

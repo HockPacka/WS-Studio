@@ -506,6 +506,10 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
         return out;
     };
     let Some(file) = index.resolve(path) else { return out };
+    if std::fs::metadata(&file.path).is_ok_and(|m| m.len() > MAX_MODEL_BYTES) {
+        out.push("Asset too large for interactive preview (64 MiB limit)".into());
+        return out;
+    }
     let Ok(data) = std::fs::read(&file.path) else {
         out.push("Cannot read file".into());
         return out;
@@ -518,6 +522,22 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
                     m.meshes.iter().filter(|x| x.is_hidden()).count()));
                 out.push(format!("Bounds: {:?} .. {:?}", m.bounds_min, m.bounds_max));
                 out.push(format!("Bones: {}, clips: {}, materials: {}", m.bones.len(), m.clips.len(), m.materials.len()));
+                out.push(format!("Visible meshes: {} | skinned vertices: {}",
+                    m.meshes.iter().filter(|mesh| mesh.is_visible_default(&m.mesh_display)).count(),
+                    m.vertices.iter().filter(|v| v.bone_weight.iter().skip(1).any(|&w| w > 0)).count()));
+                for (i, mat) in m.materials.iter().enumerate().take(64) {
+                    out.push(format!("Material {i}: {:?}, {} layers | opacity {:.2}, gloss {:.2}, glow {:.2}, color {:?}",
+                        mat.blend, mat.layer_count, mat.opacity, mat.gloss, mat.glow, mat.color_mod));
+                }
+                for (i, mesh) in m.meshes.iter().enumerate().take(64) {
+                    out.push(format!("Mesh {i}: {} triangles | material {} | group {} | {}",
+                        mesh.index_count / 3, mesh.material, mesh.group,
+                        if mesh.is_visible_default(&m.mesh_display) { "visible" } else { "hidden" }));
+                }
+                for (i, clip) in m.clips.iter().enumerate().take(40) {
+                    out.push(format!("Clip {i}: animation {} variant {} | {}..{} ms",
+                        clip.anim_id, clip.variant, clip.start_ms, clip.end_ms));
+                }
                 for (i, t) in m.textures.iter().enumerate() {
                     let kind = match t.kind { 0 => "color", 1 => "normal", 2 => "skinfx", _ => "?" };
                     out.push(format!("Texture {i} ({kind}): {} [{}]", t.name, found(index, &t.name)));
@@ -531,8 +551,13 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
                 out.push(format!("Portals: {}", m.portals.len()));
                 for (i, name) in m.sectors.iter().enumerate() {
                     let sector = m.sector_path(path, i).unwrap_or_default();
-                    out.push(format!("Sector {i} '{name}' ({}): {} [{}]",
-                        if m.sector_exterior[i] { "exterior" } else { "interior" }, sector, found(index, &sector)));
+                    let detail = read_asset(index, &sector)
+                        .and_then(|bytes| i3::read_sector(&bytes).ok())
+                        .map(|mesh| format!("{} verts, {} tris, {} submeshes",
+                            mesh.positions.len(), mesh.triangle_count(), mesh.submeshes.len()))
+                        .unwrap_or_else(|| "not decoded".into());
+                    out.push(format!("Sector {i} '{name}' ({}): {} [{}] | {}",
+                        if m.sector_exterior[i] { "exterior" } else { "interior" }, sector, found(index, &sector), detail));
                 }
                 for set in &m.sets {
                     out.push(format!("Material set '{}': {} textures, {} passes", set.name, set.textures.len(), set.passes.len()));

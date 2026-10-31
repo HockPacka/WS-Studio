@@ -46,6 +46,12 @@ pub struct ClutterPreview {
     last_clutter_revision:u64,
     catalog_root:String,
     cached_catalog:Option<crate::clutter_native::Catalog>,
+    native_cells:crate::clutter_rebuild::CellPlacements,
+    native_roots:std::collections::BTreeMap<usize,Vec<Entity>>,
+    native_rendered:std::collections::BTreeMap<usize,usize>,
+    pub rebuilt_cells:usize,
+    pub retained_cells:usize,
+    pub last_spawned:usize,
 }
 pub(crate) fn next(random:&mut u32)->f32{
     *random^=*random<<13;
@@ -161,6 +167,12 @@ fn destroy(commands:&mut Commands,preview:&mut ClutterPreview){
     preview.transparent_parts=0;
     preview.last_camera=None;
     preview.last_cutoff=0.0;
+    preview.native_cells.clear();
+    preview.native_roots.clear();
+    preview.native_rendered.clear();
+    preview.rebuilt_cells=0;
+    preview.retained_cells=0;
+    preview.last_spawned=0;
     preview.transparent_parts=0;
     preview.rejected_by_mask=0;
     preview.rejected_by_selector=0;
@@ -195,12 +207,17 @@ pub fn update_preview(
         !edit.stroking() && !paint.stroking() && !clutter_paint.stroking() &&
         revisions!=(preview.last_height_revision,
             preview.last_texture_revision,preview.last_clutter_revision);
-    if state.clutter_preview_request!=preview.seen_request || auto {
+    let explicit=state.clutter_preview_request!=preview.seen_request;
+    if explicit || auto {
         preview.seen_request=state.clutter_preview_request;
         preview.last_height_revision=revisions.0;
         preview.last_texture_revision=revisions.1;
         preview.last_clutter_revision=revisions.2;
-        destroy(&mut commands,&mut preview);
+        // Explicit rebuilds, manual mode and disabling still clear everything.
+        // Native automatic edits instead retain unaffected cell entities.
+        if explicit || !state.clutter_native_mode || !state.clutter_preview_enabled {
+            destroy(&mut commands,&mut preview);
+        }
         if !state.clutter_preview_enabled{
             preview.status="Clutter debug instancing preview disabled.".into();
         }else if let (Some(source),Some(grid),Some(index))=
@@ -214,6 +231,9 @@ pub fn update_preview(
             if state.clutter_native_mode {
                 let source=edit.source.as_deref().unwrap_or(std::path::Path::new(""));
                 if preview.catalog_root!=client.root_text{
+                    // A newly indexed client may reuse model names but hold
+                    // different assets: invalidate all old entities here.
+                    destroy(&mut commands,&mut preview);
                     preview.catalog_root=client.root_text.clone();
                     preview.cached_catalog=None;
                 }
@@ -237,22 +257,47 @@ pub fn update_preview(
                         preview.rejected_by_selector=native.rejected_preset+
                             native.rejected_density+native.rejected_asset;
                         preview.rejected_by_slope=native.rejected_slope;
-                        let count=native.placements.len();
-                        let mut groups=std::collections::BTreeMap::<String,Vec<
-                            crate::clutter_native::NativePlacement>>::new();
-                        for placement in native.placements {
-                            groups.entry(placement.model.clone()).or_default()
-                                .push(placement);
+                        let total_candidates=native.placements.len();
+                        let next_cells=crate::clutter_rebuild::by_cell(native.placements);
+                        let plan=crate::clutter_rebuild::diff(
+                            &preview.native_cells,&next_cells);
+                        // A changed cell removes only its own root entities.
+                        // Unchanged roots retain their exact Entity identity,
+                        // visibility and shared cached M3 material handles.
+                        let mut removed=std::collections::BTreeSet::new();
+                        for &cell in &plan.replace{
+                            if let Some(roots)=preview.native_roots.remove(&cell){
+                                for root in roots{
+                                    removed.insert(root);
+                                    commands.entity(root).despawn();
+                                }
+                            }
+                            preview.native_rendered.remove(&cell);
                         }
-                        // Asset load budget is distinct models, not instances.
-                        // Every subsequent instance reuses cached mesh and
-                        // material handles; no per-plant asset allocation.
+                        preview.roots.retain(|(id,_)|!removed.contains(id));
+                        preview.rebuilt_cells=plan.replace.len();
+                        preview.retained_cells=plan.retain;
+                        preview.last_spawned=0;
+
+                        // Asset loads are limited to the NEW or CHANGED cells.
+                        // Each drawable part reuses the same cached M3 handles.
+                        let mut groups=std::collections::BTreeMap::<String,
+                            std::collections::BTreeMap<usize,Vec<
+                                crate::clutter_native::NativePlacement>>>::new();
+                        for &cell in &plan.replace{
+                            if let Some(items)=next_cells.get(&cell){
+                                for item in items{
+                                    groups.entry(item.model.clone()).or_default()
+                                        .entry(cell).or_default().push(item.clone());
+                                }
+                            }
+                        }
                         let mut model_budget=24usize;
                         let mut missing_models=0usize;
                         let mut loaded_models=0usize;
                         let mut skipped_transparent=0usize;
                         let origin=edit.origin;
-                        for (path,items) in groups {
+                        for (path,cells) in groups{
                             if index.resolve(&path).is_none(){
                                 missing_models+=1;
                                 continue;
@@ -266,57 +311,67 @@ pub fn update_preview(
                             };
                             let mut eligible=Vec::new();
                             for part in &model.parts{
-                                let Some(mat)=materials.get(&part.material) else {continue;};
-                                if matches!(mat.alpha_mode,AlphaMode::Opaque|AlphaMode::Mask(_)){
+                                let Some(material)=materials.get(&part.material) else{
+                                    continue;
+                                };
+                                if matches!(material.alpha_mode,
+                                    AlphaMode::Opaque|AlphaMode::Mask(_)){
                                     eligible.push(part.clone());
-                                }else{
-                                    skipped_transparent+=1;
-                                }
+                                }else{skipped_transparent+=1;}
                             }
-                            if eligible.is_empty(){missing_models+=1;continue;}
+                            if eligible.is_empty(){
+                                missing_models+=1;
+                                continue;
+                            }
                             loaded_models+=1;
-                            preview.opaque_parts+=eligible.len();
-                            preview.parts_per_instance=preview.parts_per_instance.max(
-                                eligible.len());
-                            let mut cells=std::collections::BTreeMap::<usize,Vec<_>>::new();
-                            for placement in items{
-                                cells.entry(placement.cell).or_default().push(placement);
-                            }
-                            for (cell,placements) in cells{
+                            preview.parts_per_instance=preview.parts_per_instance
+                                .max(eligible.len());
+                            for (cell,items) in cells{
                                 let center=Vec3::new(
                                     origin.x+(cell%16) as f32*32.0-240.0,
-                                    0.0,origin.y+(cell/16) as f32*32.0-240.0
+                                    0.0,
+                                    origin.y+(cell/16) as f32*32.0-240.0,
                                 );
                                 let root=commands.spawn((
-                                    Transform::default(),Visibility::Inherited
+                                    Transform::default(),Visibility::Inherited,
                                 )).id();
-                                for placement in placements{
-                                    let t=Transform{
+                                for item in &items{
+                                    let transform=Transform{
                                         translation:Vec3::new(
-                                            origin.x+placement.position.x,
-                                            placement.position.y,
-                                            origin.y+placement.position.z,
+                                            origin.x+item.position.x,
+                                            item.position.y,
+                                            origin.y+item.position.z,
                                         ),
-                                        rotation:Quat::from_rotation_y(placement.yaw),
-                                        scale:Vec3::splat(placement.scale.clamp(0.05,10.0)),
+                                        rotation:Quat::from_rotation_y(item.yaw),
+                                        scale:Vec3::splat(item.scale.clamp(0.05,10.0)),
                                     };
-                                    for part in &eligible {
+                                    for part in &eligible{
                                         let child=commands.spawn((
                                             Mesh3d(part.mesh.clone()),
-                                            MeshMaterial3d(part.material.clone()),t
+                                            MeshMaterial3d(part.material.clone()),
+                                            transform,
                                         )).id();
                                         commands.entity(root).add_child(child);
                                     }
-                                    preview.instances+=1;
                                 }
+                                preview.last_spawned+=items.len();
+                                *preview.native_rendered.entry(cell).or_default()
+                                    +=items.len();
                                 preview.roots.push((root,center));
+                                preview.native_roots.entry(cell).or_default().push(root);
                             }
                         }
+                        preview.native_cells=next_cells;
+                        preview.instances=preview.native_rendered.values().sum();
+                        preview.opaque_parts=loaded_models;
                         preview.transparent_parts=skipped_transparent;
+                        preview.last_camera=None; // recull freshly spawned cells
                         preview.status=format!(
-                            "Native TBL preview: {} / {} placed, {} M3 models ({} unresolved/budget), {} eligible mesh parts, {} skipped transparent, {} populated cells. GPU draw calls not profiled.",
-                            preview.instances,count,loaded_models,missing_models,
-                            preview.opaque_parts,skipped_transparent,native.populated_cells
+                            "Native Clutter: {} / {} visible, {} cells rebuilt, {} retained, {} new instances, {} newly loaded M3s, {} unresolved, {} masked parts skipped. CPU placements remain full-tile to honor the global instance cap.",
+                            preview.instances,total_candidates,preview.rebuilt_cells,
+                            preview.retained_cells,preview.last_spawned,
+                            loaded_models,missing_models,skipped_transparent
+                        );
                         );
                     }
             }else{

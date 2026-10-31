@@ -15,7 +15,7 @@ pub struct ClutterPaint {
     origin:Vec2,
     blocks:Blocks,
     baseline:Blocks,
-    present:[bool;256],
+    present:Vec<bool>,
     stroke:Option<Blocks>,
     undo:Vec<Blocks>,
     redo:Vec<Blocks>,
@@ -24,7 +24,7 @@ pub struct ClutterPaint {
 impl ClutterPaint {
     pub fn load(&mut self,source:&Path,area:&RawArea,origin:Vec2){
         let mut result=Self{source:Some(source.to_path_buf()),origin,
-            revision:1,..Default::default()};
+            present:vec![false;256],revision:1,..Default::default()};
         for (i,cell) in area.cells.iter().enumerate(){
             if let Some(cell)=cell.as_ref(){
                 result.present[i]=true;

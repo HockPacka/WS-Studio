@@ -330,6 +330,148 @@ impl RawArea {
         Ok(output)
     }
 
+    /// Replace complete, already existing native cell blocks while preserving every
+    /// unrelated byte/stream. No block insertion, flag mutation, or layout guessing.
+    /// Used by the terrain texture codecs; changes are (cell index, bit, bytes).
+    pub fn with_cell_block_changes(&self, changes:&[(usize,usize,Vec<u8>)])
+        ->Result<Vec<u8>,String>
+    {
+        use std::collections::{BTreeMap, BTreeSet};
+        use flate2::{Compression, write::ZlibEncoder};
+        use std::io::Write;
+        if changes.is_empty(){return Ok(self.original.clone());}
+        let mut targets=BTreeMap::<usize,BTreeMap<usize,Vec<u8>>>::new();
+        for (cell_index,bit,data) in changes {
+            if *cell_index>=256 || *bit>=32 {
+                return Err("AREA: invalid cell or block index".into());
+            }
+            let original=self.cells[*cell_index].as_ref()
+                .and_then(|cell|cell.block(*bit))
+                .ok_or_else(||format!("AREA: cell {cell_index} missing block {bit}"))?;
+            if data.len()!=original.len() {
+                return Err(format!("AREA: block {bit} length changed for cell {cell_index}"));
+            }
+            if targets.entry(*cell_index).or_default().insert(*bit,data.clone()).is_some(){
+                return Err(format!("AREA: duplicate replacement for cell {cell_index} bit {bit}"));
+            }
+        }
+        targets.retain(|cell,blocks|{
+            blocks.retain(|bit,new|self.cells[*cell].as_ref().unwrap().block(*bit)!=Some(new));
+            !blocks.is_empty()
+        });
+        if targets.is_empty(){return Ok(self.original.clone());}
+
+        let mut output=self.original.get(..8).ok_or("AREA: no file header")?.to_vec();
+        let mut seen=BTreeSet::new();
+        for chunk in &self.chunks {
+            if &chunk.id!=b"KNHC" && &chunk.id!=b"CHNK" {
+                let end=chunk.file_offset+8+chunk.data.len();
+                output.extend_from_slice(self.original.get(chunk.file_offset..end)
+                    .ok_or("AREA: invalid raw chunk offset")?);
+                continue;
+            }
+            let input=chunk.data.as_slice();
+            let mut rebuilt=Vec::with_capacity(input.len());
+            let mut pos=0usize;
+            let mut last=0usize;
+            let mut first=true;
+            while pos<input.len(){
+                let start=pos;
+                let word=read_u32(input,pos)?;
+                pos+=4;
+                let delta=(word>>24) as usize;
+                let len=(word&0x00ff_ffff) as usize;
+                if len>1_048_576{return Err("AREA: oversized cell payload".into());}
+                let (mut decoded,end)=if self.compressed {
+                    let mut decoded=vec![0u8;len];
+                    let mut d=Decompress::new(true);
+                    let status=d.decompress(&input[pos..],&mut decoded,FlushDecompress::Finish)
+                        .map_err(|e|format!("AREA: malformed zlib block: {e}"))?;
+                    if status!=Status::StreamEnd || d.total_out()!=len as u64 {
+                        return Err("AREA: decoded cell size mismatch".into());
+                    }
+                    (decoded,pos+d.total_in() as usize)
+                }else{
+                    let end=pos.checked_add(len).ok_or("AREA: cell size overflow")?;
+                    (input.get(pos..end).ok_or("AREA: cell truncated")?.to_vec(),end)
+                };
+                if end>input.len(){return Err("AREA: compressed record exceeds stream".into());}
+                pos=end;
+                if self.compressed && first {
+                    rebuilt.extend_from_slice(&input[start..end]);
+                    first=false;
+                    continue;
+                }
+                first=false;
+                let index=last.checked_add(delta).ok_or("AREA: cell index overflow")?;
+                if index>=256{return Err("AREA: cell index out of range".into());}
+                last=index+1;
+                if let Some(replacements)=targets.get(&index){
+                    let flags=read_u32(&decoded,0)?;
+                    let mut offset=4usize;
+                    for (bit,size) in BLOCK_SIZES.iter().enumerate(){
+                        if flags&(1u32<<bit)==0{continue;}
+                        if let Some(next)=replacements.get(&bit){
+                            decoded.get_mut(offset..offset+size)
+                                .ok_or("AREA: target block truncated")?
+                                .copy_from_slice(next);
+                        }
+                        offset=offset.checked_add(*size).ok_or("AREA: block layout overflow")?;
+                    }
+                    if self.compressed {
+                        rebuilt.extend_from_slice(&input[start..start+4]);
+                        let mut enc=ZlibEncoder::new(Vec::new(),Compression::default());
+                        enc.write_all(&decoded).map_err(|e|e.to_string())?;
+                        rebuilt.extend(enc.finish().map_err(|e|e.to_string())?);
+                    }else{
+                        rebuilt.extend_from_slice(&input[start..start+4]);
+                        rebuilt.extend_from_slice(&decoded);
+                    }
+                    seen.insert(index);
+                }else{
+                    rebuilt.extend_from_slice(&input[start..end]);
+                }
+            }
+            output.extend_from_slice(&chunk.id);
+            output.extend_from_slice(&u32::try_from(rebuilt.len())
+                .map_err(|_|"AREA: chunk size overflow")?.to_le_bytes());
+            output.extend_from_slice(&rebuilt);
+        }
+        if seen.len()!=targets.len(){return Err("AREA: edited cells not found in stream".into());}
+        let verify=Self::from_bytes(output.clone())?;
+        if self.chunks.len()!=verify.chunks.len(){return Err("AREA: changed chunk count".into());}
+        for (before,after) in self.chunks.iter().zip(&verify.chunks) {
+            if before.id!=after.id || ((&before.id!=b"KNHC" && &before.id!=b"CHNK")
+                && before.data!=after.data) {
+                return Err("AREA: unrelated top-level chunk changed".into());
+            }
+        }
+        for (before,after) in self.cells.iter().zip(&verify.cells) {
+            match (before,after){
+                (None,None)=>continue,
+                (Some(a),Some(b))=>{
+                    if a.flags!=b.flags || a.subchunks.len()!=b.subchunks.len() {
+                        return Err("AREA: modified cell flags or subchunk layout".into());
+                    }
+                    for (before,after) in a.subchunks.iter().zip(&b.subchunks) {
+                        if before.id!=after.id || before.data!=after.data {
+                            return Err("AREA: modified unknown cell subchunk".into());
+                        }
+                    }
+                    for bit in 0..32{
+                        let expected=targets.get(&a.index).and_then(|m|m.get(&bit))
+                            .map(Vec::as_slice).or_else(||a.block(bit));
+                        if b.block(bit)!=expected {
+                            return Err(format!("AREA: cell {} block {bit} failed verification",a.index));
+                        }
+                    }
+                },
+                _=>return Err("AREA: cell set changed unexpectedly".into()),
+            }
+        }
+        Ok(output)
+    }
+
     pub fn prop_count(&self)->usize{
         self.chunks.iter().filter(|c|&c.id==b"pORP")
             .filter_map(|c|c.data.get(0..4))

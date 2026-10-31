@@ -400,7 +400,7 @@ pub fn update_world_streaming(
                 });
 
                 let prop_entities = if !baked.props.is_empty() {
-                    props::spawn_props(&mut commands, &baked.props, &mut meshes, &mut materials,
+                    props::spawn_props(&mut commands, &baked.props, &mut meshes, &mut materials, &mut images,
                         client.index.as_ref(), &client.prop_models)
                 } else {
                     Vec::new()

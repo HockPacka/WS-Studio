@@ -353,7 +353,7 @@ fn load_raw_area(
                             loaded.water_entity=Some(water_ent);
                         }
 
-                        loaded.prop_entities=props::spawn_props(&mut commands, &loaded.props, &mut meshes, &mut materials,
+                        loaded.prop_entities=props::spawn_props(&mut commands, &loaded.props, &mut meshes, &mut materials, &mut images,
                             client.index.as_ref(), &client.prop_models);
 
                         state.status=format!(
@@ -1164,7 +1164,7 @@ fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState,
                         1=>dock_palette(ui,state),
                         2=>dock_texture(ui,state),
                         3=>dock_clutter(ui,state),
-                        4=>dock_objects(ui,state,loaded),
+                        4=>dock_objects(ui,state,loaded,client),
                         5=>dock_world(ui,state,loaded,streaming,orbit,commands),
                         6=>dock_area(ui,state,loaded),
                         _=>{
@@ -1281,7 +1281,8 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState) {
     ui.label("Density");
     ui.add(egui::Slider::new(&mut state.power,0.0..=2.0));
 }
-fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea) {
+fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea,
+                client:&client_data::ClientFiles) {
     ui.label(egui::RichText::new("Object List / Snap Points").strong().size(10.));
     if !loaded.props.is_empty() {
         ui.collapsing(format!("AREA Prop Placements ({})",loaded.props.len()),|ui|{
@@ -1292,6 +1293,10 @@ fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea) {
                     ui.monospace(format!("Rotation: {:?}",prop.rotation_xyzw));
                     ui.monospace(format!("Scale: {:.4}",prop.scale));
                     ui.monospace(format!("Tint: 0x{:08X}",prop.tint));
+                    if let (Some(index),Some(path))=(client.index.as_ref(),prop.model_path.as_deref()){
+                        ui.separator();
+                        for line in client.prop_models.report(index,path){ui.monospace(line);}
+                    }
                 });
             }
             if loaded.props.len()>64{ui.label("Showing first 64 placements");}

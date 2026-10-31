@@ -15,9 +15,13 @@ Ein `.i3`-Bauwerk besteht aus `X.i3` plus je einer `X.<Sector>.i3` pro Sektor (`
 `props.rs` ersetzt den Platzhalter-Würfel eines Props durch das echte Mesh, wenn `.m3`/`.i3` im ClientData-Index
 gefunden wird (Cache pro Pfad, max. 48 neue Modelle pro Tile-Spawn, Dateien > 64 MiB werden übersprungen).
 Nicht lesbare Modelle behalten den Würfel.
+Props werden pro Material in Teilmeshes zerlegt; der Texturpfad (M3: erste Material-Ebene, I3: Material-Set 0) wird über den Index aufgelöst und mit dem `.tex`-Decoder (max. 512 px) als Farbtextur gesetzt. Fehlt die Textur, bleibt die Einfärbung.
+
+## Metadaten im Editor
+Im Objects-Dock zeigt jeder Prop-Eintrag alle Modell-Metadaten (Vertices, Dreiecke, Bounds, Bones, Clips, Texturen, Sektoren, Portale, Material-Sets). Jeder referenzierte Pfad wird gegen den ClientData-Index geprüft und mit `[OK]` bzw. `[MISSING]` markiert.
 
 ## Noch offen
-- Texturen der Props (Material → `.tex`-Pfad ist gelesen, aber noch nicht im Renderer verdrahtet; Props sind einfarbig: M3 blau-grau, I3 sandfarben).
+- Normal-/Skinfx-Texturen, Mehrschicht-Materialien und Material-Varianten (nur Farbtextur der ersten Ebene).
 - M3: Animationstracks, Partikel/Ribbons, Lichter, Kameras werden nicht dekodiert.
 - Achsen/Skalierung der Props gegenüber dem Terrain sind ungeprüft (Transform wird wie beim Marker übernommen).
 

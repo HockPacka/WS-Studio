@@ -5,6 +5,7 @@ pub(crate) mod binary;
 pub mod assets;
 pub mod i3;
 pub mod m3;
+pub mod sky;
 pub mod tbl;
 pub mod tex;
 pub mod zone;

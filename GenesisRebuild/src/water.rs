@@ -59,3 +59,27 @@ pub fn water_material() -> StandardMaterial {
         ..default()
     }
 }
+
+#[derive(Component)]
+pub struct GenesisWater;
+
+/// Updates water material color from the evaluated active sky liquid colors.
+pub fn update_water_color(
+    sky_mgr: Res<crate::sky::SkyManager>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    water_q: Query<&MeshMaterial3d<StandardMaterial>, With<GenesisWater>>,
+) {
+    let Some(eval) = sky_mgr.current_evaluated.as_ref() else { return; };
+    for mat_handle in water_q.iter() {
+        if let Some(mut mat) = materials.get_mut(&mat_handle.0) {
+            // Blend subtle horizon fog tint into the water base color
+            let fog_col = eval.horizon_fog_mod.to_linear();
+            mat.base_color = Color::linear_rgba(
+                (0.18 + fog_col.red * 0.1).clamp(0.0, 1.0),
+                (0.52 + fog_col.green * 0.1).clamp(0.0, 1.0),
+                (0.78 + fog_col.blue * 0.1).clamp(0.0, 1.0),
+                0.75,
+            );
+        }
+    }
+}

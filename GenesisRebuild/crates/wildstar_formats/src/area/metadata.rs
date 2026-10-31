@@ -73,28 +73,30 @@ fn utf16_name(data:&[u8],start:usize,min_start:usize)->Option<String>{
     None
 }
 fn decode_props(payload:&[u8])->Result<Vec<AreaProp>,String>{
-    if payload.len()<8{return Err("pORP: header shorter than 8 bytes".into());}
+    if payload.len()<4{return Err("pORP: header shorter than 4 bytes".into());}
     let count=u32_at(payload,0).unwrap() as usize;
-    let end=count.checked_mul(104).and_then(|v|v.checked_add(8))
+    let string_table_start=count.checked_mul(104).and_then(|v|v.checked_add(4))
         .ok_or("pORP: record count overflow")?;
-    if count>2_000_000 || end>payload.len(){
+    if count>2_000_000 || string_table_start>payload.len(){
         return Err("pORP: record count exceeds payload".into());
     }
     let mut result=Vec::with_capacity(count);
     for index in 0..count{
-        let from=8+index*104;
-        let raw_record:[u8;104]=payload[from..from+104].try_into()
-            .map_err(|_|"pORP: incomplete record")?;
-        let name_offset=u32_at(&raw_record,16).unwrap();
+        let from=4+index*104;
+        let raw_record:[u8;104]=match payload.get(from..from+104).and_then(|s| s.try_into().ok()) {
+            Some(r) => r,
+            None => break,
+        };
+        let name_offset=u32_at(&raw_record,20).unwrap_or(0);
         let mut rotation=[0f32;4];
         let mut position=[0f32;3];
-        for (i,value) in rotation.iter_mut().enumerate(){*value=f32_at(&raw_record,28+i*4).unwrap();}
-        for (i,value) in position.iter_mut().enumerate(){*value=f32_at(&raw_record,44+i*4).unwrap();}
+        for (i,value) in rotation.iter_mut().enumerate(){*value=f32_at(&raw_record,32+i*4).unwrap_or(0.0);}
+        for (i,value) in position.iter_mut().enumerate(){*value=f32_at(&raw_record,48+i*4).unwrap_or(0.0);}
         result.push(AreaProp{
-            index,model_path:utf16_name(payload,name_offset as usize,end),
-            scale:f32_at(&raw_record,24).unwrap(),
+            index,model_path:utf16_name(payload,name_offset as usize,string_table_start),
+            scale:f32_at(&raw_record,28).unwrap_or(1.0),
             rotation_xyzw:rotation,position_xyz:position,
-            tint:u32_at(&raw_record,76).unwrap(),name_offset,raw_record,
+            tint:u32_at(&raw_record,80).unwrap_or(0),name_offset,raw_record,
         });
     }
     Ok(result)
@@ -338,13 +340,13 @@ mod tests {
     }
     #[test]
     fn props_path_and_transform() {
-        let mut data=vec![0u8;112];
+        let mut data=vec![0u8;108];
         data[..4].copy_from_slice(&1u32.to_le_bytes());
-        data[24..28].copy_from_slice(&112u32.to_le_bytes()); // +16
-        data[32..36].copy_from_slice(&1.5f32.to_le_bytes()); // +24
-        data[36..40].copy_from_slice(&0.25f32.to_le_bytes()); // rot x
-        data[52..56].copy_from_slice(&125f32.to_le_bytes()); // position x
-        data[84..88].copy_from_slice(&0x12345678u32.to_le_bytes());
+        data[24..28].copy_from_slice(&108u32.to_le_bytes()); // rec[20..24] = name_offset
+        data[32..36].copy_from_slice(&1.5f32.to_le_bytes()); // rec[28..32] = scale
+        data[36..40].copy_from_slice(&0.25f32.to_le_bytes()); // rec[32..36] = rot x
+        data[52..56].copy_from_slice(&125f32.to_le_bytes()); // rec[48..52] = pos x
+        data[84..88].copy_from_slice(&0x12345678u32.to_le_bytes()); // rec[80..84] = tint
         for letter in "Art/Creature/Test.m3".encode_utf16(){
             data.extend(letter.to_le_bytes());
         }

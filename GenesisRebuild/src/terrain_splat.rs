@@ -8,7 +8,8 @@
 use bevy::asset::embedded_asset;
 use bevy::pbr::{ExtendedMaterial, MaterialExtension};
 use bevy::prelude::*;
-use bevy::render::render_resource::{AsBindGroup, ShaderType};
+use bevy::asset::RenderAssetUsages;
+use bevy::render::render_resource::{AsBindGroup, ShaderType, Extent3d, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension};
 use bevy::shader::ShaderRef;
 
 pub type TerrainMaterial = ExtendedMaterial<StandardMaterial, SplatExt>;
@@ -82,6 +83,56 @@ pub struct SplatData {
     pub tiling: Vec<f32>,
     pub has_normals: bool,
     pub layer_count: usize,
+}
+
+/// Create a fallback SplatExt with valid dummy 2D array and 2D textures so WGPU bindgroup validation never fails on un-splatted tiles.
+pub fn fallback_extension(images: &mut Assets<Image>) -> SplatExt {
+    let dummy_array = {
+        let mut img = Image::new_uninit(
+            Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
+            TextureDimension::D2,
+            TextureFormat::Rgba8UnormSrgb,
+            RenderAssetUsages::default(),
+        );
+        img.data = Some(vec![255, 255, 255, 255]);
+        img.texture_view_descriptor = Some(TextureViewDescriptor {
+            dimension: Some(TextureViewDimension::D2Array),
+            ..default()
+        });
+        images.add(img)
+    };
+    let dummy_normals = {
+        let mut img = Image::new_uninit(
+            Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
+            TextureDimension::D2,
+            TextureFormat::Rgba8Unorm,
+            RenderAssetUsages::default(),
+        );
+        img.data = Some(vec![128, 128, 255, 255]);
+        img.texture_view_descriptor = Some(TextureViewDescriptor {
+            dimension: Some(TextureViewDimension::D2Array),
+            ..default()
+        });
+        images.add(img)
+    };
+    let dummy_2d = {
+        let mut img = Image::new_uninit(
+            Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
+            TextureDimension::D2,
+            TextureFormat::Rgba8Unorm,
+            RenderAssetUsages::default(),
+        );
+        img.data = Some(vec![0, 0, 0, 0]);
+        images.add(img)
+    };
+    SplatExt {
+        params: SplatParams { enabled: 0, has_normals: 0, ..default() },
+        albedo: Some(dummy_array),
+        normals: Some(dummy_normals),
+        weights: Some(dummy_2d.clone()),
+        tint: Some(dummy_2d.clone()),
+        cell_layers: Some(dummy_2d),
+    }
 }
 
 impl SplatData {

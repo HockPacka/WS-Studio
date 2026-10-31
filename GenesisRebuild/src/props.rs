@@ -18,10 +18,10 @@ use wildstar_formats::{i3, m3};
 const MAX_MODEL_BYTES: u64 = 64 * 1024 * 1024;
 /// Triangles kept per prop model.
 const MAX_MODEL_TRIANGLES: usize = 400_000;
-/// New models decoded per `spawn_props` call; the rest keep the marker cube until the next load.
-const MODEL_LOADS_PER_CALL: usize = 48;
+/// New models decoded per `spawn_props` call; kept bounded to prevent frame-time spikes.
+const MODEL_LOADS_PER_CALL: usize = 256;
 /// Longest edge of a decoded prop texture.
-const MAX_TEXTURE_SIZE: usize = 1024;
+const MAX_TEXTURE_SIZE: usize = 512;
 
 #[derive(Component)]
 #[allow(dead_code)]
@@ -67,10 +67,11 @@ pub(crate) struct PartMaterial {
     pub(crate) gloss: f32,
     pub(crate) glow: f32,
     pub(crate) color_mod: [f32; 3],
+    pub(crate) is_effect: bool,
 }
 impl PartMaterial {
     fn plain(color: Option<String>, normal: Option<String>) -> Self {
-        Self { color, normal, blend: PropBlend::Opaque, opacity: 1.0, gloss: 0.0, glow: 0.0, color_mod: [1.0; 3] }
+        Self { color, normal, blend: PropBlend::Opaque, opacity: 1.0, gloss: 0.0, glow: 0.0, color_mod: [1.0; 3], is_effect: false }
     }
 }
 
@@ -83,6 +84,18 @@ struct ModelPart {
 #[derive(Clone)]
 struct CachedModel {
     parts: Vec<ModelPart>,
+}
+
+pub(crate) fn generate_fast_tangents(mesh: &mut Mesh) {
+    let Some(normals) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL).and_then(|a| a.as_float3()) else { return; };
+    let mut tangents = Vec::with_capacity(normals.len());
+    for &n in normals {
+        let normal = Vec3::from_array(n);
+        let up = if normal.y.abs() > 0.9 { Vec3::Z } else { Vec3::Y };
+        let t = up.cross(normal).normalize_or_zero();
+        tangents.push([t.x, t.y, t.z, 1.0]);
+    }
+    mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
 }
 
 /// Decoded prop models, textures and metadata reports by virtual path.
@@ -153,25 +166,53 @@ pub(crate) fn standard_material(
     };
     let base = tint.to_linear();
     let glow = desc.glow.max(0.0);
-    StandardMaterial {
-        base_color: Color::linear_rgba(
+    let is_additive = desc.blend == PropBlend::Add;
+    let is_unlit = desc.is_effect || is_additive;
+
+    // For additive/effect materials, scale RGB by opacity so inactive/low-opacity effect keyframes don't blast full white
+    let base_rgb = if is_additive {
+        [
+            base.red * desc.color_mod[0] * desc.opacity,
+            base.green * desc.color_mod[1] * desc.opacity,
+            base.blue * desc.color_mod[2] * desc.opacity,
+        ]
+    } else {
+        [
             base.red * desc.color_mod[0],
             base.green * desc.color_mod[1],
             base.blue * desc.color_mod[2],
+        ]
+    };
+
+    // Only set emissive if a color texture is present or if glow is explicitly > 0.0 with color mod
+    let emissive = if color.is_some() && glow > 0.0 {
+        LinearRgba::rgb(desc.color_mod[0] * glow, desc.color_mod[1] * glow, desc.color_mod[2] * glow)
+    } else if !is_unlit && glow > 0.0 {
+        LinearRgba::rgb(desc.color_mod[0] * glow * 0.5, desc.color_mod[1] * glow * 0.5, desc.color_mod[2] * glow * 0.5)
+    } else {
+        LinearRgba::BLACK
+    };
+
+    StandardMaterial {
+        base_color: Color::linear_rgba(
+            base_rgb[0],
+            base_rgb[1],
+            base_rgb[2],
             desc.opacity,
         ),
         base_color_texture: color.clone(),
         normal_map_texture: normal,
-        perceptual_roughness: (1.0 - desc.gloss).clamp(0.15, 1.0),
-        emissive: LinearRgba::rgb(desc.color_mod[0] * glow, desc.color_mod[1] * glow, desc.color_mod[2] * glow),
+        perceptual_roughness: if is_unlit { 1.0 } else { (1.0 - desc.gloss).clamp(0.15, 1.0) },
+        emissive,
         emissive_texture: if glow > 0.0 { color } else { None },
         alpha_mode: desc.blend.alpha_mode(),
+        unlit: is_unlit,
         cull_mode: None,
         ..default()
     }
 }
 
-fn read_asset(index: &AssetIndex, path: &str) -> Option<Vec<u8>> {
+pub(crate) fn read_asset(index: &AssetIndex, path: &str) -> Option<Vec<u8>> {
     let file = index.resolve(path)?;
     if std::fs::metadata(&file.path).ok()?.len() > MAX_MODEL_BYTES {
         return None;
@@ -186,7 +227,7 @@ pub(crate) fn m3_geometry(data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial
         return Err("M3 too large".into());
     }
     let mut by_material: Vec<(u16, PartGeometry)> = Vec::new();
-    for mesh in model.meshes.iter().filter(|m| !m.is_hidden()) {
+    for mesh in model.meshes.iter().filter(|m| m.is_visible_default(&model.mesh_display)) {
         let slot = match by_material.iter().position(|(m, _)| *m == mesh.material) {
             Some(i) => i,
             None => {
@@ -210,11 +251,12 @@ pub(crate) fn m3_geometry(data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial
             let m = model.materials.get(material as usize).cloned().unwrap_or_default();
             let blend = match m.blend {
                 m3::M3Blend::Cutout => PropBlend::Cutout,
-                m3::M3Blend::Alpha | m3::M3Blend::AlphaAdd => PropBlend::Alpha,
-                m3::M3Blend::Add => PropBlend::Add,
+                m3::M3Blend::Alpha => PropBlend::Alpha,
+                m3::M3Blend::Add | m3::M3Blend::AlphaAdd => PropBlend::Add,
                 m3::M3Blend::Multiply | m3::M3Blend::Multiply2x => PropBlend::Multiply,
                 m3::M3Blend::Opaque | m3::M3Blend::Special => PropBlend::Opaque,
             };
+            let is_effect = m.material_type == 2 || (m.flags & 2) != 0 || blend == PropBlend::Add;
             let material = PartMaterial {
                 color: name(m.color_texture),
                 normal: name(m.normal_texture),
@@ -223,6 +265,7 @@ pub(crate) fn m3_geometry(data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial
                 gloss: m.gloss,
                 glow: m.glow,
                 color_mod: m.color_mod,
+                is_effect,
             };
             (g, material)
         })
@@ -302,7 +345,7 @@ fn model_kind(path: &str) -> Option<ModelKind> {
 }
 
 impl PropModelCache {
-    fn texture(&self, index: &AssetIndex, images: &mut Assets<Image>, path: &str) -> Option<Handle<Image>> {
+    pub(crate) fn texture(&self, index: &AssetIndex, images: &mut Assets<Image>, path: &str) -> Option<Handle<Image>> {
         let key = virtual_key(path);
         let mut map = self.textures.lock().ok()?;
         if let Some(hit) = map.get(&key) {
@@ -326,7 +369,7 @@ impl PropModelCache {
         handle
     }
 
-    fn normal_map(&self, index: &AssetIndex, images: &mut Assets<Image>, path: &str) -> Option<Handle<Image>> {
+    pub(crate) fn normal_map(&self, index: &AssetIndex, images: &mut Assets<Image>, path: &str) -> Option<Handle<Image>> {
         let key = virtual_key(path);
         let mut map = self.normal_maps.lock().ok()?;
         if let Some(hit) = map.get(&key) {
@@ -377,10 +420,12 @@ impl PropModelCache {
             return None;
         }
         *budget -= 1;
-        let built = read_asset(index, path).and_then(|data| match kind {
-            ModelKind::M3 => m3_geometry(&data).ok(),
-            ModelKind::I3 => i3_geometry(index, path, &data).ok(),
-        });
+        let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            read_asset(index, path).and_then(|data| match kind {
+                ModelKind::M3 => m3_geometry(&data).ok(),
+                ModelKind::I3 => i3_geometry(index, path, &data).ok(),
+            })
+        })).ok().flatten();
         let entry = built.map(|parts| CachedModel {
             parts: parts
                 .into_iter()
@@ -389,7 +434,7 @@ impl PropModelCache {
                     let normal = desc.normal.as_deref().and_then(|t| self.normal_map(index, images, t));
                     let mut mesh = geometry.into_mesh();
                     if normal.is_some() {
-                        let _ = mesh.generate_tangents();
+                        generate_fast_tangents(&mut mesh);
                     }
                     ModelPart {
                         mesh: meshes.add(mesh),
@@ -488,17 +533,9 @@ pub fn spawn_props(
         return Vec::new();
     }
 
-    // Shared mesh for prop indicator markers (models that cannot be read).
-    let marker_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-    let marker_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.9, 0.75, 0.25),
-        perceptual_roughness: 0.4,
-        metallic: 0.2,
-        ..default()
-    });
     let mut budget = MODEL_LOADS_PER_CALL;
-    let mut entities = Vec::with_capacity(props.len().min(5000));
-    for prop in props.iter().take(5000) {
+    let mut entities = Vec::with_capacity(props.len().min(1000));
+    for prop in props.iter().take(3000) {
         let pos = Vec3::new(prop.position_xyz[0], prop.position_xyz[1], prop.position_xyz[2]);
         let q = prop.rotation_xyzw;
         let len_sq = q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3];
@@ -514,22 +551,25 @@ pub fn spawn_props(
         let model = index
             .zip(prop.model_path.as_deref())
             .and_then(|(index, path)| cache.load(index, meshes, materials, images, path, &mut budget));
-        let entity = match model {
+        match model {
             Some(model) => {
                 let root = commands.spawn((transform, Visibility::default(), marker)).id();
+                entities.push(root);
                 for part in &model.parts {
                     let child = commands
                         .spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(part.material.clone()), Transform::default()))
                         .id();
                     commands.entity(root).add_child(child);
+                    entities.push(child);
                 }
-                root
             }
-            None => commands
-                .spawn((Mesh3d(marker_mesh.clone()), MeshMaterial3d(marker_material.clone()), transform, marker))
-                .id(),
-        };
-        entities.push(entity);
+            None => {
+                // Models with no drawable geometry (light volumes, helper nodes) or deferred loads
+                // spawn as hidden transform entities so scene hierarchy is preserved without visual clutter.
+                let entity = commands.spawn((transform, Visibility::Hidden, marker)).id();
+                entities.push(entity);
+            }
+        }
     }
     entities
 }

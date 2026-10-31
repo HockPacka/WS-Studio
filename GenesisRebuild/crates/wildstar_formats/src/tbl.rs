@@ -206,3 +206,151 @@ mod tests{
         assert_eq!(layers[&11].meters_per_tile,4.);
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct WorldSky {
+    pub id: u32,
+    pub asset_path: String,
+    pub asset_path_in_flux: String,
+    pub description: String,
+}
+
+pub fn world_skies(table: &Table) -> Result<HashMap<u32, WorldSky>, String> {
+    for mandatory in ["ID", "assetPath"] {
+        if table.column(mandatory).is_none() {
+            return Err(format!("WorldSky: mandatory column {mandatory} absent"));
+        }
+    }
+    let mut result = HashMap::new();
+    for row in &table.rows {
+        let Some(id) = table.get(row, "ID").and_then(Value::as_id) else { continue; };
+        let Some(asset_path) = table.get(row, "assetPath").and_then(Value::as_text) else { continue; };
+        let asset_path_in_flux = table.get(row, "assetPathInFlux").and_then(Value::as_text).unwrap_or("");
+        let description = table.get(row, "description").and_then(Value::as_text).unwrap_or("");
+        result.insert(
+            id,
+            WorldSky {
+                id,
+                asset_path: asset_path.to_string(),
+                asset_path_in_flux: asset_path_in_flux.to_string(),
+                description: description.to_string(),
+            },
+        );
+    }
+    Ok(result)
+}
+
+#[test]
+fn extracts_world_sky_metadata() {
+    let table = Table {
+        columns: vec!["ID".into(), "assetPath".into(), "assetPathInFlux".into(), "description".into()],
+        rows: vec![
+            vec![
+                Value::Integer(14),
+                Value::Text("Sky/Western_Ellevar.sky".into()),
+                Value::Text("Sky/Western_Ellevar_Flux.sky".into()),
+                Value::Text("Ellevar Open Sky".into()),
+            ],
+            vec![
+                Value::Integer(16),
+                Value::Text("Sky/Western_CreepyForest.sky".into()),
+                Value::Text("".into()),
+                Value::Text("Creepy Forest".into()),
+            ],
+        ],
+    };
+    let skies = world_skies(&table).expect("valid world skies table");
+    assert_eq!(skies.len(), 2);
+    let s14 = skies.get(&14).unwrap();
+    assert_eq!(s14.asset_path, "Sky/Western_Ellevar.sky");
+    assert_eq!(s14.asset_path_in_flux, "Sky/Western_Ellevar_Flux.sky");
+    assert_eq!(s14.description, "Ellevar Open Sky");
+}
+
+#[derive(Debug, Clone)]
+pub struct WorldZone {
+    pub id: u32,
+    pub localized_text_id_name: u32,
+    pub parent_zone_id: u32,
+    pub color: i32,
+    pub flags: u32,
+}
+
+pub fn world_zones(table: &Table) -> Result<HashMap<u32, WorldZone>, String> {
+    if table.column("ID").is_none() {
+        return Err("WorldZone: mandatory column ID absent".into());
+    }
+    let mut result = HashMap::new();
+    for row in &table.rows {
+        let Some(id) = table.get(row, "ID").and_then(Value::as_id) else { continue; };
+        let localized_text_id_name = table.get(row, "localizedTextIdName").and_then(Value::as_id).unwrap_or(0);
+        let parent_zone_id = table.get(row, "parentZoneId").and_then(Value::as_id).unwrap_or(0);
+        let color = table.get(row, "color").and_then(|v| match v {
+            Value::Integer(n) => Some(*n as i32),
+            _ => None,
+        }).unwrap_or(0);
+        let flags = table.get(row, "flags").and_then(Value::as_id).unwrap_or(0);
+        result.insert(id, WorldZone {
+            id,
+            localized_text_id_name,
+            parent_zone_id,
+            color,
+            flags,
+        });
+    }
+    Ok(result)
+}
+
+#[derive(Debug, Clone)]
+pub struct MapZone {
+    pub id: u32,
+    pub folder: String,
+    pub map_zone_id_parent: u32,
+    pub world_zone_id: u32,
+}
+
+pub fn map_zones(table: &Table) -> Result<HashMap<u32, MapZone>, String> {
+    if table.column("ID").is_none() {
+        return Err("MapZone: mandatory column ID absent".into());
+    }
+    let mut result = HashMap::new();
+    for row in &table.rows {
+        let Some(id) = table.get(row, "ID").and_then(Value::as_id) else { continue; };
+        let folder = table.get(row, "folder").and_then(Value::as_text).unwrap_or("");
+        let map_zone_id_parent = table.get(row, "mapZoneIdParent").and_then(Value::as_id).unwrap_or(0);
+        let world_zone_id = table.get(row, "worldZoneId").and_then(Value::as_id).unwrap_or(0);
+        result.insert(id, MapZone {
+            id,
+            folder: folder.to_string(),
+            map_zone_id_parent,
+            world_zone_id,
+        });
+    }
+    Ok(result)
+}
+
+#[test]
+fn extracts_world_zone_and_map_zone_metadata() {
+    let ztable = Table {
+        columns: vec!["ID".into(), "localizedTextIdName".into(), "parentZoneId".into(), "color".into(), "flags".into()],
+        rows: vec![
+            vec![Value::Integer(4762), Value::Integer(682475), Value::Integer(0), Value::Integer(14587681), Value::Integer(0)],
+            vec![Value::Integer(6002), Value::Integer(750136), Value::Integer(4762), Value::Integer(526344), Value::Integer(212)],
+        ],
+    };
+    let zones = world_zones(&ztable).unwrap();
+    assert_eq!(zones.len(), 2);
+    assert_eq!(zones[&4762].parent_zone_id, 0);
+    assert_eq!(zones[&6002].parent_zone_id, 4762);
+
+    let mtable = Table {
+        columns: vec!["ID".into(), "folder".into(), "mapZoneIdParent".into(), "worldZoneId".into()],
+        rows: vec![
+            vec![Value::Integer(476), Value::Text("Arcterra".into()), Value::Integer(0), Value::Integer(0)],
+            vec![Value::Integer(531), Value::Text("ArcterraIcebloodBarrow".into()), Value::Integer(476), Value::Integer(4865)],
+        ],
+    };
+    let mzones = map_zones(&mtable).unwrap();
+    assert_eq!(mzones[&476].folder, "Arcterra");
+    assert_eq!(mzones[&531].world_zone_id, 4865);
+}

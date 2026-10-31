@@ -13,7 +13,7 @@ impl RgbaImage {
         let x=(u.rem_euclid(1.)*self.width as f32) as usize%self.width;
         let y=(v.rem_euclid(1.)*self.height as f32) as usize%self.height;
         let p=(y*self.width+x)*4;
-        self.rgba[p..p+4].try_into().unwrap()
+        self.rgba.get(p..p+4).and_then(|s| s.try_into().ok()).unwrap_or([255, 0, 255, 255])
     }
     #[inline]
     pub fn sample_bilinear(&self, u: f32, v: f32) -> [u8; 4] {
@@ -38,7 +38,8 @@ impl RgbaImage {
         let p01 = (iy1 * self.width + ix0) * 4;
         let p11 = (iy1 * self.width + ix1) * 4;
 
-        if p11 + 3 >= self.rgba.len() {
+        let max_p = p00.max(p10).max(p01).max(p11);
+        if max_p + 3 >= self.rgba.len() {
             return [255, 0, 255, 255];
         }
 
@@ -229,5 +230,17 @@ mod tests{
         assert!(decode_tex(b"foo",256).is_err());
         let b=sample(15,&[0;4]);
         assert!(decode_tex(&b,256).is_err());
+    }
+    #[test]
+    fn real_rays_tex() {
+        let p = r"D:\GODOT\Projects\WILDSTAR-Decomp\WoWClient\ClientData\Art\Light\Atmospherics\LIT_Atmospherics_Rays_LongNarrow_Color.tex";
+        if let Ok(bytes) = std::fs::read(p) {
+            let img = decode_tex(&bytes, 512).unwrap();
+            let alphas: Vec<u8> = img.rgba.chunks_exact(4).map(|c| c[3]).collect();
+            let min_a = *alphas.iter().min().unwrap();
+            let max_a = *alphas.iter().max().unwrap();
+            let avg_a: f32 = alphas.iter().map(|&a| a as f32).sum::<f32>() / alphas.len() as f32;
+            eprintln!("Rays texture: {}x{}, alpha min={}, max={}, avg={:.1}", img.width, img.height, min_a, max_a, avg_a);
+        }
     }
 }

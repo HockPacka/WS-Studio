@@ -231,9 +231,12 @@ impl AssetIndex {
 mod tests {
     use super::*;
     use std::time::{SystemTime,UNIX_EPOCH};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
     fn dir()->PathBuf{
+        let seq = COUNTER.fetch_add(1, Ordering::Relaxed);
         let salt=SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        let folder=std::env::temp_dir().join(format!("genesis_client_root_{}_{}",std::process::id(),salt));
+        let folder=std::env::temp_dir().join(format!("genesis_client_root_{}_{}_{}",std::process::id(),salt,seq));
         fs::create_dir_all(&folder).unwrap();
         folder
     }

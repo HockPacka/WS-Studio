@@ -4,7 +4,7 @@
 //! bilinear sampling, and macro color tints (Bit 3 / Bit 13).
 use bevy::asset::RenderAssetUsages;
 use bevy::prelude::*;
-use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension};
 use std::collections::{HashMap, HashSet};
 use wildstar_formats::area::{AreaCell, RawArea};
 use wildstar_formats::assets::AssetIndex;
@@ -257,13 +257,17 @@ fn with_mips(base: Vec<u8>, side: usize) -> Vec<u8> {
 fn array_image(data: Vec<u8>, side: usize, layers: usize, format: TextureFormat, sampler: bool) -> Image {
     let levels = (side as f32).log2() as u32 + 1;
     let mut image = Image::new_uninit(
-        Extent3d { width: side as u32, height: side as u32, depth_or_array_layers: layers as u32 },
+        Extent3d { width: side as u32, height: side as u32, depth_or_array_layers: layers.max(1) as u32 },
         TextureDimension::D2,
         format,
         RenderAssetUsages::default(),
     );
     image.data = Some(data);
     image.texture_descriptor.mip_level_count = levels;
+    image.texture_view_descriptor = Some(TextureViewDescriptor {
+        dimension: Some(TextureViewDimension::D2Array),
+        ..default()
+    });
     if sampler {
         image.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
             address_mode_u: ImageAddressMode::Repeat,

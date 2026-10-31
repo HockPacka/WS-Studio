@@ -11,6 +11,7 @@ mod streaming;
 mod terrain;
 mod terrain_material;
 mod water;
+mod sky;
 use bevy::prelude::*;
 use bevy::pbr::ExtendedMaterial;
 use bevy::camera::Viewport;
@@ -27,6 +28,8 @@ const INK: egui::Color32 = egui::Color32::from_rgb(65, 58, 54);
 struct GenesisState {
     scene: usize,
     active: &'static str,
+    sculpt_tool: &'static str,
+    paint_tool: &'static str,
     brush_size: f32, power: f32, falloff: f32,
     mode: usize,
     circle: usize,
@@ -55,22 +58,24 @@ struct GenesisState {
     ui_zoom: f32,
     dock_tab: usize,
     bottom_tab: usize,
-    ribbon_tab: usize,
     time_of_day: f32,
     terrain_view: usize,
 }
 impl Default for GenesisState {
     fn default() -> Self {
         Self {
-            scene: 0, active: "Color Brush",
+            scene: 0, active: "Terrain Sculpt",
+            sculpt_tool: "Height Brush",
+            paint_tool: "Texture Brush",
             brush_size: 0.75, power: 1.0, falloff: 0.58,
             mode: 0, circle: 0, restricted: false, custom_tip: false,
             color_panel: true, color_palette: true, texture_panel: false,
             clutter_panel: false, prop_panel: false, object_list: false,
-            zone_panel: false, grid: false, palette_index: 0, texture_index: 0,
+            zone_panel: false,
+            grid: false, palette_index: 0, texture_index: 0,
             tint: terrain_splat::TintSettings::default(),
             search: String::new(),
-            status: "3D AREA Preview: right drag orbit, middle drag pan, wheel zoom".to_string(),
+            status: "WildStar Genesis World Editor".to_string(),
             raw_view: true,
             open_area_dialog: false,
             open_area_path_dialog: false,
@@ -87,7 +92,6 @@ impl Default for GenesisState {
             ui_zoom: 1.0,
             dock_tab: 0,
             bottom_tab: 0,
-            ribbon_tab: 0,
             time_of_day: 12.0,
             terrain_view: 5,
         }
@@ -142,9 +146,9 @@ impl OrbitCamera {
     /// Normalized forward direction vector of the camera.
     pub fn forward_direction(&self) -> Vec3 {
         let p = if self.is_first_person {
-            self.pitch.clamp(-1.54, 1.54)
+            self.pitch.clamp(-1.52, 1.52)
         } else {
-            self.pitch.clamp(0.05, 1.52)
+            self.pitch.clamp(0.05, 1.50)
         };
         let cos_p = p.cos();
         Vec3::new(
@@ -187,13 +191,28 @@ fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>,
     commands.spawn((
         GenesisCamera,
         Camera3d::default(),
+        Projection::Perspective(PerspectiveProjection {
+            near: 0.5,
+            far: 50_000.0,
+            ..default()
+        }),
+        DistanceFog {
+            color: Color::srgb(0.7, 0.8, 0.9),
+            falloff: FogFalloff::Linear {
+                start: 100.0,
+                end: 2000.0,
+            },
+            ..default()
+        },
         Camera {
             order: 0,
+            clear_color: ClearColorConfig::Custom(Color::srgb(0.15, 0.2, 0.3)),
             ..default()
         },
         Transform::from_xyz(450.,500.,550.).looking_at(Vec3::ZERO,Vec3::Y),
     ));
     commands.spawn((
+        sky::GenesisSun,
         DirectionalLight {
             illuminance: 8500.0,
             shadow_maps_enabled: false,
@@ -228,6 +247,7 @@ fn load_raw_area(
     mut loaded: ResMut<LoadedArea>,
     mut orbit: ResMut<OrbitCamera>,
     mut streaming: ResMut<streaming::WorldStreaming>,
+    mut sky_mgr: ResMut<sky::SkyManager>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -237,6 +257,7 @@ fn load_raw_area(
     // Never load an AREA before its WildStar client asset root is indexed.
     if !client.ready(){return;}
     let Some(path)=state.pending_load.take() else {return;};
+    sky_mgr.current_sky_id = None;
     let path_buf = Path::new(&path);
     let tile_coords = ZoneTileCoords::from_path_or_name(&path);
 
@@ -270,11 +291,17 @@ fn load_raw_area(
             loaded.props=decoded_props.unwrap_or_default();
             loaded.tile=Some(tile.clone());
 
-            // Compute accurate world center from filename or infer from first prop
-            let world_center = tile_coords
-                .or_else(|| {
-                    loaded.props.first().map(|pr| ZoneTileCoords::from_world_pos(pr.position_xyz[0], pr.position_xyz[2]))
-                })
+            // Verify tile coordinates against props if available so terrain and props never desync
+            let prop_tile = loaded.props.first().map(|pr| {
+                ZoneTileCoords::from_world_pos(pr.position_xyz[0], pr.position_xyz[2])
+            });
+            let effective_coords = match (tile_coords, prop_tile) {
+                (Some(tc), Some(pt)) if tc.chebyshev_distance(&pt) <= 2 => Some(tc),
+                (_, Some(pt)) => Some(pt),
+                (Some(tc), None) => Some(tc),
+                (None, None) => None,
+            };
+            let world_center = effective_coords
                 .map(|c| c.world_center())
                 .unwrap_or([0.0, 0.0, 0.0]);
 
@@ -291,28 +318,28 @@ fn load_raw_area(
 
                     // Despawn any standalone entities
                     if let Some(old)=loaded.mesh_entity.take(){
-                        commands.entity(old).despawn();
+                        if let Ok(mut ent) = commands.get_entity(old) { ent.despawn(); }
                     }
                     if let Some(old_water)=loaded.water_entity.take(){
-                        commands.entity(old_water).despawn();
+                        if let Ok(mut ent) = commands.get_entity(old_water) { ent.despawn(); }
                     }
                     for old_prop in loaded.prop_entities.drain(..) {
-                        commands.entity(old_prop).despawn();
+                        if let Ok(mut ent) = commands.get_entity(old_prop) { ent.despawn(); }
                     }
 
                     if is_streaming {
                         // WorldStreaming is actively streaming around camera focus!
                         state.status = format!(
                             "Streaming zone around tile {} | {} cells | {} props | {}",
-                            tile_coords.map(|c| c.to_hex()).unwrap_or_default(),
+                            effective_coords.map(|c| c.to_hex()).unwrap_or_default(),
                             tile.cell_count(), loaded.props.len(), path
                         );
-                        state.dock_tab = 5; // World tab with radar
+                        state.dock_tab = 6; // World tab with radar
                     } else {
                         // Standalone single-tile mode: spawn terrain at world_center, water and props
                         loaded.terrain_albedo=None;
                         loaded.terrain_splat=false;
-                        let mut splat_ext=terrain_splat::SplatExt::default();
+                        let mut splat_ext=terrain_splat::fallback_extension(&mut images);
                         loaded.layer_notes.clear();
                         loaded.missing_textures.clear();
                         loaded.layer_status=String::from("WorldLayer material unavailable");
@@ -363,6 +390,7 @@ fn load_raw_area(
 
                         if let Some(wmesh)=water::water_mesh(&water_bodies){
                             let water_ent=commands.spawn((
+                                water::GenesisWater,
                                 Mesh3d(meshes.add(wmesh)),
                                 MeshMaterial3d(materials.add(water::water_material())),
                                 Transform::default(),
@@ -377,7 +405,7 @@ fn load_raw_area(
                             "AREA | {} cells | {} props | {} water | {} | {}",
                             tile.cell_count(),loaded.props.len(),loaded.water_count,loaded.layer_status,path
                         );
-                        state.dock_tab=6;
+                        state.dock_tab=8;
                     }
                     if loaded.terrain_albedo.is_none(){
                         eprintln!("Genesis TEXTURE: {}",loaded.layer_status);
@@ -450,13 +478,16 @@ fn update_camera(
 
     if orbit.is_first_person {
         let forward = orbit.forward_direction();
+        let up = if forward.dot(Vec3::Y).abs() > 0.98 { Vec3::Z } else { Vec3::Y };
         *transform = Transform::from_translation(orbit.eye)
-            .looking_at(orbit.eye + forward, Vec3::Y);
+            .looking_at(orbit.eye + forward, up);
     } else {
-        let p=orbit.pitch.clamp(0.05,1.52);
-        let direction=Vec3::new(orbit.yaw.sin()*p.cos(),p.sin(),orbit.yaw.cos()*p.cos());
-        *transform=Transform::from_translation(orbit.focus+direction*orbit.distance)
-            .looking_at(orbit.focus,Vec3::Y);
+        let p = orbit.pitch.clamp(0.05, 1.50);
+        let direction = Vec3::new(orbit.yaw.sin() * p.cos(), p.sin(), orbit.yaw.cos() * p.cos());
+        let norm_dir = direction.normalize_or_zero();
+        let up = if norm_dir.dot(Vec3::Y).abs() > 0.98 { Vec3::Z } else { Vec3::Y };
+        *transform = Transform::from_translation(orbit.focus + direction * orbit.distance)
+            .looking_at(orbit.focus, up);
     }
     let Ok(window)=windows.single() else{return;};
     if let Some([left,top,right,bottom])=orbit.rect {
@@ -482,12 +513,18 @@ fn main() {
         splat_demo::run(out.to_string_lossy().into_owned());
         return;
     }
+    std::panic::set_hook(Box::new(|panic_info| {
+        let msg = format!("Genesis Crash Panic:\n{panic_info}\n");
+        eprintln!("{msg}");
+        let _ = std::fs::write("genesis_crash.log", msg);
+    }));
     App::new()
         .insert_resource(GenesisState::default())
         .insert_resource(LoadedArea::default())
         .insert_resource(OrbitCamera::default())
         .insert_resource(client_data::ClientFiles::default())
         .insert_resource(streaming::WorldStreaming::default())
+        .init_resource::<sky::SkyManager>()
         // Explicitly attach PrimaryEguiContext to the full-window 2D camera.
         .insert_resource(EguiGlobalSettings {
             auto_create_primary_context: false,
@@ -508,7 +545,8 @@ fn main() {
         .add_systems(Startup, setup_scene)
         .add_systems(Update, (client_data::poll_system, load_raw_area,
             streaming::update_world_streaming,
-            refresh_terrain_view, apply_tint_settings, update_camera).chain())
+            update_camera,
+            refresh_terrain_view, apply_tint_settings, sky::update_sky_lighting, sky::update_skybox_position, sky::update_skybox_celestials, sky::update_camera_fog, water::update_water_color).chain())
         .add_systems(EguiPrimaryContextPass, editor_ui)
         .run();
 }
@@ -567,6 +605,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
              mut previews: Local<Viewports>, mut initialized: Local<bool>,
              mut orbit: ResMut<OrbitCamera>, loaded: Res<LoadedArea>,
              mut streaming: ResMut<streaming::WorldStreaming>,
+             sky_mgr: Res<sky::SkyManager>,
              mut commands: Commands,
              mut client: ResMut<client_data::ClientFiles>) -> Result {
     let ctx = contexts.ctx_mut()?;
@@ -591,9 +630,9 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 menu_and_toolbars(ui, &mut state);
                 bottom_strip(ui, &mut state, &loaded, orbit.as_mut(), streaming.as_ref());
                 if state.dock_visible && !state.floating_mode {
-                    dock_panels(ui, &mut state, &loaded, &client, streaming.as_mut(), orbit.as_mut(), &mut commands);
+                    dock_panels(ui, &mut state, &loaded, &client, streaming.as_mut(), orbit.as_mut(), &sky_mgr, &mut commands);
                 }
-                viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref());
+                viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref(), &sky_mgr);
             });
         });
     if state.floating_mode { floating_panels(ctx, &mut state); }
@@ -641,25 +680,82 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
 }
 fn command(state: &mut GenesisState, name: &'static str) {
     state.active = name;
-    state.status = format!("{name} | UI placeholder; no editing operation");
+    state.status = format!("{name}");
     match name {
-        "Color Brush" | "Color Brush Properties" => { state.color_panel = true; state.dock_tab = 0; },
-        "Color Palette" => { state.color_palette = true; state.dock_tab = 1; },
-        "Texture Brush" | "Texture Brush Properties" => { state.texture_panel = true; state.dock_tab = 2; },
-        "Clutter" | "Clutter Preset" => { state.clutter_panel = true; state.dock_tab = 3; },
-        "Prop Models" | "Snap Points Properties" => { state.prop_panel = true; state.dock_tab = 4; },
-        "Object List" => { state.object_list = true; state.dock_tab = 4; },
-        "AREA Inspector" => { state.area_inspector = true; state.dock_tab = 6; },
-        "Dock Properties" => { state.dock_visible = true; state.floating_mode = false; },
-        "Float Properties" => { state.floating_mode = true; state.dock_visible = false; },
-        "Hide Properties" => { state.dock_visible = false; state.floating_mode = false; },
+        "Terrain Sculpt" | "Sculpt" => {
+            state.dock_tab = 0;
+            state.dock_visible = true;
+        }
+        "Terrain Paint" | "Paint" => {
+            state.dock_tab = 1;
+            state.dock_visible = true;
+        }
+        "Height Brush" | "Smooth" | "Flatten" | "Noise" | "Clone" | "Stamp" => {
+            state.sculpt_tool = name;
+            state.dock_tab = 0;
+            state.dock_visible = true;
+        }
+        "Texture Brush" | "Texture Brush Properties" => {
+            state.paint_tool = "Texture Brush";
+            state.dock_tab = 1;
+            state.dock_visible = true;
+        }
+        "Color Brush" | "Color Brush Properties" => {
+            state.paint_tool = "Color Brush";
+            state.dock_tab = 1;
+            state.dock_visible = true;
+        }
+        "Color Palette" => {
+            state.paint_tool = "Color Palette";
+            state.dock_tab = 1;
+            state.dock_visible = true;
+        }
+        "Clutter" | "Clutter Preset" => {
+            state.clutter_panel = true;
+            state.dock_tab = 2;
+            state.dock_visible = true;
+        }
+        "Props" | "Prop Models" | "Snap Points Properties" => {
+            state.prop_panel = true;
+            state.dock_tab = 3;
+            state.dock_visible = true;
+        }
+        "Object List" => {
+            state.object_list = true;
+            state.dock_tab = 3;
+            state.dock_visible = true;
+        }
+        "Water" | "Simple Water" | "Water Grid" | "Water Sphere" | "Water Grid Outer Edge" => {
+            state.dock_tab = 4;
+            state.dock_visible = true;
+        }
+        "Environment" | "Sky" | "Fog" | "Lights" | "Sky Editor" | "Cloud Shadows" | "God Rays" | "FullScreen Effects" => {
+            state.dock_tab = 5;
+            state.dock_visible = true;
+        }
+        "World" => {
+            state.dock_tab = 6;
+            state.dock_visible = true;
+        }
+        "Zones" | "Named Region Editor" | "Navigation Window" => {
+            state.zone_panel = true;
+            state.dock_tab = 7;
+            state.dock_visible = true;
+        }
+        "AREA Inspector" | "Chunk Inspector" | "Inspect" => {
+            state.area_inspector = true;
+            state.dock_tab = 8;
+            state.dock_visible = true;
+        }
+        "Dock Properties" => { state.dock_visible = true; state.floating_mode = false; }
+        "Float Properties" => { state.floating_mode = true; state.dock_visible = false; }
+        "Hide Properties" => { state.dock_visible = false; state.floating_mode = false; }
         "Bottom Workspace" => state.bottom_visible = !state.bottom_visible,
         "Header Toolbars" => state.toolbars_visible = !state.toolbars_visible,
         "UI 80%" => state.ui_zoom = 0.8,
         "UI 100%" => state.ui_zoom = 1.0,
         "UI 125%" => state.ui_zoom = 1.25,
         "UI 150%" => state.ui_zoom = 1.5,
-        "Zones" | "Named Region Editor" => { state.zone_panel = true; state.dock_tab = 5; },
         "Land Chunk Grid" => state.grid = !state.grid,
         "3D AREA View" => state.raw_view = true,
         "Open Zone..." | "Open Zone (World Streaming)..." => {
@@ -668,72 +764,43 @@ fn command(state: &mut GenesisState, name: &'static str) {
         "Open AREA..." => state.open_area_dialog = true,
         "Open AREA by path..." => state.open_area_path_dialog = true,
         "Choose Client Root..." => state.change_client_root = true,
-        "Grimvault Preview" => { state.scene = 0; state.raw_view=false; },
-        "Aurora Preview" => { state.scene = 1; state.raw_view=false; },
-        "Blue Forest Preview" => { state.scene = 2; state.raw_view=false; },
+        "Grimvault Preview" => { state.scene = 0; state.raw_view = false; }
+        "Aurora Preview" => { state.scene = 1; state.raw_view = false; }
+        "Blue Forest Preview" => { state.scene = 2; state.raw_view = false; }
         _ => {}
     }
 }
 fn icon(ui: &mut egui::Ui, state: &mut GenesisState, name: &'static str,
         glyph: &str, rgb: [u8;3]) {
-    let (rect, response) = ui.allocate_exact_size(egui::vec2(17.0,17.0), egui::Sense::click());
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(26.0, 26.0), egui::Sense::click());
     let selected = state.active == name;
     ui.painter().rect_filled(rect, 0.0, if selected {
-        egui::Color32::from_rgb(212,193,155)
+        egui::Color32::from_rgb(212, 193, 155)
     } else { PAPER });
     ui.painter().rect_stroke(rect, 0.0, egui::Stroke::new(0.6, EDGE),
                              egui::StrokeKind::Inside);
-    ui.painter().rect_filled(rect.shrink(3.0), 1.0,
-        egui::Color32::from_rgb(rgb[0],rgb[1],rgb[2]));
+    ui.painter().rect_filled(rect.shrink(3.5), 1.5,
+        egui::Color32::from_rgb(rgb[0], rgb[1], rgb[2]));
     ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, glyph,
-        egui::FontId::monospace(9.0), egui::Color32::WHITE);
+        egui::FontId::monospace(11.5), egui::Color32::WHITE);
     if response.on_hover_text(name).clicked() { command(state, name); }
 }
-const ICONS: &[(&str,&str,[u8;3])] = &[
-    ("New","N",[100,148,168]),("Open","O",[203,148,45]),
-    ("Save","S",[64,124,162]),("Save As","S",[91,133,181]),
-    ("Undo","<",[119,91,162]),("Redo",">",[118,105,179]),
-    ("Select","A",[145,83,98]),("Translate","+",[76,147,152]),
-    ("Rotate","R",[204,133,65]),("Scale","#",[133,113,179]),
-    ("Height Brush","H",[149,119,96]),("Smooth","M",[151,142,79]),
-    ("Flatten","F",[94,143,168]),("Noise","N",[108,107,153]),
-    ("Clone","C",[178,98,139]),("Stamp","T",[130,153,93]),
-    ("Texture Brush","T",[87,159,109]),("Color Brush","P",[186,87,153]),
-    ("Color Palette","P",[205,106,170]),("Clutter","V",[81,151,88]),
-    ("Prop Models","P",[151,128,82]),("Prop Interiors","I",[106,122,167]),
-    ("Snap Points Properties","S",[156,97,90]),("Water","W",[71,150,197]),
-    ("Water Sphere","O",[71,142,190]),("Zones","Z",[164,121,173]),
-    ("3D AREA View","3D",[59,121,166]),("AREA Inspector","I",[171,130,75]),
-    ("Land Chunk Grid","#",[171,117,70]),("Land Wireframe","L",[103,138,147]),
-    ("Lights","L",[214,168,74]),("Sky","K",[97,154,190]),
-    ("Fog","G",[130,145,153]),("Cloud Shadows","C",[150,143,160]),
-    ("Land Occlusion Nodes","X",[144,78,130]),
-    ("Land Occlusion Lines","/",[157,81,125]),
-    ("Occlusion Editor","O",[96,109,139]),
-    ("Object List","Q",[137,162,86]),
-    ("Land Area Grid","G",[179,143,93]),
-    ("Land Layer ID","I",[132,148,82]),
-    ("Material Editor","M",[105,114,166]),
-    ("Navigation Window","N",[97,164,145]),
-    ("Sky Editor","E",[106,136,187]),
-    ("Chunk Inspector","I",[190,107,113]),
-    ("Particle Editor","P",[180,87,173]),
-    ("FX","F",[176,75,139]),
+const ICONS: &[(&str, &str, [u8; 3])] = &[
+    ("Select", "A", [145, 83, 98]),
+    ("Translate", "+", [76, 147, 152]),
+    ("Rotate", "R", [204, 133, 65]),
+    ("Scale", "#", [133, 113, 179]),
+    ("Terrain Sculpt", "SC", [149, 119, 96]),
+    ("Terrain Paint", "PT", [87, 159, 109]),
+    ("Clutter", "CL", [81, 151, 88]),
+    ("Props", "PR", [151, 128, 82]),
+    ("Water", "W", [71, 150, 197]),
+    ("Environment", "EV", [97, 154, 190]),
+    ("Zones", "ZN", [164, 121, 173]),
+    ("3D AREA View", "3D", [59, 121, 166]),
+    ("Object List", "Q", [137, 162, 86]),
+    ("AREA Inspector", "IN", [171, 130, 75]),
 ];
-fn small_commands(ui: &mut egui::Ui, state: &mut GenesisState, tag: &str,
-                  labels: &[&'static str]) {
-    egui::ScrollArea::horizontal().id_salt(tag)
-        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 2.0;
-                for &label in labels {
-                    if ui.add(egui::Button::new(egui::RichText::new(label).size(8.2))
-                              .frame(false)).clicked() { command(state,label); }
-                }
-            });
-        });
-}
 // Classic Genesis chrome: menu header, multiple toolbars and bottom workspace.
 // All layout regions are nested in the top-level CentralPanel and therefore resize.
 fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
@@ -801,67 +868,20 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
             });
             if !state.toolbars_visible {return;}
             ui.separator();
-            let compact=ui.available_width()<1000.0;
-            if compact {
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("Tools").strong().size(9.));
-                    for (i,label) in ["Main","Terrain","Props","Environment","Zones"].iter().enumerate() {
-                        if ui.selectable_label(state.ribbon_tab==i,
-                            egui::RichText::new(*label).size(9.)).clicked() {
-                            state.ribbon_tab=i;
-                        }
-                    }
-                });
-            }
             egui::ScrollArea::horizontal()
                 .id_salt("genesis-icon-toolbar")
                 .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-                .show(ui,|ui| {
+                .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x=1.0;
-                        for (i,&(name,glyph,color)) in ICONS.iter().enumerate() {
-                            if compact {
-                                let group=if i<10 {0} else if i<20 {1}
-                                    else if i<27 {2} else if i<34 {3} else {4};
-                                if group!=state.ribbon_tab {continue;}
+                        ui.spacing_mut().item_spacing.x = 2.0;
+                        for (i, &(name, glyph, color)) in ICONS.iter().enumerate() {
+                            if matches!(i, 4 | 7 | 11) {
+                                ui.separator();
                             }
-                            if matches!(i,6|10|16|20|26|33) {ui.separator();}
-                            icon(ui,state,name,glyph,color);
+                            icon(ui, state, name, glyph, color);
                         }
                     });
                 });
-            let terrain:&[&'static str]=&[
-                "Double Sided","Slope","Object Wireframe","Land Wireframe",
-                "Land Area Grid","Land Chunk Grid","Land Edges","Designer Color",
-                "SkyWeights","Land Layer ID","In Flux","Highlight Primary","Align Selection",
-                "Normal","Opaque","Navigation Window","Play Now","Sky Editor",
-                "Save Package","Cell",
-            ];
-            let art:&[&'static str]=&[
-                "Fog","Land","Land Love","Prop Models","Prop Interiors","Hide Canopy",
-                "Clutter","Water","Particles","Simple Water","Water Sphere","Water Grid",
-                "Water Grid Outer Edge","Selection Mask","Chunk Inspector","Land Shadows",
-                "Dynamic Shadows","Plug Mask","Things with No Bounds",
-            ];
-            let environment:&[&'static str]=&[
-                "Sky","FullScreen Effects","Lights","Set Diffuse to Gray",
-                "Force Plastic Material","Hide Shadows","Cloud Shadows",
-                "Select Sky Override","Selected Sky Gizmos","Hide Land Color",
-                "Hide Land Layers","God Rays","Fade Unused Props","Object List",
-                "Snap Points Properties","Zones","Named Region Editor",
-            ];
-            if compact {
-                let row=match state.ribbon_tab {
-                    0|1=>terrain,2=>art,3=>environment,_=>&[
-                        "Zones","Named Region Editor","Navigation Window",
-                        "Land Occlusion Lines","Occlusion Editor"][..],
-                };
-                small_commands(ui,state,"compact-genesis-command-row",row);
-            } else {
-                small_commands(ui,state,"genesis-tool-row-1",terrain);
-                small_commands(ui,state,"genesis-tool-row-2",art);
-                small_commands(ui,state,"genesis-tool-row-3",environment);
-            }
         });
 }
 
@@ -951,7 +971,8 @@ fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAr
 
 fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             previews:&Viewports,orbit:&mut OrbitCamera,loaded:&LoadedArea,
-            streaming:&streaming::WorldStreaming) {
+            streaming:&streaming::WorldStreaming,
+            sky_mgr:&sky::SkyManager) {
     egui::CentralPanel::default()
         .frame(egui::Frame::default().fill(if state.raw_view {
             egui::Color32::TRANSPARENT
@@ -961,28 +982,13 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             if state.raw_view {
                 orbit.rect=Some([rect.left(),rect.top(),rect.right(),rect.bottom()]);
                 let response=ui.allocate_rect(rect,egui::Sense::click_and_drag());
-                if state.terrain_view==5 && loaded.tile.is_some(){
-                    let has_texture=loaded.terrain_albedo.is_some();
-                    let overlay=if has_texture {
-                        format!("TEXTURED | {}",loaded.layer_status)
-                    }else{
-                        format!("TEXTURED unavailable | RGB565 fallback | {}",loaded.layer_status)
-                    };
-                    let box_rect=egui::Rect::from_min_size(rect.min+egui::vec2(8.,8.),
-                        egui::vec2((rect.width()-16.).clamp(40.,590.),34.));
-                    ui.painter().rect_filled(box_rect,3.,
-                        egui::Color32::from_rgba_unmultiplied(20,20,27,210));
-                    ui.painter().text(box_rect.left_center()+egui::vec2(9.,0.),
-                        egui::Align2::LEFT_CENTER,overlay,
-                        egui::FontId::proportional(12.),egui::Color32::WHITE);
-                }
                 if response.dragged_by(egui::PointerButton::Secondary) {
                     let delta=ui.input(|i|i.pointer.delta());
                     orbit.yaw -= delta.x * 0.003;
                     if orbit.is_first_person {
-                        orbit.pitch = (orbit.pitch - delta.y * 0.003).clamp(-1.54, 1.54);
+                        orbit.pitch = (orbit.pitch - delta.y * 0.003).clamp(-1.52, 1.52);
                     } else {
-                        orbit.pitch = (orbit.pitch + delta.y * 0.006).clamp(0.05, 1.52);
+                        orbit.pitch = (orbit.pitch + delta.y * 0.006).clamp(0.05, 1.50);
                     }
                 }
                 if response.dragged_by(egui::PointerButton::Middle) {
@@ -1055,14 +1061,19 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                 }
                 if let Some(map) = streaming.active_map.as_ref() {
                     let mode_str = if orbit.is_first_person { "FlyCam" } else { "Orbit" };
+                    let zone_str = sky_mgr.current_zone_id.map(|z| format!(" | Zone: #{}", z)).unwrap_or_default();
+                    let sky_str = sky_mgr.current_sky_path.as_deref().map(|p| {
+                        let name = std::path::Path::new(p).file_stem().and_then(|s| s.to_str()).unwrap_or(p);
+                        format!(" | Sky: {}", name)
+                    }).unwrap_or_default();
                     let overlay = format!(
-                        "STREAMING: {} | {}/{} tiles | Origin: [{:.0}, {:.0}, {:.0}] | {} | WASD/Space/C: Fly | RMB: Look | Spd: {:.0}m/s (Wheel)",
+                        "STREAMING: {} | {}/{} tiles | Origin: [{:.0}, {:.0}, {:.0}] | {}{}{} | Spd: {:.0}m/s",
                         map.name, streaming.loaded_tiles.len(), map.tiles.len(),
                         orbit.origin().x, orbit.origin().y, orbit.origin().z,
-                        mode_str, orbit.fly_speed
+                        mode_str, zone_str, sky_str, orbit.fly_speed
                     );
                     let box_rect = egui::Rect::from_min_size(rect.min + egui::vec2(8., 8.),
-                        egui::vec2((rect.width() - 16.).clamp(40., 740.), 26.));
+                        egui::vec2((rect.width() - 16.).clamp(40., 820.), 26.));
                     ui.painter().rect_filled(box_rect, 3.,
                         egui::Color32::from_rgba_unmultiplied(20, 20, 27, 210));
                     ui.painter().text(box_rect.left_center() + egui::vec2(9., 0.),
@@ -1162,89 +1173,196 @@ fn area_inspector_panel(
 
 // A resizable dock replaces fixed-position floating tools in the default layout.
 // Classic floating property windows can still be enabled from Window > Float Properties.
-fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState,
-              loaded:&LoadedArea,client:&client_data::ClientFiles,
-              streaming:&mut streaming::WorldStreaming,
-              orbit:&mut OrbitCamera,
-              commands:&mut Commands) {
-    if ui_root.available_width()<610.0 {
+const DOCK_TABS: &[&str] = &[
+    "Sculpt", "Paint", "Clutter", "Props", "Water", "Env", "World", "Zones", "Inspect", "Assets"
+];
+
+fn dock_panels(
+    ui_root: &mut egui::Ui,
+    state: &mut GenesisState,
+    loaded: &LoadedArea,
+    client: &client_data::ClientFiles,
+    streaming: &mut streaming::WorldStreaming,
+    orbit: &mut OrbitCamera,
+    sky_mgr: &sky::SkyManager,
+    commands: &mut Commands,
+) {
+    if ui_root.available_width() < 610.0 {
         // Keep the entire center visible on small windows. Open floating mode if needed.
         return;
     }
     egui::Panel::right("genesis-properties-dock")
         .resizable(true)
-        .default_size(232.0)
-        .min_size(188.0).max_size(440.0)
+        .default_size(242.0)
+        .min_size(190.0).max_size(480.0)
         .frame(panel_frame())
-        .show(ui_root,|ui| {
+        .show(ui_root, |ui| {
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new("Genesis").strong().size(10.));
+                ui.label(egui::RichText::new("Genesis Tools").strong().size(10.5));
                 if ui.small_button("Float").clicked() {
-                    state.floating_mode=true;
-                    state.dock_visible=false;
+                    state.floating_mode = true;
+                    state.dock_visible = false;
                 }
-                if ui.small_button("×").clicked(){state.dock_visible=false;}
+                if ui.small_button("×").clicked() { state.dock_visible = false; }
             });
             ui.separator();
             ui.horizontal_wrapped(|ui| {
-                ui.spacing_mut().item_spacing.x=3.;
-                for (i,title) in ["Brush","Palette","Texture","Clutter",
-                    "Objects","World","AREA","Assets"].iter().enumerate() {
-                    if ui.selectable_label(state.dock_tab==i,
-                        egui::RichText::new(*title).size(9.)).clicked() {
-                        state.dock_tab=i;
+                ui.spacing_mut().item_spacing.x = 2.5;
+                for (i, title) in DOCK_TABS.iter().enumerate() {
+                    if ui.selectable_label(state.dock_tab == i,
+                        egui::RichText::new(*title).size(9.0)).clicked() {
+                        state.dock_tab = i;
                     }
                 }
             });
             ui.separator();
             egui::ScrollArea::vertical()
                 .id_salt("genesis-property-dock-scroll")
-                .auto_shrink([false,false])
-                .show(ui,|ui| {
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
                     match state.dock_tab {
-                        0=>dock_brush(ui,state),
-                        1=>dock_palette(ui,state),
-                        2=>dock_texture(ui,state),
-                        3=>dock_clutter(ui,state),
-                        4=>dock_objects(ui,state,loaded,client),
-                        5=>dock_world(ui,state,loaded,streaming,orbit,commands),
-                        6=>{let mut tint=state.tint;dock_area(ui,state,loaded,&mut tint);state.tint=tint;},
-                        _=>{
-                            if ui.button("Choose Client Root...").clicked(){
-                                command(state,"Choose Client Root...");
+                        0 => dock_sculpt(ui, state),
+                        1 => dock_paint(ui, state, loaded),
+                        2 => dock_clutter(ui, state),
+                        3 => dock_objects(ui, state, loaded, client),
+                        4 => dock_water(ui, state, loaded),
+                        5 => dock_environment(ui, state, sky_mgr),
+                        6 => dock_world(ui, state, loaded, streaming, orbit, commands),
+                        7 => dock_zones(ui, state, sky_mgr),
+                        8 => dock_area(ui, state, loaded),
+                        _ => {
+                            if ui.button("Choose Client Root...").clicked() {
+                                command(state, "Choose Client Root...");
                             }
-                            client_data::asset_summary(ui,client,loaded.tile.as_ref());
-                        },
+                            client_data::asset_summary(ui, client, loaded.tile.as_ref());
+                        }
                     }
                 });
         });
 }
-fn dock_brush(ui:&mut egui::Ui,state:&mut GenesisState) {
-    ui.label(egui::RichText::new("Color Brush Properties").strong().size(10.));
+
+fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState) {
+    ui.label(egui::RichText::new("Terrain Sculpt Properties").strong().size(10.5));
     ui.separator();
-    row_slider(ui,"Size",&mut state.brush_size,0.01..=2.);
-    row_slider(ui,"Power",&mut state.power,0.0..=2.);
-    row_slider(ui,"F/O",&mut state.falloff,0.0..=1.);
+    ui.label(egui::RichText::new("Sculpt Tools").strong().size(9.0));
     ui.horizontal_wrapped(|ui| {
-        for (i,title) in ["Circle","Chunk","Selection"].iter().enumerate() {
-            ui.radio_value(&mut state.circle,i,*title);
+        for tool in ["Height Brush", "Smooth", "Flatten", "Noise", "Clone", "Stamp"] {
+            let selected = state.sculpt_tool == tool;
+            if ui.selectable_label(selected, egui::RichText::new(tool).size(9.0)).clicked() {
+                state.sculpt_tool = tool;
+                state.status = format!("Sculpt Tool: {tool}");
+            }
         }
     });
-    ui.checkbox(&mut state.restricted,"Restrict to Selection");
+    ui.separator();
+    ui.label(egui::RichText::new(format!("Active Tool: {}", state.sculpt_tool)).strong().size(9.5).color(INK));
+    row_slider(ui, "Size", &mut state.brush_size, 0.01..=5.0);
+    row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
+    row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
+    ui.horizontal_wrapped(|ui| {
+        for (i, title) in ["Circle", "Chunk", "Selection"].iter().enumerate() {
+            ui.radio_value(&mut state.circle, i, *title);
+        }
+    });
+    ui.checkbox(&mut state.restricted, "Restrict to Selection");
     ui.horizontal(|ui| {
-        ui.radio_value(&mut state.custom_tip,false,"Normal Tip");
-        ui.radio_value(&mut state.custom_tip,true,"Custom Tip");
+        ui.radio_value(&mut state.custom_tip, false, "Normal Tip");
+        ui.radio_value(&mut state.custom_tip, true, "Custom Tip");
     });
     ui.separator();
-    ui.label(egui::RichText::new("Advanced Settings").strong().size(9.));
-    for (i,title) in [
-        "Normal","Burn Tool","Dodge Tool","Overlay","Saturate Sponge",
-        "Desaturate Sponge","Color"].iter().enumerate() {
-        ui.radio_value(&mut state.mode,i,*title);
+    ui.label(egui::RichText::new("Sculpt Modes").strong().size(9.0));
+    for (i, title) in [
+        "Normal (Raise / Lower)", "Smooth", "Flatten to Height",
+        "Add Noise", "Clone Height", "Stamp Geometry"
+    ].iter().enumerate() {
+        ui.radio_value(&mut state.mode, i, *title);
     }
     ui.separator();
-    if ui.button("Clear Selection").clicked(){command(state,"Clear Selection");}
-    ui.label(egui::RichText::new("Brush functions are UI placeholders").size(9.).color(EDGE));
+    ui.horizontal(|ui| {
+        if ui.button("Clear Selection").clicked() { command(state, "Clear Selection"); }
+        if ui.button("Invert Brush").clicked() { state.power = -state.power; }
+    });
+    ui.label(egui::RichText::new("Sculpt operations are preview-only").size(8.5).color(EDGE));
+}
+
+fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea) {
+    ui.label(egui::RichText::new("Terrain Paint Properties").strong().size(10.5));
+    ui.separator();
+    ui.label(egui::RichText::new("Paint Tools").strong().size(9.0));
+    ui.horizontal_wrapped(|ui| {
+        for tool in ["Texture Brush", "Color Brush", "Color Palette"] {
+            let selected = state.paint_tool == tool;
+            if ui.selectable_label(selected, egui::RichText::new(tool).size(9.0)).clicked() {
+                state.paint_tool = tool;
+                state.status = format!("Paint Tool: {tool}");
+            }
+        }
+    });
+    ui.separator();
+    match state.paint_tool {
+        "Texture Brush" => {
+            ui.label(egui::RichText::new("Texture Layer Splatting").strong().size(9.5).color(INK));
+            row_slider(ui, "Size", &mut state.brush_size, 0.01..=5.0);
+            row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
+            row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
+            ui.separator();
+            ui.label(egui::RichText::new("Land Texture Layers").strong().size(9.0));
+            ui.horizontal_wrapped(|ui| {
+                for i in 0..4 {
+                    ui.radio_value(&mut state.texture_index, i, format!("Slot {i}"));
+                }
+            });
+            ui.checkbox(&mut state.restricted, "Restrict to Selection");
+            ui.separator();
+            ui.label(egui::RichText::new("Macro Tint & Blending").strong().size(9.0));
+            ui.horizontal(|ui| {
+                ui.label("Macro tint");
+                ui.add(egui::Slider::new(&mut state.tint.strength, 0.0..=1.0));
+            });
+            ui.checkbox(&mut state.tint.gamma_space, "Tint in gamma space");
+            ui.label(egui::RichText::new(&loaded.layer_status).small().strong());
+            if loaded.terrain_albedo.is_none() {
+                ui.colored_label(egui::Color32::DARK_RED, "No texture atlas: showing RGB565 fallback.");
+            }
+            if !loaded.missing_textures.is_empty() {
+                ui.collapsing(format!("Missing textures ({})", loaded.missing_textures.len()), |ui| {
+                    for issue in loaded.missing_textures.iter().take(20) {
+                        ui.monospace(issue);
+                    }
+                });
+            }
+        }
+        "Color Brush" => {
+            ui.label(egui::RichText::new("Color Brush Properties").strong().size(9.5).color(INK));
+            row_slider(ui, "Size", &mut state.brush_size, 0.01..=5.0);
+            row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
+            row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
+            ui.horizontal_wrapped(|ui| {
+                for (i, title) in ["Circle", "Chunk", "Selection"].iter().enumerate() {
+                    ui.radio_value(&mut state.circle, i, *title);
+                }
+            });
+            ui.checkbox(&mut state.restricted, "Restrict to Selection");
+            ui.horizontal(|ui| {
+                ui.radio_value(&mut state.custom_tip, false, "Normal Tip");
+                ui.radio_value(&mut state.custom_tip, true, "Custom Tip");
+            });
+            ui.separator();
+            ui.label(egui::RichText::new("Color Modes").strong().size(9.0));
+            for (i, title) in [
+                "Normal", "Burn Tool", "Dodge Tool", "Overlay",
+                "Saturate Sponge", "Desaturate Sponge", "Color"
+            ].iter().enumerate() {
+                ui.radio_value(&mut state.mode, i, *title);
+            }
+            ui.separator();
+            if ui.button("Clear Selection").clicked() { command(state, "Clear Selection"); }
+        }
+        "Color Palette" => {
+            dock_palette(ui, state);
+        }
+        _ => {}
+    }
 }
 fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState) {
     ui.label(egui::RichText::new("Color Palette").strong().size(10.));
@@ -1292,21 +1410,6 @@ fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState) {
         });
         ui.separator();
     }
-}
-fn dock_texture(ui:&mut egui::Ui,state:&mut GenesisState) {
-    ui.label(egui::RichText::new("Texture Brush Properties").strong().size(10.));
-    row_slider(ui,"Size",&mut state.brush_size,0.01..=2.);
-    row_slider(ui,"Power",&mut state.power,0.0..=2.);
-    row_slider(ui,"F/O",&mut state.falloff,0.0..=1.);
-    ui.separator();
-    ui.label("Land Texture Layers");
-    for i in 0..4 {
-        ui.radio_value(&mut state.texture_index,i,format!("WorldLayer slot {i}"));
-    }
-    ui.checkbox(&mut state.restricted,"Restrict to Selection");
-    ui.separator();
-    ui.label(egui::RichText::new("Height-based blending: placeholder")
-        .color(EDGE).size(9.));
 }
 fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState) {
     ui.label(egui::RichText::new("Clutter Preset").strong().size(10.));
@@ -1360,6 +1463,62 @@ fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea,
     if ui.button("Align Selection").clicked(){command(state,"Align Selection");}
     if ui.button("Snap Points Properties").clicked(){
         command(state,"Snap Points Properties");
+    }
+}
+
+fn dock_water(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea) {
+    ui.label(egui::RichText::new("Water Properties").strong().size(10.5));
+    ui.separator();
+    ui.label(egui::RichText::new(format!("Active Water Bodies: {}", loaded.water_count)).size(9.0));
+    ui.separator();
+    ui.label(egui::RichText::new("Water Tools").strong().size(9.0));
+    for tool in ["Simple Water", "Water Grid", "Water Sphere", "Water Grid Outer Edge"] {
+        if ui.button(tool).clicked() {
+            command(state, tool);
+        }
+    }
+    ui.separator();
+    ui.label(egui::RichText::new("Shading & Surface").strong().size(9.0));
+    ui.label("WildStar oceanic and river surface shader active.");
+}
+
+fn dock_environment(ui: &mut egui::Ui, state: &mut GenesisState, sky_mgr: &sky::SkyManager) {
+    ui.label(egui::RichText::new("Environment & Sky").strong().size(10.5));
+    ui.separator();
+    ui.label(egui::RichText::new("Time of Day").strong().size(9.0));
+    ui.add(egui::Slider::new(&mut state.time_of_day, 0.0..=24.0)
+        .show_value(true).custom_formatter(|v, _| format!("{v:04.1} h")));
+    ui.separator();
+    ui.label(egui::RichText::new("Current Sky Context").strong().size(9.0));
+    if let Some(zone) = sky_mgr.current_zone_id {
+        ui.monospace(format!("Zone ID: #{}", zone));
+    }
+    if let Some(sky_path) = sky_mgr.current_sky_path.as_ref() {
+        ui.monospace(format!("Sky: {}", sky_path));
+    }
+    ui.separator();
+    ui.label(egui::RichText::new("Sky Environment Tools").strong().size(9.0));
+    for tool in ["Sky Editor", "Fog Settings", "Cloud Shadows", "God Rays", "FullScreen Effects"] {
+        if ui.button(tool).clicked() {
+            command(state, tool);
+        }
+    }
+}
+
+fn dock_zones(ui: &mut egui::Ui, state: &mut GenesisState, sky_mgr: &sky::SkyManager) {
+    ui.label(egui::RichText::new("Zones & Named Regions").strong().size(10.5));
+    ui.separator();
+    if let Some(zone) = sky_mgr.current_zone_id {
+        ui.label(egui::RichText::new(format!("Current Zone ID: #{}", zone)).strong());
+    } else {
+        ui.label("No active zone sampled.");
+    }
+    ui.separator();
+    ui.label(egui::RichText::new("Zone Tools").strong().size(9.0));
+    for tool in ["Named Region Editor", "Navigation Window", "Land Layer ID", "Land Occlusion Lines"] {
+        if ui.button(tool).clicked() {
+            command(state, tool);
+        }
     }
 }
 fn dock_world(
@@ -1448,14 +1607,7 @@ fn dock_world(
             if ids.is_empty() { ui.label("No decoded WorldZone IDs"); }
         });
         ui.collapsing("Focused AREA WorldSky IDs", |ui| {
-            let mut ids = std::collections::BTreeSet::new();
-            for cell in area.cells.iter().flatten() {
-                if let Some(corners) = cell.sky_ids() {
-                    for corner in corners {
-                        for id in corner { if id != 0 { ids.insert(id); } }
-                    }
-                }
-            }
+            let ids = area.all_sky_ids();
             for id in ids.iter().take(64) { ui.monospace(format!("WorldSky {id}")); }
             if ids.is_empty() { ui.label("No decoded WorldSky IDs"); }
         });
@@ -1615,7 +1767,7 @@ fn zone_browser_dialog(
                             match streaming.open_map(&map_name, client, orbit, commands) {
                                 Ok(_) => {
                                     state.status = format!("Loaded zone {map_name}");
-                                    state.dock_tab = 5;
+                                    state.dock_tab = 6;
                                     state.open_zone_dialog = false;
                                 }
                                 Err(e) => {
@@ -1639,48 +1791,15 @@ fn zone_browser_dialog(
         state.open_zone_dialog = false;
     }
 }
-fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea,tint:&mut terrain_splat::TintSettings){
-    ui.label("Terrain preview");
-    ui.horizontal_wrapped(|ui|{
-        for (i,name) in ["Height","RGB565","Layer IDs","Zone IDs","Blend","Textured"].iter().enumerate(){
-            ui.selectable_value(&mut state.terrain_view,i,*name);
-        }
-    });
-    if state.terrain_view>=2 && state.terrain_view!=3 && state.terrain_view!=5{
-        ui.horizontal(|ui|{
-            ui.label("Layer slot");
-            ui.add(egui::Slider::new(&mut state.texture_index,0..=3));
-        });
-    }
-    if state.terrain_view==5{
-        ui.horizontal(|ui|{
-            ui.label("Macro tint");
-            ui.add(egui::Slider::new(&mut tint.strength,0.0..=1.0));
-        });
-        ui.checkbox(&mut tint.gamma_space,"Tint in gamma space (like the old atlas)");
-        ui.label(egui::RichText::new(&loaded.layer_status).small().strong());
-        if loaded.terrain_albedo.is_none(){
-            ui.colored_label(egui::Color32::DARK_RED,
-                "No texture atlas loaded: showing original AREA RGB565 instead.");
-        }
-        for note in &loaded.layer_notes {
-            ui.label(egui::RichText::new(note).small().color(EDGE));
-        }
-        if !loaded.missing_textures.is_empty(){
-            ui.collapsing(format!("Missing / unsupported textures ({})",
-                loaded.missing_textures.len()),|ui|{
-                for issue in loaded.missing_textures.iter().take(70){
-                    ui.monospace(issue);
-                }
-            });
-        }
-    }
-    if let Some(area)=loaded.tile.as_ref(){
-        area_ui::show(ui,&mut state.selected_cell,area,
-            &loaded.props,loaded.prop_issue.as_deref());
-    }else{
+fn dock_area(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea) {
+    ui.label(egui::RichText::new("AREA Binary Inspector").strong().size(10.5));
+    ui.separator();
+    if let Some(area) = loaded.tile.as_ref() {
+        area_ui::show(ui, &mut state.selected_cell, area,
+            &loaded.props, loaded.prop_issue.as_deref());
+    } else {
         ui.label("No AREA tile loaded.");
-        if ui.button("Open AREA...").clicked(){command(state,"Open AREA...");}
+        if ui.button("Open AREA...").clicked() { command(state, "Open AREA..."); }
     }
 }
 

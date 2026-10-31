@@ -57,56 +57,62 @@ impl AreaCell {
         let mut bodies = Vec::new();
         for chunk in &self.subchunks {
             if &chunk.id == b"GtAW" || &chunk.id == b"WATG" {
-                if chunk.data.len() < 4 { continue; }
-                let body_count = u32::from_le_bytes(chunk.data[0..4].try_into().unwrap()) as usize;
+                let Some(bc_bytes) = chunk.data.get(0..4).and_then(|s| s.try_into().ok()) else { continue; };
+                let body_count = u32::from_le_bytes(bc_bytes) as usize;
                 let mut pos = 4usize;
                 for _ in 0..body_count {
-                    if pos + 80 > chunk.data.len() { break; }
-                    let header: [u8; 80] = chunk.data[pos..pos + 80].try_into().unwrap();
+                    let Some(hdr_bytes) = chunk.data.get(pos..pos + 80).and_then(|s| s.try_into().ok()) else { break; };
+                    let header: [u8; 80] = hdr_bytes;
                     let min = [
-                        f32::from_bits(u32::from_le_bytes(header[0..4].try_into().unwrap())),
-                        f32::from_bits(u32::from_le_bytes(header[4..8].try_into().unwrap())),
-                        f32::from_bits(u32::from_le_bytes(header[8..12].try_into().unwrap())),
+                        f32::from_le_bytes(header[0..4].try_into().unwrap_or([0; 4])),
+                        f32::from_le_bytes(header[4..8].try_into().unwrap_or([0; 4])),
+                        f32::from_le_bytes(header[8..12].try_into().unwrap_or([0; 4])),
                     ];
                     let max = [
-                        f32::from_bits(u32::from_le_bytes(header[12..16].try_into().unwrap())),
-                        f32::from_bits(u32::from_le_bytes(header[16..20].try_into().unwrap())),
-                        f32::from_bits(u32::from_le_bytes(header[20..24].try_into().unwrap())),
+                        f32::from_le_bytes(header[12..16].try_into().unwrap_or([0; 4])),
+                        f32::from_le_bytes(header[16..20].try_into().unwrap_or([0; 4])),
+                        f32::from_le_bytes(header[20..24].try_into().unwrap_or([0; 4])),
                     ];
-                    let index_count = u32::from_le_bytes(header[64..68].try_into().unwrap()) as usize;
-                    let vertex_count = u32::from_le_bytes(header[68..72].try_into().unwrap()) as usize;
+                    let index_count = u32::from_le_bytes(header[64..68].try_into().unwrap_or([0; 4])) as usize;
+                    let vertex_count = u32::from_le_bytes(header[68..72].try_into().unwrap_or([0; 4])) as usize;
                     pos += 80;
 
                     let idx_bytes = index_count.checked_mul(4).unwrap_or(usize::MAX);
                     let vtx_bytes = vertex_count.checked_mul(72).unwrap_or(usize::MAX);
-                    if pos + idx_bytes + vtx_bytes > chunk.data.len() { break; }
+                    if pos.checked_add(idx_bytes).and_then(|p| p.checked_add(vtx_bytes)).map(|e| e > chunk.data.len()).unwrap_or(true) {
+                        break;
+                    }
 
                     let mut indices = Vec::with_capacity(index_count);
                     for i in 0..index_count {
                         let ip = pos + i * 4;
-                        indices.push(u32::from_le_bytes(chunk.data[ip..ip + 4].try_into().unwrap()));
+                        if let Some(ib) = chunk.data.get(ip..ip + 4).and_then(|s| s.try_into().ok()) {
+                            indices.push(u32::from_le_bytes(ib));
+                        }
                     }
                     pos += idx_bytes;
 
                     let mut vertices = Vec::with_capacity(vertex_count);
                     for i in 0..vertex_count {
                         let vp = pos + i * 72;
-                        let raw: [u8; 72] = chunk.data[vp..vp + 72].try_into().unwrap();
-                        let position = [
-                            f32::from_bits(u32::from_le_bytes(raw[0..4].try_into().unwrap())),
-                            f32::from_bits(u32::from_le_bytes(raw[4..8].try_into().unwrap())),
-                            f32::from_bits(u32::from_le_bytes(raw[8..12].try_into().unwrap())),
-                        ];
-                        let normal = [
-                            f32::from_bits(u32::from_le_bytes(raw[12..16].try_into().unwrap())),
-                            f32::from_bits(u32::from_le_bytes(raw[16..20].try_into().unwrap())),
-                            f32::from_bits(u32::from_le_bytes(raw[20..24].try_into().unwrap())),
-                        ];
-                        let uv = [
-                            f32::from_bits(u32::from_le_bytes(raw[48..52].try_into().unwrap())),
-                            f32::from_bits(u32::from_le_bytes(raw[52..56].try_into().unwrap())),
-                        ];
-                        vertices.push(WaterVertex { position, normal, uv, raw });
+                        if let Some(rb) = chunk.data.get(vp..vp + 72).and_then(|s| s.try_into().ok()) {
+                            let raw: [u8; 72] = rb;
+                            let position = [
+                                f32::from_le_bytes(raw[0..4].try_into().unwrap_or([0; 4])),
+                                f32::from_le_bytes(raw[4..8].try_into().unwrap_or([0; 4])),
+                                f32::from_le_bytes(raw[8..12].try_into().unwrap_or([0; 4])),
+                            ];
+                            let normal = [
+                                f32::from_le_bytes(raw[12..16].try_into().unwrap_or([0; 4])),
+                                f32::from_le_bytes(raw[16..20].try_into().unwrap_or([0; 4])),
+                                f32::from_le_bytes(raw[20..24].try_into().unwrap_or([0; 4])),
+                            ];
+                            let uv = [
+                                f32::from_le_bytes(raw[48..52].try_into().unwrap_or([0; 4])),
+                                f32::from_le_bytes(raw[52..56].try_into().unwrap_or([0; 4])),
+                            ];
+                            vertices.push(WaterVertex { position, normal, uv, raw });
+                        }
                     }
                     pos += vtx_bytes;
 
@@ -424,5 +430,66 @@ mod tests{
     #[test]
     fn reject_truncated(){
         assert!(RawArea::from_bytes(b"aera\x00\x00\x00\x00KNHC\xff\xff\xff\xff".to_vec()).is_err());
+    }
+}
+
+impl RawArea {
+    /// Collect all unique WorldSky IDs referenced across all cells in this area tile.
+    pub fn all_sky_ids(&self) -> std::collections::BTreeSet<u32> {
+        let mut ids = std::collections::BTreeSet::new();
+        for cell in self.cells.iter().flatten() {
+            if let Some(corners) = cell.sky_ids() {
+                for corner in corners {
+                    for id in corner {
+                        if id != 0 {
+                            ids.insert(id);
+                        }
+                    }
+                }
+            }
+        }
+        ids
+    }
+
+    /// Collect all unique WorldZone IDs referenced across all cells in this area tile.
+    pub fn all_zone_ids(&self) -> std::collections::BTreeSet<u32> {
+        let mut ids = std::collections::BTreeSet::new();
+        for cell in self.cells.iter().flatten() {
+            if let Some(zones) = cell.zones() {
+                for id in zones {
+                    if id != 0 {
+                        ids.insert(id);
+                    }
+                }
+            }
+        }
+        ids
+    }
+
+    /// Sample blended sky IDs and zone ID at local tile coordinates (0.0 .. 512.0).
+    pub fn sample_sky_and_zone(&self, rel_x: f32, rel_z: f32) -> (Vec<(u32, f32)>, Option<u32>) {
+        let cx = (rel_x / 32.0).floor().clamp(0.0, 15.0) as usize;
+        let cz = (rel_z / 32.0).floor().clamp(0.0, 15.0) as usize;
+        let cell_idx = cz * 16 + cx;
+        let u = (rel_x - cx as f32 * 32.0) / 32.0;
+        let v = (rel_z - cz as f32 * 32.0) / 32.0;
+
+        let Some(Some(cell)) = self.cells.get(cell_idx) else {
+            return (Vec::new(), None);
+        };
+
+        let skies = if let (Some(ids), Some(weights)) = (cell.sky_ids(), cell.sky_weights()) {
+            crate::sky::blend_cell_sky_weights(&ids, &weights, u, v)
+        } else {
+            Vec::new()
+        };
+
+        let sub_x = (u * 64.0).floor().clamp(0.0, 63.0) as usize;
+        let sub_z = (v * 64.0).floor().clamp(0.0, 63.0) as usize;
+        let zone = cell.zone_id_at(sub_x, sub_z).or_else(|| {
+            cell.zones().and_then(|z| z.into_iter().find(|&id| id != 0))
+        });
+
+        (skies, zone)
     }
 }

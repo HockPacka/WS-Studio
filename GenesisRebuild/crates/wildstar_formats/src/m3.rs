@@ -24,7 +24,7 @@ pub struct M3Mesh {
     pub material:u16,
     pub bone_start:u16,
     pub bone_count:u16,
-    pub group:u8,
+    pub group:u16,
     pub cluster:u8,
     pub geometry:u32,
     pub flags:u32,
@@ -32,6 +32,21 @@ pub struct M3Mesh {
 impl M3Mesh {
     /// The client excludes meshes with `(flags & 0x0A) == 0x0A` from the normal draw list.
     pub fn is_hidden(&self)->bool{self.flags&0x0A==0x0A}
+
+    /// Visibility filter matching WildStar client `FUN_1402f9f10`:
+    /// 1. Collision / volume envelopes (`flags & 0x0A == 0x0A`) are never drawn.
+    /// 2. If `group` is an index into `mesh_display`, the group's default bit (`flags & 1`)
+    ///    must be set. If bit 0 is 0, the mesh is an alternate / damage / animated state and skipped.
+    /// 3. If `group` is 0xFFFF (or not within `mesh_display`), it defaults to visible.
+    pub fn is_visible_default(&self,mesh_display:&[(u16,u16)])->bool{
+        if self.is_hidden(){return false;}
+        let g=self.group as usize;
+        if g<mesh_display.len(){
+            (mesh_display[g].1&1)!=0
+        }else{
+            true
+        }
+    }
 }
 #[derive(Debug,Clone)]
 pub struct M3Texture {
@@ -115,7 +130,7 @@ impl M3Model {
     /// Index list of all meshes that the client draws by default.
     pub fn visible_indices(&self)->Vec<u32>{
         let mut out=Vec::new();
-        for mesh in self.meshes.iter().filter(|m|!m.is_hidden()){
+        for mesh in self.meshes.iter().filter(|m|m.is_visible_default(&self.mesh_display)){
             let s=mesh.start_index as usize;
             out.extend_from_slice(&self.indices[s..s+mesh.index_count as usize]);
         }
@@ -301,7 +316,7 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
                 start_index:u32_at(d,r).unwrap_or(0),start_vertex:u32_at(d,r+4).unwrap_or(0),
                 index_count:u32_at(d,r+8).unwrap_or(0),vertex_count:u32_at(d,r+12).unwrap_or(0),
                 material:u16_at(d,r+0x16).unwrap_or(0),bone_start:u16_at(d,r+0x10).unwrap_or(0),
-                bone_count:u16_at(d,r+0x12).unwrap_or(0),group:d[r+0x1E],cluster:d[r+0x22],
+                bone_count:u16_at(d,r+0x12).unwrap_or(0),group:u16_at(d,r+0x1E).unwrap_or(0xFFFF),cluster:d[r+0x22],
                 geometry:gi as u32,flags:u32_at(d,r+0x38).unwrap_or(0),
             };
             if me.start_index as u64+me.index_count as u64>icount as u64
@@ -407,6 +422,18 @@ mod tests {
         let mut m=read_m3(&sample()).unwrap();
         m.meshes[0].flags=0x0A;
         assert!(m.visible_indices().is_empty());
+    }
+    #[test]
+    fn mesh_display_default_visibility(){
+        let mut m=read_m3(&sample()).unwrap();
+        m.mesh_display = vec![(10, 1), (11, 0)]; // group 0 default ON, group 1 default OFF
+        m.meshes[0].group = 0;
+        assert!(m.meshes[0].is_visible_default(&m.mesh_display));
+        m.meshes[0].group = 1;
+        assert!(!m.meshes[0].is_visible_default(&m.mesh_display));
+        assert!(m.visible_indices().is_empty());
+        m.meshes[0].group = 0xFFFF; // unassigned
+        assert!(m.meshes[0].is_visible_default(&m.mesh_display));
     }
     #[test]
     fn half_floats(){

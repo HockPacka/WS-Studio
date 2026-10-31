@@ -21,7 +21,7 @@ use crate::client_data::ClientFiles;
 use crate::props;
 use crate::terrain;
 use crate::terrain_material::{self, AtlasResult, TextureCache};
-use crate::terrain_splat::{SplatExt, TerrainMaterial};
+use crate::terrain_splat::{fallback_extension, TerrainMaterial};
 use bevy::pbr::ExtendedMaterial;
 use crate::water;
 use crate::{GenesisState, OrbitCamera};
@@ -32,6 +32,15 @@ pub struct TileLoadRequest {
     pub path: PathBuf,
     pub preview: usize,
     pub layer_index: usize,
+}
+
+/// Cell-level sky and zone data for dynamic atmospheric and zone evaluation.
+#[derive(Clone, Default, Debug)]
+pub struct CellSkyZoneData {
+    pub sky_ids: Option<[[u32; 4]; 4]>,
+    pub sky_weights: Option<[[u8; 4]; 4]>,
+    pub zones: Option<[u32; 4]>,
+    pub zone_flags: Option<Vec<u8>>,
 }
 
 /// Baked data produced in the background thread without main-thread blocking.
@@ -47,6 +56,7 @@ pub struct TileBakedData {
     pub cell_count: usize,
     pub water_count: usize,
     pub layer_status: String,
+    pub cell_skies_zones: Vec<Option<CellSkyZoneData>>,
 }
 
 /// Response returned from the background worker.
@@ -67,6 +77,7 @@ pub struct StreamedTile {
     pub cell_count: usize,
     pub water_count: usize,
     pub layer_status: String,
+    pub cell_skies_zones: Vec<Option<CellSkyZoneData>>,
 }
 
 #[derive(Resource)]
@@ -75,6 +86,7 @@ pub struct WorldStreaming {
     pub active_map: Option<MapDiscovery>,
     pub loaded_tiles: HashMap<ZoneTileCoords, StreamedTile>,
     pub in_flight: HashSet<ZoneTileCoords>,
+    pub failed_tiles: HashSet<ZoneTileCoords>,
     pub streaming_radius: i32,
     pub unload_hysteresis: i32,
     pub camera_tile: Option<ZoneTileCoords>,
@@ -98,6 +110,7 @@ impl Default for WorldStreaming {
             active_map: None,
             loaded_tiles: HashMap::new(),
             in_flight: HashSet::new(),
+            failed_tiles: HashSet::new(),
             streaming_radius: 1, // 3x3 tiles = 1536m x 1536m active area
             unload_hysteresis: 1, // Unload at radius + 1
             camera_tile: None,
@@ -227,6 +240,21 @@ impl WorldStreaming {
         let props = area.prop_placements().unwrap_or_default();
         let cell_count = area.cell_count();
 
+        // 5. Sky & Zone Cell Data
+        let mut cell_skies_zones = Vec::with_capacity(256);
+        for cell_opt in &area.cells {
+            if let Some(cell) = cell_opt {
+                cell_skies_zones.push(Some(CellSkyZoneData {
+                    sky_ids: cell.sky_ids(),
+                    sky_weights: cell.sky_weights(),
+                    zones: cell.zones(),
+                    zone_flags: cell.block(16).map(|b| b.to_vec()),
+                }));
+            } else {
+                cell_skies_zones.push(None);
+            }
+        }
+
         Ok(TileBakedData {
             coords: req.coords,
             path: req.path.clone(),
@@ -238,6 +266,7 @@ impl WorldStreaming {
             cell_count,
             water_count,
             layer_status,
+            cell_skies_zones,
         })
     }
 
@@ -274,6 +303,7 @@ impl WorldStreaming {
 
         self.active_map = Some(discovery);
         self.camera_tile = Some(center_tile);
+        self.failed_tiles.clear();
         self.status_message = format!(
             "Opened map '{map_name}' ({} tiles). Streaming around {:?}.",
             self.active_map.as_ref().unwrap().tiles.len(),
@@ -286,15 +316,22 @@ impl WorldStreaming {
     /// Clear all loaded tiles and despawn their entities.
     pub fn clear_all(&mut self, commands: &mut Commands) {
         for (_, tile) in self.loaded_tiles.drain() {
-            commands.entity(tile.terrain_entity).despawn();
+            if let Ok(mut ent) = commands.get_entity(tile.terrain_entity) {
+                ent.despawn();
+            }
             if let Some(w) = tile.water_entity {
-                commands.entity(w).despawn();
+                if let Ok(mut ent) = commands.get_entity(w) {
+                    ent.despawn();
+                }
             }
             for p in tile.prop_entities {
-                commands.entity(p).despawn();
+                if let Ok(mut ent) = commands.get_entity(p) {
+                    ent.despawn();
+                }
             }
         }
         self.in_flight.clear();
+        self.failed_tiles.clear();
     }
 
     /// Scan and refresh the list of all available zones in ClientData/Map.
@@ -303,6 +340,63 @@ impl WorldStreaming {
             let map_dir = client_dir.join("Map");
             self.available_maps = MapDiscovery::list_maps(&map_dir);
         }
+    }
+
+    /// Sample blended skies and zone ID at continuous world coordinates (X, Z).
+    pub fn sample_sky_and_zone_at(&self, world_x: f32, world_z: f32) -> (Vec<(u32, f32)>, Option<u32>) {
+        let coords = ZoneTileCoords::from_world_pos(world_x, world_z);
+        let Some(tile) = self.loaded_tiles.get(&coords) else {
+            return (Vec::new(), None);
+        };
+        let [min_x, min_z] = coords.world_origin();
+        let rel_x = (world_x - min_x).clamp(0.0, 511.999);
+        let rel_z = (world_z - min_z).clamp(0.0, 511.999);
+        let cx = (rel_x / 32.0).floor().clamp(0.0, 15.0) as usize;
+        let cz = (rel_z / 32.0).floor().clamp(0.0, 15.0) as usize;
+        let cell_idx = cz * 16 + cx;
+        let u = (rel_x - cx as f32 * 32.0) / 32.0;
+        let v = (rel_z - cz as f32 * 32.0) / 32.0;
+
+        let Some(Some(cell)) = tile.cell_skies_zones.get(cell_idx) else {
+            return (Vec::new(), None);
+        };
+
+        let skies = if let (Some(ids), Some(weights)) = (&cell.sky_ids, &cell.sky_weights) {
+            wildstar_formats::sky::blend_cell_sky_weights(ids, weights, u, v)
+        } else {
+            Vec::new()
+        };
+
+        let sub_x = (u * 64.0).floor().clamp(0.0, 63.0) as usize;
+        let sub_z = (v * 64.0).floor().clamp(0.0, 63.0) as usize;
+        let zone = if let (Some(flags), Some(zones)) = (&cell.zone_flags, &cell.zones) {
+            let slot = flags.get(sub_z * 64 + sub_x).map(|f| ((f >> 3) & 3) as usize).unwrap_or(0);
+            zones.get(slot).copied().filter(|&id| id != 0)
+        } else {
+            cell.zones.as_ref().and_then(|z| z.iter().copied().find(|&id| id != 0))
+        };
+
+        (skies, zone)
+    }
+
+    /// Return any active sky ID found in loaded streaming tiles as a fallback.
+    pub fn fallback_sky_id(&self) -> Option<u32> {
+        for tile in self.loaded_tiles.values() {
+            for cell_opt in &tile.cell_skies_zones {
+                if let Some(cell) = cell_opt {
+                    if let Some(ids) = &cell.sky_ids {
+                        for corner in ids {
+                            for &id in corner {
+                                if id != 0 {
+                                    return Some(id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 }
 
@@ -323,9 +417,9 @@ pub fn update_world_streaming(
         return;
     }
 
-    // 1. Process responses from background workers (budget of up to 4 tiles per frame for smooth 60 FPS)
+    // 1. Process responses from background workers (budget of 1 tile per frame eliminates frame-time spikes)
     let mut processed_this_frame = 0;
-    while processed_this_frame < 4 {
+    while processed_this_frame < 1 {
         let resp = match streaming
             .receiver
             .as_ref()
@@ -362,7 +456,7 @@ pub fn update_world_streaming(
                 let has_splat = splat.is_some();
                 let extension = match splat {
                     Some(data) => data.into_extension(&mut images, state.terrain_view == 5),
-                    None => SplatExt::default(),
+                    None => fallback_extension(&mut images),
                 };
                 let terrain_mat = terrain_materials.add(ExtendedMaterial {
                     base: StandardMaterial {
@@ -405,6 +499,7 @@ pub fn update_world_streaming(
                 let water_entity = baked.water_mesh.map(|wmesh| {
                     commands
                         .spawn((
+                            water::GenesisWater,
                             Mesh3d(meshes.add(wmesh)),
                             MeshMaterial3d(materials.add(water::water_material())),
                             Transform::default(),
@@ -432,11 +527,13 @@ pub fn update_world_streaming(
                         cell_count: baked.cell_count,
                         water_count: baked.water_count,
                         layer_status: baked.layer_status,
+                        cell_skies_zones: baked.cell_skies_zones,
                     },
                 );
             }
             Err(e) => {
                 eprintln!("Streaming error for {:?}: {e}", resp.coords);
+                streaming.failed_tiles.insert(resp.coords);
             }
         }
     }
@@ -461,21 +558,28 @@ pub fn update_world_streaming(
 
     for coords in tiles_to_unload {
         if let Some(tile) = streaming.loaded_tiles.remove(&coords) {
-            commands.entity(tile.terrain_entity).despawn();
+            if let Ok(mut ent) = commands.get_entity(tile.terrain_entity) {
+                ent.despawn();
+            }
             if let Some(w) = tile.water_entity {
-                commands.entity(w).despawn();
+                if let Ok(mut ent) = commands.get_entity(w) {
+                    ent.despawn();
+                }
             }
             for p in tile.prop_entities {
-                commands.entity(p).despawn();
+                if let Ok(mut ent) = commands.get_entity(p) {
+                    ent.despawn();
+                }
             }
         }
     }
+    streaming.failed_tiles.retain(|coords| coords.chebyshev_distance(&cam_tile) <= max_dist);
 
     // 4. Determine missing tiles within streaming radius, prioritized by distance to camera
     let wanted_tiles = discovery.tiles_in_radius(cam_tile, streaming.streaming_radius);
     let mut missing: Vec<ZoneTileCoords> = wanted_tiles
         .into_iter()
-        .filter(|c| !streaming.loaded_tiles.contains_key(c) && !streaming.in_flight.contains(c))
+        .filter(|c| !streaming.loaded_tiles.contains_key(c) && !streaming.in_flight.contains(c) && !streaming.failed_tiles.contains(c))
         .collect();
 
     missing.sort_by(|a, b| {

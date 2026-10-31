@@ -1,0 +1,7 @@
+/target
+target/
+**/target/
+debug/
+**/debug/
+*.log
+genesis_crash.log

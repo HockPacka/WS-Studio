@@ -333,6 +333,73 @@ mod tests{
         validate_cross_tile_border(&area,&amended,&samples).unwrap();
     }
     #[test]
+    fn compressed_and_raw_cross_tile_roundtrip_preserves_bc2_alpha_and_unknown_chunks(){
+        use flate2::{Compression,write::ZlibEncoder};
+        use std::io::Write;
+        let mut cell=mock_cell(255,[3,4,5,6]);
+        let mut bc2=vec![0u8;BLOCKS*BLOCKS*16];
+        for b in bc2.chunks_exact_mut(16){
+            b[..8].fill(0xA5);
+            b[8..].copy_from_slice(&bc1_encode([[255,0,0];16]));
+        }
+        cell.blocks[13]=Some(bc2);
+        let mut weight=Vec::new();
+        let mut correction=Vec::new();
+        for _ in 0..(BLOCKS*BLOCKS){
+            weight.extend(bc1_encode([[255,0,0];16]));
+            correction.extend(neutral_bc1_correction());
+        }
+        cell.blocks[17]=Some(weight);
+        cell.blocks[18]=Some(correction);
+        let mut raw=(cell.blocks.iter().enumerate().fold(0u32,|f,(i,b)|
+            if b.is_some(){f|(1u32<<i)}else{f})).to_le_bytes().to_vec();
+        for block in cell.blocks.iter().flatten(){raw.extend(block);}
+        for compressed in [false,true] {
+            let mut chunk=Vec::new();
+            if compressed {
+                let zip=|data:&[u8]|{
+                    let mut enc=ZlibEncoder::new(Vec::new(),Compression::default());
+                    enc.write_all(data).unwrap();
+                    enc.finish().unwrap()
+                };
+                chunk.extend(3u32.to_le_bytes());
+                chunk.extend(zip(b"LOD"));
+                chunk.extend(( ((255u32)<<24) | (raw.len() as u32) ).to_le_bytes());
+                chunk.extend(zip(&raw));
+            }else{
+                chunk.extend((((255u32)<<24)|(raw.len() as u32)).to_le_bytes());
+                chunk.extend(&raw);
+            }
+            let mut file=if compressed{b"AERA".to_vec()}else{b"aera".to_vec()};
+            file.extend(0u32.to_le_bytes());
+            file.extend(b"KNHC");
+            file.extend((chunk.len() as u32).to_le_bytes());
+            file.extend(chunk);
+            file.extend(b"KEEP");
+            file.extend(3u32.to_le_bytes());
+            file.extend(b"XYZ");
+            let source=RawArea::from_bytes(file).unwrap();
+            let sample=BorderSample{
+                x:1024,z:1000,
+                weights:Some(BorderWeights{layer_ids:[3,4,5,6],rgba:[0,255,0,0]}),
+                rgb:Some([0,255,0]),
+            };
+            let patches=plan_cross_tile_border_edits(&source,&[sample]).unwrap();
+            assert_eq!(patches.len(),5);
+            let bytes=source.with_cell_block_changes(&patches).unwrap();
+            let exported=RawArea::from_bytes(bytes).unwrap();
+            validate_cross_tile_border(&source,&exported,&[sample]).unwrap();
+            assert_eq!(exported.chunks[1].data,b"XYZ");
+            let c=exported.cells[255].as_ref().unwrap();
+            assert_eq!(c.authoring_weights(64,40),Some([0,15,0,0]));
+            assert!(c.compressed_weights(64,40).unwrap()[1]>0.8);
+            assert!(c.color_bc2(64,40).unwrap()[1]>200);
+            assert_eq!(c.block(13).unwrap()[0..8],[0xA5;8]);
+            assert_eq!(source.cells[255].as_ref().unwrap()
+                .color_rgb565(64,40),Some([255,0,0]));
+        }
+    }
+    #[test]
     fn rejects_unsafe_border_writes(){
         let area=mock_area();
         let weight=BorderWeights{layer_ids:[3,4,5,6],rgba:[0,255,0,0]};

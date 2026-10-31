@@ -181,6 +181,8 @@ mod tests{
             (1,1,12.0),
             (255,255,13.0),
             (256,256,14.0),
+            (0,256,16.0), // bottom-left -> upper/right diagonal neighbours
+            (256,0,17.0), // top-right -> lower/left diagonal neighbours
             (7,129,15.0),
         ];
         let mapped=route_source_height_edges(&changes).unwrap();

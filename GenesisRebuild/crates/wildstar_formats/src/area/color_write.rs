@@ -18,7 +18,7 @@ pub struct ColorCellEdit{
     pub after:Vec<u8>,
 }
 
-fn encode_rgb565(rgb:&[u8])->u16{
+pub(super) fn encode_rgb565(rgb:&[u8])->u16{
     let r=(rgb[0] as u32*31+127)/255;
     let g=(rgb[1] as u32*63+127)/255;
     let b=(rgb[2] as u32*31+127)/255;

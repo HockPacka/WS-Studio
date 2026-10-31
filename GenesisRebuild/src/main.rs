@@ -45,6 +45,8 @@ struct GenesisState {
     raw_view: bool,
     open_area_dialog: bool,
     open_area_path_dialog: bool,
+    open_model_dialog: bool,
+    pending_model_load: Option<String>,
     open_zone_dialog: bool,
     change_client_root: bool,
     area_path: String,
@@ -79,6 +81,8 @@ impl Default for GenesisState {
             raw_view: true,
             open_area_dialog: false,
             open_area_path_dialog: false,
+            open_model_dialog: false,
+            pending_model_load: None,
             open_zone_dialog: false,
             change_client_root: false,
             area_path: String::new(),
@@ -106,6 +110,7 @@ struct GenesisCamera;
 #[derive(Resource,Default)]
 struct LoadedArea {
     tile: Option<area::RawArea>,
+    preview_model: Option<String>,
     mesh_entity: Option<Entity>,
     props: Vec<area::AreaProp>,
     prop_entities: Vec<Entity>,
@@ -284,6 +289,7 @@ fn load_raw_area(
 
     match area::RawArea::from_path(Path::new(&path)) {
         Ok(tile)=>{
+            loaded.preview_model=None;
             let water_bodies=tile.all_water_bodies();
             loaded.water_count=water_bodies.len();
             let decoded_props=tile.prop_placements();
@@ -422,6 +428,78 @@ fn load_raw_area(
         Err(e)=>state.status=format!("AREA read: {e}"),
     }
 }
+/// Open a single model in the world viewport independently of an AREA tile.
+fn load_model_preview(
+    mut state: ResMut<GenesisState>,
+    client: Res<client_data::ClientFiles>,
+    mut loaded: ResMut<LoadedArea>,
+    mut orbit: ResMut<OrbitCamera>,
+    mut streaming: ResMut<streaming::WorldStreaming>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut images: ResMut<Assets<Image>>,
+) {
+    let Some(requested) = state.pending_model_load.take() else { return; };
+    let Some(index) = client.index.as_ref() else {
+        state.status = "Choose and index the WildStar ClientData root before opening models.".into();
+        return;
+    };
+    let path = Path::new(&requested);
+    // Convert the Windows file picker path back to the game's relative virtual path.
+    let virtual_path = if index.resolve(&requested).is_some() {
+        wildstar_formats::assets::virtual_key(&requested)
+    } else {
+        let relative = index.roots.as_ref().and_then(|r| {
+            path.strip_prefix(&r.client_data).ok()
+                .or_else(|| r.client_data_en.as_ref()
+                    .and_then(|en| path.strip_prefix(en).ok()))
+        });
+        let Some(relative) = relative else {
+            state.status = "The selected model must be located inside indexed ClientData/ClientDataEN.".into();
+            return;
+        };
+        wildstar_formats::assets::virtual_key(&relative.to_string_lossy())
+    };
+    if index.resolve(&virtual_path).is_none() {
+        state.status = format!("Model not found in the ClientData asset index: {virtual_path}");
+        return;
+    }
+    match props::spawn_model_preview(&mut commands, &mut meshes, &mut materials,
+        &mut images, index, &client.prop_models, &virtual_path) {
+        Ok((entities, min, max)) => {
+            streaming.clear_all(&mut commands);
+            streaming.active_map = None;
+            streaming.camera_tile = None;
+            if let Some(old) = loaded.mesh_entity.take() {
+                if let Ok(mut e) = commands.get_entity(old) { e.despawn(); }
+            }
+            if let Some(old) = loaded.water_entity.take() {
+                if let Ok(mut e) = commands.get_entity(old) { e.despawn(); }
+            }
+            for old in loaded.prop_entities.drain(..) {
+                if let Ok(mut e) = commands.get_entity(old) { e.despawn(); }
+            }
+            loaded.prop_entities = entities;
+            loaded.tile = None;
+            loaded.props.clear();
+            loaded.preview_model = Some(virtual_path.clone());
+            loaded.terrain_albedo = None;
+            loaded.terrain_normal = None;
+            loaded.terrain_splat = false;
+            let center = (Vec3::from_array(min) + Vec3::from_array(max)) * 0.5;
+            let diameter = (Vec3::from_array(max) - Vec3::from_array(min)).length().max(1.0);
+            orbit.focus = center;
+            orbit.distance = (diameter * 2.0).clamp(3.0, 5000.0);
+            orbit.is_first_person = false;
+            orbit.eye = center + Vec3::new(0.0, orbit.distance * 0.25, orbit.distance);
+            state.raw_view = true;
+            state.dock_tab = 8; // Objects -> model details
+            state.status = format!("MODEL PREVIEW | {virtual_path} | bounds {min:?} .. {max:?}");
+        }
+        Err(error) => state.status = format!("MODEL: {error} | {virtual_path}"),
+    }
+}
 /// Replace only the mesh asset when an AREA debug-view option changes.
 /// Push the macro tint settings to every terrain material (single tile and streamed tiles).
 fn apply_tint_settings(
@@ -543,7 +621,7 @@ fn main() {
         .add_plugins(EguiPlugin::default())
         .add_plugins(terrain_splat::TerrainSplatPlugin)
         .add_systems(Startup, setup_scene)
-        .add_systems(Update, (client_data::poll_system, load_raw_area,
+        .add_systems(Update, (client_data::poll_system, load_raw_area, load_model_preview,
             streaming::update_world_streaming,
             update_camera,
             refresh_terrain_view, apply_tint_settings, sky::update_sky_lighting, sky::update_skybox_position, sky::update_skybox_celestials, sky::update_camera_fog, water::update_water_color).chain())
@@ -654,6 +732,21 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
             state.status="Select and index the WildStar client root before opening AREA.".into();
         }
     }
+    if state.open_model_dialog {
+        state.open_model_dialog = false;
+        if client.ready() {
+            let mut picker = rfd::FileDialog::new()
+                .set_title("Open WildStar M3/I3 model")
+                .add_filter("WildStar models", &["m3", "i3"]);
+            if let Some(root) = client.client_data_dir() { picker = picker.set_directory(root); }
+            if let Some(file) = picker.pick_file() {
+                state.pending_model_load = Some(file.to_string_lossy().into_owned());
+            }
+        } else {
+            client.setup_open = true;
+            state.status = "Index ClientData before opening a model.".into();
+        }
+    }
     if state.open_area_path_dialog {
         let mut open=true;
         egui::Window::new("Open WildStar AREA – manual path")
@@ -762,6 +855,7 @@ fn command(state: &mut GenesisState, name: &'static str) {
             state.open_zone_dialog = true;
         }
         "Open AREA..." => state.open_area_dialog = true,
+        "Open Model (.m3/.i3)..." => state.open_model_dialog = true,
         "Open AREA by path..." => state.open_area_path_dialog = true,
         "Choose Client Root..." => state.change_client_root = true,
         "Grimvault Preview" => { state.scene = 0; state.raw_view = false; }
@@ -811,7 +905,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing.x=5.0;
                 for (title, entries) in [
-                    ("File",&["New","Open Zone (World Streaming)...","Open AREA...","Open AREA by path...","Choose Client Root...",
+                    ("File",&["New","Open Zone (World Streaming)...","Open AREA...","Open Model (.m3/.i3)...","Open AREA by path...","Choose Client Root...",
                         "Save","Save As","Save Package","Exit"][..]),
                     ("Edit",&["Undo","Redo","Cut","Copy","Paste","Delete","Select","Align Selection"][..]),
                     ("View",&["3D AREA View","Land Wireframe","Object Wireframe","Land Chunk Grid",
@@ -860,6 +954,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                 ui.add_sized([52.,17.],egui::Button::new("Area 106").frame(true));
                 if ui.button("Open Zone...").clicked() {command(state,"Open Zone...");}
                 if ui.button("Open AREA...").clicked() {command(state,"Open AREA...");}
+                if ui.button("Open Model...").clicked() {command(state,"Open Model (.m3/.i3)...");}
                 if ui.button("3D View").clicked() {command(state,"3D AREA View");}
                 ui.separator();
                 ui.label(egui::RichText::new("Time of Day").size(9.));
@@ -1079,6 +1174,14 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                     ui.painter().text(box_rect.left_center() + egui::vec2(9., 0.),
                         egui::Align2::LEFT_CENTER, overlay,
                         egui::FontId::proportional(11.), egui::Color32::from_rgb(120, 230, 160));
+                } else if let Some(model) = loaded.preview_model.as_deref() {
+                    let box_rect = egui::Rect::from_min_size(rect.min + egui::vec2(8., 8.),
+                        egui::vec2((rect.width() - 16.).clamp(40., 820.), 26.));
+                    ui.painter().rect_filled(box_rect, 3.,
+                        egui::Color32::from_rgba_unmultiplied(20, 20, 27, 210));
+                    ui.painter().text(box_rect.left_center() + egui::vec2(9., 0.),
+                        egui::Align2::LEFT_CENTER, format!("MODEL PREVIEW | {model}"),
+                        egui::FontId::proportional(11.), egui::Color32::from_rgb(238, 233, 219));
                 } else if loaded.tile.is_none() {
                     ui.painter().text(rect.center(),egui::Align2::CENTER_CENTER,
                         "Open Zone... or Open AREA... (File menu) | WildStar World Streaming",
@@ -1429,6 +1532,13 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState) {
 fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea,
                 client:&client_data::ClientFiles) {
     ui.label(egui::RichText::new("Object List / Snap Points").strong().size(10.));
+    if let Some(path) = loaded.preview_model.as_deref() {
+        ui.collapsing(format!("Open model: {path}"), |ui| {
+            if let Some(index) = client.index.as_ref() {
+                for line in client.prop_models.report(index, path) { ui.monospace(line); }
+            }
+        });
+    }
     if !loaded.props.is_empty() {
         ui.collapsing(format!("AREA Prop Placements ({})",loaded.props.len()),|ui|{
             for prop in loaded.props.iter().take(64) {

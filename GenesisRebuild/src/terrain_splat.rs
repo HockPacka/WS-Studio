@@ -184,18 +184,19 @@ impl Default for TintSettings {
 }
 
 impl TintSettings {
+    pub fn configure_params(&self,params:&mut SplatParams) {
+        params.tint_strength=self.strength;
+        params.tint_gamma=self.gamma_space as u32;
+        params.debug_options=UVec4::new(self.debug_mode.min(6),
+            self.debug_slot.min(3),self.show_normals as u32,0);
+        params.surface_options=Vec4::new(
+            self.tiling_scale.clamp(0.25,8.0),
+            self.normal_strength.clamp(0.0,2.0),0.0,0.0,
+        );
+    }
     pub fn apply(&self, materials: &mut Assets<TerrainMaterial>) {
         for (_, material) in materials.iter_mut() {
-            material.extension.params.tint_strength = self.strength;
-            material.extension.params.tint_gamma = self.gamma_space as u32;
-            material.extension.params.debug_options = UVec4::new(
-                self.debug_mode.min(6),self.debug_slot.min(3),
-                self.show_normals as u32,0,
-            );
-            material.extension.params.surface_options = Vec4::new(
-                self.tiling_scale.clamp(0.25,8.0),
-                self.normal_strength.clamp(0.0,2.0),0.0,0.0,
-            );
+            self.configure_params(&mut material.extension.params);
         }
     }
 }

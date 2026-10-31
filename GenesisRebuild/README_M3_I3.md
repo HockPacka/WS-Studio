@@ -17,11 +17,28 @@ gefunden wird (Cache pro Pfad, max. 48 neue Modelle pro Tile-Spawn, Dateien > 64
 Nicht lesbare Modelle behalten den Würfel.
 Props werden pro Material in Teilmeshes zerlegt; der Texturpfad (M3: erste Material-Ebene, I3: Material-Set 0) wird über den Index aufgelöst und mit dem `.tex`-Decoder (max. 512 px) als Farbtextur gesetzt. Fehlt die Textur, bleibt die Einfärbung.
 
+## Material-Eigenschaften
+Pro Material (`docs/m3_materials.md` in WS-Tools) werden gelesen und auf ein `StandardMaterial` abgebildet:
+
+| WildStar | Bevy |
+|---|---|
+| Blend-Modus (Header +0x14): 0 opak, 1 Cutout, 2 Alpha, 3 Add, 4 Alpha-Add, 5/6 Multiply | `AlphaMode` Opaque / Mask(0.5) / Blend / Add / Multiply |
+| Opacity (Layer-DP +0x60) | Alpha der Basisfarbe |
+| Color-Mod (Layer-DP +0x108, HDR-Multiplikator) | Multiplikator der Basisfarbe |
+| Gloss (Layer-DP +0x30) | `perceptual_roughness = 1 - gloss` (min. 0.15) |
+| Glow (Layer-DP +0x48) | Emissive = Color-Mod × Glow, Emissive-Textur = Farbtextur |
+| Normal-Textur (DXT5nm oder RGB) | `normal_map_texture`, Tangenten per `generate_tangents` |
+| I3 Material-Kind 5 (Decal) | Alpha-Blend |
+
+Prüfen ohne ClientData: `GENESIS_PROP_MODEL=Avatus.m3 GENESIS_PROP_DEMO=out.png cargo run` rendert ein Modell mit diesen Parametern (ohne Texturen).
+
 ## Metadaten im Editor
 Im Objects-Dock zeigt jeder Prop-Eintrag alle Modell-Metadaten (Vertices, Dreiecke, Bounds, Bones, Clips, Texturen, Sektoren, Portale, Material-Sets). Jeder referenzierte Pfad wird gegen den ClientData-Index geprüft und mit `[OK]` bzw. `[MISSING]` markiert.
 
 ## Noch offen
-- Normal-/Skinfx-Texturen, Mehrschicht-Materialien und Material-Varianten (nur Farbtextur der ersten Ebene).
+- Skinfx-Texturen, Mehrschicht-Materialien (4 Layer, Layer-Gewichte aus Vertexfarbe 1) und Material-Varianten (`Aurin_Autumn`); nur Layer 0 wird genutzt.
+- Animierte Material-Parameter (nur der erste Key), Parallax/Height, I3-Vertexfarben und UV1.
+- Skinning/Animation: Modelle stehen in der Bind-Pose.
 - M3: Animationstracks, Partikel/Ribbons, Lichter, Kameras werden nicht dekodiert.
 - Achsen/Skalierung der Props gegenüber dem Terrain sind ungeprüft (Transform wird wie beim Marker übernommen).
 

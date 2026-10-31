@@ -144,7 +144,7 @@ fn collect_textures(
     (diffuse_images, normal_images, errors, used.len())
 }
 
-fn unpack_normal(raw: [u8; 4]) -> [f32; 3] {
+pub(crate) fn unpack_normal(raw: [u8; 4]) -> [f32; 3] {
     let [r, g, b, a] = raw;
     // Detect DXT5nm vs RGB normal map
     // In DXT5nm, alpha is X, green is Y, red and blue are constant/unused

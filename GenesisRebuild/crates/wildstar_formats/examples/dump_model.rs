@@ -11,6 +11,10 @@ fn main(){
                     m.meshes.iter().filter(|x|x.is_hidden()).count(),m.bones.len(),m.clips.len());
                 println!("bounds {:?} .. {:?}",m.bounds_min,m.bounds_max);
                 for (i,t) in m.textures.iter().enumerate(){println!("tex[{i}] kind {} {}",t.kind,t.name);}
+                for (i,x) in m.materials.iter().enumerate(){
+                    println!("material[{i}] blend {:?} type {} flags {:#x} opacity {} gloss {} glow {} colorMod {:?} color {:?} normal {:?}",
+                        x.blend,x.material_type,x.flags,x.opacity,x.gloss,x.glow,x.color_mod,x.color_texture,x.normal_texture);
+                }
                 for me in &m.meshes{println!("mesh mat {} tex {:?} idx {}",me.material,m.color_texture_of(me),me.index_count);}
             }
             Err(e)=>{eprintln!("M3 error: {e}");std::process::exit(1);}

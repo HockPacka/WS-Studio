@@ -183,3 +183,58 @@ fn capture(mut commands: Commands, out: Res<Out>, mut frame: Local<u32>) {
         std::process::exit(0);
     }
 }
+
+/// `GENESIS_PROP_DEMO=out.png GENESIS_PROP_MODEL=file.m3`: renders a model with the real material parameters
+/// (blend mode, colour multiplier, gloss, glow, opacity) but without textures, which need ClientData.
+pub fn run_prop(model: String, out: String) {
+    App::new()
+        .insert_resource(Out(out))
+        .insert_resource(ModelFile(model))
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window { resolution: (900, 560).into(), ..default() }),
+            ..default()
+        }))
+        .add_systems(Startup, setup_prop)
+        .add_systems(Update, capture)
+        .run();
+}
+
+#[derive(Resource)]
+struct ModelFile(String);
+
+fn setup_prop(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut images: ResMut<Assets<Image>>,
+    file: Res<ModelFile>,
+) {
+    use crate::props::{m3_geometry, standard_material};
+    let data = std::fs::read(&file.0).expect("read model");
+    let parts = m3_geometry(&data).expect("decode model");
+    // A flat normal map exercises the tangent path of real models.
+    let flat = images.add(Image::new(
+        Extent3d { width: 4, height: 4, depth_or_array_layers: 1 },
+        TextureDimension::D2,
+        [128u8, 128, 255, 255].repeat(16),
+        TextureFormat::Rgba8Unorm,
+        RenderAssetUsages::default(),
+    ));
+    let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+    for (geometry, desc) in parts {
+        for p in &geometry.positions {
+            lo = lo.min(Vec3::from(*p));
+            hi = hi.max(Vec3::from(*p));
+        }
+        let mut mesh = geometry.into_mesh();
+        mesh.generate_tangents().expect("tangents");
+        let material = standard_material(crate::props::ModelKind::M3, &desc, None, Some(flat.clone()));
+        commands.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(materials.add(material))));
+    }
+    let center = (lo + hi) * 0.5;
+    let radius = (hi - lo).length().max(1.0);
+    commands.spawn((DirectionalLight { illuminance: 9000.0, ..default() },
+        Transform::from_xyz(-1.0, 2.0, 1.5).looking_at(Vec3::ZERO, Vec3::Y)));
+    commands.spawn((Camera3d::default(),
+        Transform::from_translation(center + Vec3::new(0.4, 0.3, 1.0).normalize() * radius * 1.1).looking_at(center, Vec3::Y)));
+}

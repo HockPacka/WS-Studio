@@ -458,6 +458,10 @@ fn update_camera(
 }
 
 fn main() {
+    if let (Some(out),Some(model))=(std::env::var_os("GENESIS_PROP_DEMO"),std::env::var_os("GENESIS_PROP_MODEL")){
+        splat_demo::run_prop(model.to_string_lossy().into_owned(),out.to_string_lossy().into_owned());
+        return;
+    }
     if let Some(out)=std::env::var_os("GENESIS_SPLAT_DEMO"){
         splat_demo::run(out.to_string_lossy().into_owned());
         return;

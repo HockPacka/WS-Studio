@@ -40,12 +40,38 @@ pub struct M3Texture {
     pub kind:u8,
     pub model_texture_id:u16,
 }
-#[derive(Debug,Clone,Default)]
+/// Material header +0x14 (confirmed by the original renderer `FUN_1403283c0`).
+#[derive(Debug,Clone,Copy,PartialEq,Eq,Default)]
+pub enum M3Blend { #[default] Opaque, Cutout, Alpha, Add, AlphaAdd, Multiply, Multiply2x, Special }
+impl M3Blend {
+    pub fn from_raw(v:u32)->Self{
+        match v{0=>Self::Opaque,1=>Self::Cutout,2=>Self::Alpha,3=>Self::Add,4=>Self::AlphaAdd,
+            5=>Self::Multiply,6=>Self::Multiply2x,_=>Self::Special}
+    }
+}
+#[derive(Debug,Clone)]
 pub struct M3Material {
+    pub blend:M3Blend,
+    /// Header +0x08: 0 normal, 1 special permutation, 2 effect.
+    pub material_type:u32,
+    /// Header +0x0C flags (bit 1 = effect).
+    pub flags:u32,
+    /// First layer parameters (first key of each track); defaults when absent.
+    pub opacity:f32,
+    pub gloss:f32,
+    pub glow:f32,
+    /// HDR colour multiplier of the first layer.
+    pub color_mod:[f32;3],
     pub layer_count:u32,
     /// Texture index of the first layer (`None` = no texture).
     pub color_texture:Option<usize>,
     pub normal_texture:Option<usize>,
+}
+impl Default for M3Material {
+    fn default()->Self{
+        Self{blend:M3Blend::Opaque,material_type:0,flags:0,opacity:1.0,gloss:0.0,glow:0.0,
+            color_mod:[1.0;3],layer_count:0,color_texture:None,normal_texture:None}
+    }
 }
 #[derive(Debug,Clone)]
 pub struct M3Bone {
@@ -186,7 +212,10 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
         let r=ma+i*0x30;
         let dc=u64_at(d,r+0x20).unwrap_or(0);
         let doff=u64_at(d,r+0x28).unwrap_or(0);
-        let mut mat=M3Material::default();
+        let mut mat=M3Material{
+            material_type:u32_at(d,r+0x08).unwrap_or(0),flags:u32_at(d,r+0x0C).unwrap_or(0),
+            blend:M3Blend::from_raw(u32_at(d,r+0x14).unwrap_or(0)),..Default::default()
+        };
         if dc>0{
             let p=if dc<=4{range(len,desc_base,doff,dc,0x128)}else{None}
                 .ok_or("material layers out of bounds")?;
@@ -194,6 +223,20 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
             let tex=|v:u16|if v==0xFFFF{None}else{Some(v as usize)};
             mat.color_texture=u16_at(d,p).and_then(tex);
             mat.normal_texture=u16_at(d,p+2).and_then(tex);
+            // First key of a layer parameter track; value arrays are relative to align16(end of the layers).
+            let nbase=align16(desc_base+doff as usize+dc as usize*0x128);
+            let first=|dp:usize,n:usize|->Option<Vec<f32>>{
+                if u64_at(d,p+dp)?==0{return None;}
+                let at=range(len,nbase,u64_at(d,p+dp+0x10)?,1,n*4)?;
+                let v:Vec<f32>=(0..n).map(|k|f32_at(d,at+k*4).unwrap_or(f32::NAN)).collect();
+                v.iter().all(|x|x.is_finite()).then_some(v)
+            };
+            if let Some(v)=first(0x60,1){mat.opacity=v[0].clamp(0.0,1.0);}
+            if let Some(v)=first(0x30,1){mat.gloss=v[0].clamp(0.0,4.0);}
+            if let Some(v)=first(0x48,1){mat.glow=v[0].clamp(0.0,4.0);}
+            if let Some(v)=first(0x108,3).filter(|v|v.iter().all(|x|(0.0..64.0).contains(x))){
+                mat.color_mod=[v[0],v[1],v[2]];
+            }
         }
         m.materials.push(mat);
     }

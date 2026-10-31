@@ -445,9 +445,29 @@ pixel ({x},{z}), layer {channel}; export cancelled"
 
     /// Native color is RGB565 or BC2: compare after decompression and
     /// reject significant lossy deviations instead of silently exporting them.
-    fn verify_native_color_fidelity(&self,area:&RawArea)->Result<(),String>{
+    fn verify_native_color_fidelity(&self,source:&RawArea,area:&RawArea)->Result<(),String>{
         if !self.colors_ready(){return Ok(());}
         const MAX_COLOR_ERROR:i16=50;
+        // Verify opaque BC2 metadata on *every* touched/untouched neighbor
+        // block: alpha is unknown and must survive every AREA rewrite exactly.
+        for index in 0..256 {
+            let from=source.cells.get(index).and_then(Option::as_ref);
+            let to=area.cells.get(index).and_then(Option::as_ref);
+            if let (Some(before),Some(after))=(
+                from.and_then(|c|c.block(13)),
+                to.and_then(|c|c.block(13))
+            ){
+                if before.len()!=after.len()||before.len()%16!=0{
+                    return Err(format!("AREA BC2 block layout changed in cell {index}"));
+                }
+                if before.chunks_exact(16).zip(after.chunks_exact(16))
+                    .any(|(a,b)|a[..8]!=b[..8]){
+                    return Err(format!(
+                        "AREA BC2 alpha changed in cell {index}; refusing unsafe export"
+                    ));
+                }
+            }
+        }
         for cell_index in 0..256{
             if !self.present[cell_index]{continue;}
             let (cx,cz)=(cell_index%16*64,cell_index/16*64);
@@ -473,6 +493,24 @@ pixel ({x},{z}), layer {channel}; export cancelled"
                             return Err(format!(
                                 "AREA RGB export diverges by {} at cell {cell_index} pixel ({x},{z}), channel {channel}; export blocked",
                                 delta.abs()));
+                        }
+                    }
+                    // If Bit 3 and Bit 13 both exist, terrain_color only
+                    // checks Bit 3. Also enforce the output of the independent
+                    // Bit 13 BC2 representation on every explicitly painted
+                    // pixel, so a hidden BC2 corruption cannot slip through.
+                    if self.baseline_colors[o..o+3]!=self.colors[o..o+3] {
+                        if let Some(compressed)=cell.color_bc2(x,z) {
+                            for channel in 0..3 {
+                                let delta=compressed[channel] as i16-
+                                    self.colors[o+channel] as i16;
+                                if delta.abs()>MAX_COLOR_ERROR {
+                                    return Err(format!(
+                                        "AREA Bit 13 BC2 RGB error {} at cell {cell_index} ({x},{z}) channel {channel}; export blocked",
+                                        delta.abs()
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
@@ -595,7 +633,7 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         }
         // All blocks/unknown payloads are validated inside with_cell_block_changes.
         self.verify_native_weight_fidelity(&reread)?;
-        self.verify_native_color_fidelity(&reread)?;
+        self.verify_native_color_fidelity(source,&reread)?;
         self.verify_native_edge_samples(&reread)?;
         let mut file=std::fs::OpenOptions::new().write(true).create_new(true)
             .open(destination).map_err(|e|format!("Cannot create {}: {e}",destination.display()))?;

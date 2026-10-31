@@ -555,6 +555,16 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
     out
 }
 
+/// Entity hierarchy and bounds of a standalone prop preview.
+/// The root is centered on the model bounds so orbiting the model stays in place.
+pub struct PreviewScene {
+    pub entities: Vec<Entity>,
+    pub root: Entity,
+    pub parts: Vec<Entity>,
+    pub min: [f32; 3],
+    pub max: [f32; 3],
+}
+
 /// Open one indexed model as an independent Genesis viewport preview.
 /// All files are read-only; the FEDI sector companions still resolve through ClientData.
 pub fn spawn_model_preview(
@@ -565,7 +575,7 @@ pub fn spawn_model_preview(
     index: &AssetIndex,
     cache: &PropModelCache,
     path: &str,
-) -> Result<(Vec<Entity>, [f32;3], [f32;3]), String> {
+) -> Result<PreviewScene, String> {
     let kind = model_kind(path).ok_or("Select a .m3 or .i3 model")?;
     let data = read_asset(index, path).ok_or("Model not found in indexed ClientData or exceeds 64 MiB")?;
     let (min, max) = match kind {
@@ -586,17 +596,20 @@ pub fn spawn_model_preview(
     let mut budget = 1;
     let model = cache.load(index, meshes, materials, images, path, &mut budget)
         .ok_or("Model has no drawable parts (or sector files could not be loaded)")?;
-    let root = commands.spawn((Transform::default(), Visibility::default())).id();
+    let center = (Vec3::from_array(min) + Vec3::from_array(max)) * 0.5;
+    let root = commands.spawn((Transform::from_translation(center), Visibility::default())).id();
     let mut entities = vec![root];
+    let mut parts = Vec::new();
     for part in &model.parts {
         let child = commands.spawn((
             Mesh3d(part.mesh.clone()), MeshMaterial3d(part.material.clone()),
-            Transform::default(),
+            Transform::from_translation(-center),
         )).id();
         commands.entity(root).add_child(child);
         entities.push(child);
+        parts.push(child);
     }
-    Ok((entities, min, max))
+    Ok(PreviewScene { entities, root, parts, min, max })
 }
 
 pub fn spawn_props(

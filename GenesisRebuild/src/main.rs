@@ -13,6 +13,7 @@ mod terrain;
 mod terrain_edit;
 mod terrain_paint;
 mod terrain_bundle;
+mod clutter;
 mod terrain_material;
 mod water;
 mod sky;
@@ -41,6 +42,14 @@ struct GenesisState {
     custom_tip: bool,
     color_panel: bool, color_palette: bool, texture_panel: bool,
     clutter_panel: bool, prop_panel: bool, object_list: bool,
+    clutter_preview_enabled: bool,
+    clutter_preview_request: u64,
+    clutter_model_path: String,
+    clutter_layer: usize,
+    clutter_selector: u8,
+    clutter_density: u32,
+    clutter_instance_limit: u32,
+    clutter_view_distance: f32,
     zone_panel: bool,
     grid: bool, palette_index: usize, texture_index: usize,
     tint: terrain_splat::TintSettings,
@@ -83,6 +92,14 @@ impl Default for GenesisState {
             mode: 0, circle: 0, restricted: false, custom_tip: false,
             color_panel: true, color_palette: true, texture_panel: false,
             clutter_panel: false, prop_panel: false, object_list: false,
+            clutter_preview_enabled: false,
+            clutter_preview_request: 0,
+            clutter_model_path: String::new(),
+            clutter_layer: 0,
+            clutter_selector: 0,
+            clutter_density: 24,
+            clutter_instance_limit: 2048,
+            clutter_view_distance: 180.0,
             zone_panel: false,
             grid: false, palette_index: 0, texture_index: 0,
             tint: terrain_splat::TintSettings::default(),
@@ -742,6 +759,7 @@ fn main() {
     App::new()
         .insert_resource(GenesisState::default())
         .insert_resource(LoadedArea::default())
+        .insert_resource(clutter::ClutterPreview::default())
         .insert_resource(terrain_edit::TerrainEdit::default())
         .insert_resource(terrain_paint::TerrainPaint::default())
         .insert_resource(OrbitCamera::default())
@@ -770,7 +788,7 @@ fn main() {
         .add_systems(Update, (client_data::poll_system, load_raw_area, load_model_preview,
             prop_viewer::update,
             streaming::update_world_streaming,
-            update_camera, refresh_edited_terrain, refresh_painted_splat,
+            update_camera, refresh_edited_terrain, clutter::update_preview, refresh_painted_splat,
             refresh_terrain_view, apply_tint_settings, sky::update_sky_lighting, sky::update_skybox_position, sky::update_skybox_celestials, sky::update_camera_fog, water::update_water_color).chain())
         .add_systems(EguiPrimaryContextPass, editor_ui)
         .run();
@@ -836,7 +854,8 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
              sky_mgr: Res<sky::SkyManager>,
              mut commands: Commands,
              mut client: ResMut<client_data::ClientFiles>,
-             mut viewer: ResMut<prop_viewer::PropViewer>) -> Result {
+             mut viewer: ResMut<prop_viewer::PropViewer>,
+             clutter_preview: Res<clutter::ClutterPreview>) -> Result {
     let ctx = contexts.ctx_mut()?;
     if !*initialized { classic_visuals(ctx); *initialized = true; }
     if previews.textures.is_empty() { load_scenes(ctx, &mut previews); }
@@ -859,7 +878,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 menu_and_toolbars(ui, &mut state);
                 bottom_strip(ui, &mut state, &loaded, orbit.as_mut(), streaming.as_ref());
                 if state.dock_visible && !state.floating_mode {
-                    dock_panels(ui, &mut state, &loaded, &client, paint.as_mut(), viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &mut commands);
+                    dock_panels(ui, &mut state, &loaded, &client, paint.as_mut(), viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &clutter_preview, &mut commands);
                 }
                 viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref(), &sky_mgr,
                     edit.as_mut(), paint.as_mut(), &camera_query);
@@ -1609,6 +1628,7 @@ fn dock_panels(
     streaming: &mut streaming::WorldStreaming,
     orbit: &mut OrbitCamera,
     sky_mgr: &sky::SkyManager,
+    clutter_preview: &clutter::ClutterPreview,
     commands: &mut Commands,
 ) {
     if ui_root.available_width() < 610.0 {
@@ -1647,7 +1667,7 @@ fn dock_panels(
                     match state.dock_tab {
                         0 => dock_sculpt(ui, state),
                         1 => dock_paint(ui, state, loaded, client, paint),
-                        2 => dock_clutter(ui, state),
+                        2 => dock_clutter(ui, state, clutter_preview),
                         3 => dock_objects(ui, state, loaded, client),
                         4 => dock_water(ui, state, loaded),
                         5 => dock_environment(ui, state, sky_mgr),
@@ -1912,20 +1932,50 @@ fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState) {
         ui.separator();
     }
 }
-fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState) {
-    ui.label(egui::RichText::new("Clutter Preset").strong().size(10.));
-    for name in [
-        "Aurora_Grass_Shrubs","Aurora_Grass_Tall",
-        "Grimvault_Grass_01","Grimvault_Grass_02",
-        "Grimvault_Crystal","Grimvault_Rocks","Grimvault_Shrubs"
-    ] {
-        if ui.selectable_label(state.active==name,name).clicked() {
-            command(state,name);
-        }
-    }
+fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
+    preview:&clutter::ClutterPreview)
+{
+    ui.label(egui::RichText::new("GPU Clutter Instancing (diagnostic)").strong());
+    ui.label("Native AREA Bit27 selectors, Bit16 suppression and layer weights.");
+    ui.label("WorldClutter.tbl presets and spawn densities are NOT decoded yet.");
     ui.separator();
-    ui.label("Density");
-    ui.add(egui::Slider::new(&mut state.power,0.0..=2.0));
+    ui.label("ClientData virtual M3 model path");
+    ui.add(egui::TextEdit::singleline(&mut state.clutter_model_path)
+        .hint_text("Art/..../GroundPlant.m3"));
+    ui.horizontal(|ui|{
+        ui.label("WorldLayer slot");
+        ui.add(egui::DragValue::new(&mut state.clutter_layer).range(0..=3));
+    });
+    ui.horizontal(|ui|{
+        ui.label("Bit27 preset");
+        ui.add(egui::DragValue::new(&mut state.clutter_selector).range(0..=3));
+    });
+    ui.label("Candidates per cell");
+    ui.add(egui::Slider::new(&mut state.clutter_density,0..=128));
+    ui.label("Maximum instances");
+    ui.add(egui::Slider::new(&mut state.clutter_instance_limit,0..=8192));
+    ui.label("Group view distance (m)");
+    ui.add(egui::Slider::new(&mut state.clutter_view_distance,32.0..=1024.0));
+    ui.horizontal(|ui|{
+        if ui.button("Build Instanced Preview").clicked(){
+            state.clutter_preview_enabled=true;
+            state.clutter_preview_request=state.clutter_preview_request.wrapping_add(1);
+        }
+        if ui.button("Clear").clicked(){
+            state.clutter_preview_enabled=false;
+            state.clutter_preview_request=state.clutter_preview_request.wrapping_add(1);
+        }
+    });
+    ui.separator();
+    ui.label(format!("Instances: {} | Mesh parts/instance: {}",
+        preview.instances,preview.parts_per_instance));
+    ui.label(format!("Opaque/masked parts: {} | transparent excluded: {}",
+        preview.opaque_parts,preview.transparent_parts));
+    ui.label(format!("Rejected: no-clutter {}, selector {}, weights {}, slope {}",
+        preview.rejected_by_mask,preview.rejected_by_selector,
+        preview.rejected_by_weight,preview.rejected_by_slope));
+    ui.label(&preview.status);
+    ui.small("Meshes/materials reused by handle; Bevy 0.20 automatic batching. Actual GPU draw-call count requires a graphics profiler.");
 }
 fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea,
                 client:&client_data::ClientFiles) {

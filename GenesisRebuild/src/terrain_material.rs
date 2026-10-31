@@ -11,7 +11,10 @@ use wildstar_formats::assets::AssetIndex;
 use wildstar_formats::tbl::{Table, WorldLayer, world_layers};
 use wildstar_formats::tex::{decode_tex, RgbaImage};
 
-const PX_PER_CELL: usize = 64;
+/// 128 px per 32 m cell = 0.25 m per atlas pixel (2048x2048 per tile).
+const PX_PER_CELL: usize = 128;
+/// Longest edge of a decoded WorldLayer texture.
+const LAYER_TEXTURE_SIZE: usize = 1024;
 pub const ATLAS_SIDE: usize = 16 * PX_PER_CELL;
 
 pub struct AtlasResult {
@@ -77,7 +80,7 @@ fn collect_textures(
                         diffuse_images.insert(id, image);
                     } else if let Some(asset) = index.resolve(&layer.color_map) {
                         match std::fs::read(&asset.path) {
-                            Ok(data) => match decode_tex(&data, 256) {
+                            Ok(data) => match decode_tex(&data, LAYER_TEXTURE_SIZE) {
                                 Ok(image) => {
                                     if let Ok(mut c) = cache.lock() {
                                         c.diffuse.insert(layer.color_map.clone(), image.clone());
@@ -106,7 +109,7 @@ fn collect_textures(
                         normal_images.insert(id, image);
                     } else if let Some(asset) = index.resolve(&layer.normal_map) {
                         match std::fs::read(&asset.path) {
-                            Ok(data) => match decode_tex(&data, 256) {
+                            Ok(data) => match decode_tex(&data, LAYER_TEXTURE_SIZE) {
                                 Ok(image) => {
                                     if let Ok(mut c) = cache.lock() {
                                         c.normal.insert(layer.normal_map.clone(), image.clone());

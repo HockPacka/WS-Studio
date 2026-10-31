@@ -7,6 +7,7 @@ use std::sync::Mutex;
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy::prelude::*;
+use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use wildstar_formats::area::AreaProp;
 use wildstar_formats::assets::{virtual_key, AssetIndex};
@@ -20,7 +21,7 @@ const MAX_MODEL_TRIANGLES: usize = 400_000;
 /// New models decoded per `spawn_props` call; the rest keep the marker cube until the next load.
 const MODEL_LOADS_PER_CALL: usize = 48;
 /// Longest edge of a decoded prop texture.
-const MAX_TEXTURE_SIZE: usize = 512;
+const MAX_TEXTURE_SIZE: usize = 1024;
 
 #[derive(Component)]
 #[allow(dead_code)]
@@ -206,13 +207,22 @@ impl PropModelCache {
             .and_then(|data| decode_tex(&data, MAX_TEXTURE_SIZE).ok())
             .filter(|t| t.width > 0 && t.height > 0)
             .map(|t| {
-                images.add(Image::new(
+                let mut image = Image::new(
                     Extent3d { width: t.width as u32, height: t.height as u32, depth_or_array_layers: 1 },
                     TextureDimension::D2,
                     t.rgba,
                     TextureFormat::Rgba8UnormSrgb,
                     RenderAssetUsages::default(),
-                ))
+                );
+                // Model UVs tile; the default sampler would clamp.
+                image.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+                    address_mode_u: ImageAddressMode::Repeat,
+                    address_mode_v: ImageAddressMode::Repeat,
+                    mag_filter: ImageFilterMode::Linear,
+                    min_filter: ImageFilterMode::Linear,
+                    ..default()
+                });
+                images.add(image)
             });
         map.insert(key, handle.clone());
         handle

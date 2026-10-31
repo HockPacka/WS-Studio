@@ -25,7 +25,7 @@ Bevy StandardMaterial.base_color_texture
 
 Der Editor wählt beim Laden einer AREA standardmäßig den **Textured**-Modus. Im rechten **AREA-Dock** kann jederzeit zwischen Height, RGB565, Layer IDs, Zone IDs, Blend und Textured gewechselt werden. Im Textured-Modus sind die Vertexfarben neutralweiß, damit das tatsächliche Albedo nicht durch Debugfarben verändert wird.
 
-**Keine Originaldatei wird geändert oder konvertiert.** Der Index aus ClientData/ClientDataEN löst Pfade auf, die für die AREA benutzten TEX-Daten werden gezielt gelesen, die Pixel landen nur im RAM/GPU-Bild. Die TEX-Dekodierung wählt einen Mip bis maximal 256 Pixel Kantenlänge, um den Arbeitsspeicher begrenzt zu halten.
+**Keine Originaldatei wird geändert oder konvertiert.** Der Index aus ClientData/ClientDataEN löst Pfade auf, die für die AREA benutzten TEX-Daten werden gezielt gelesen, die Pixel landen nur im RAM/GPU-Bild. Die TEX-Dekodierung wählt einen Mip bis maximal 1024 Pixel Kantenlänge, um den Arbeitsspeicher begrenzt zu halten.
 
 ## Unterstützte Formate
 

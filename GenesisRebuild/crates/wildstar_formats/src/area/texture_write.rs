@@ -54,7 +54,7 @@ fn rgb_from_565(n:u16)->[f32;3] {
 
 /// Four-color BC1 block encoder. 4x4 texels and no alpha channel. Intentionally
 /// simple bounding-box / nearest-palette codec; the BC1 conversion is lossy.
-fn bc1_encode(rgb:[[u8;3];16])->[u8;8] {
+pub(super) fn bc1_encode(rgb:[[u8;3];16])->[u8;8] {
     // Pick actual texels with the largest RGB distance. Component-wise
     // min/max can produce a non-existent color (e.g. yellow for mixed red and
     // green weights) and destroy otherwise exact two-color blocks.

@@ -215,6 +215,76 @@ mod tests{
             if i!=0{assert_eq!(&block[8..],&[0;8]);}
         }
     }
+    fn populated_cell(index:usize)->AreaCell{
+        let mut blocks=vec![None;32];
+        let mut raw=vec![0u8;SOURCE_SIDE*SOURCE_SIDE*2];
+        for px in raw.chunks_exact_mut(2){px.copy_from_slice(&0xF800u16.to_le_bytes());}
+        blocks[3]=Some(raw);
+        let mut bc2=vec![0u8;BLOCK_SIDE*BLOCK_SIDE*16];
+        for block in bc2.chunks_exact_mut(16){
+            block[..8].fill(0xA5);
+            block[8..16].copy_from_slice(&bc1_encode([[255,0,0];16]));
+        }
+        blocks[13]=Some(bc2);
+        AreaCell{index,flags:(1<<3)|(1<<13),blocks,subchunks:Vec::new()}
+    }
+    #[test]
+    fn internal_color_seams_sync_rgb565_bc2_without_changing_alpha(){
+        let mut cells=vec![None;256];
+        for index in [0,1,16,17]{cells[index]=Some(populated_cell(index));}
+        let area=RawArea{version:0,compressed:false,original:Vec::new(),
+            chunks:Vec::new(),cells,lod_prefix:None};
+        let mut before=vec![0u8;COLOR_BYTES];
+        for px in before.chunks_exact_mut(4){
+            px.copy_from_slice(&[255,0,0,165]);
+        }
+        let mut after=before.clone();
+        after[0..3].copy_from_slice(&[0,255,0]);
+        let edits=plan_color_edits(&area,&[
+            ColorCellEdit{index:17,before,after}
+        ]).unwrap();
+        assert_eq!(edits.len(),8);
+        let mut rewritten=area.clone();
+        for (index,bit,data) in edits{
+            rewritten.cells[index].as_mut().unwrap().blocks[bit]=Some(data);
+        }
+        for (index,x,z) in [(17,0,0),(16,64,0),(1,0,64),(0,64,64)]{
+            let cell=rewritten.cells[index].as_ref().unwrap();
+            assert_eq!(cell.color_rgb565(x,z),Some([0,255,0]));
+            let color=cell.color_bc2(x,z).unwrap();
+            assert!(color[1]>220,"BC2 seam {index} ({x},{z}): {color:?}");
+            let before=area.cells[index].as_ref().unwrap().block(13).unwrap();
+            let after=cell.block(13).unwrap();
+            for (a,b) in before.chunks_exact(16).zip(after.chunks_exact(16)){
+                assert_eq!(&a[..8],&b[..8],"BC2 alpha was overwritten");
+            }
+            assert_eq!(cell.color_rgb565(63,63),Some([255,0,0]));
+        }
+        let mut edit=vec![0u8;COLOR_BYTES];
+        for px in edit.chunks_exact_mut(4){px.copy_from_slice(&[255,0,0,165]);}
+        let mut target=edit.clone();
+        target[0..3].copy_from_slice(&[0,255,0]);
+        let changes=plan_color_edits(&area,&[ColorCellEdit{
+            index:0,before:edit,after:target
+        }]).unwrap();
+        assert!(changes.iter().all(|(index,_,_)|*index==0));
+    }
+    #[test]
+    fn color_seam_refuses_missing_neighbour_color_data(){
+        let mut cells=vec![None;256];
+        cells[0]=Some(AreaCell{
+            index:0,flags:0,blocks:vec![None;32],subchunks:Vec::new()
+        });
+        cells[1]=Some(populated_cell(1));
+        let area=RawArea{version:0,compressed:false,original:Vec::new(),
+            chunks:Vec::new(),cells,lod_prefix:None};
+        let before=vec![0u8;COLOR_BYTES];
+        let mut after=before.clone();
+        after[0..3].copy_from_slice(&[0,255,0]);
+        assert!(plan_color_edits(&area,&[ColorCellEdit{
+            index:1,before,after,
+        }]).unwrap_err().contains("no native color blocks"));
+    }
     #[test]
     fn compressed_area_color_export_roundtrip_preserves_alpha(){
         let flags=(1u32<<3)|(1u32<<13);

@@ -9,6 +9,16 @@ The Genesis editor now has an experimental **native texture Save As path for kno
 - **Paint / Erase / Smooth:** edits a 1024x1024 RGBA8 weight atlas in CPU memory and updates the shader's splat image. Uses brush strength/radius/falloff and whole-stroke Undo/Redo (16 levels).
 - Painting by WorldLayer ID will affect only cells that have already assigned that same ID. The optional **Restrict to Selection** isolates a cell.
 
+## New: native Terrain Color Brush (RGB565 + BC2)
+
+- In **Paint → Color Brush**, use the RGB picker and **Color / Darken / Lighten / Smooth**. Size, Power and Falloff apply. The brush operates on the existing 1024×1024 macro-tint atlas, updates the shader in real time and shares stroke-level Undo/Redo with texture painting.
+- **Block 3**: edited pixels are converted back to native RGB565 in the original 65×65 authoring raster. Unedited texels are copied byte-for-byte.
+- **Block 13**: changed 4×4 BC2/DXT3 RGB groups are compressed with BC1 four-colour endpoints. The original **8-byte BC2 alpha payload of every block is preserved byte-for-byte**, since the true role of the terrain alpha channel is not yet fully decoded.
+- Both blocks are updated together if both are present; edits refuse cells lacking these block types. **A 50/255 per-channel fidelity gate** compares the in-memory result to the native reloaded AREA and blocks poor exports.
+- The existing `Save AREA As...` now combines *height, WorldLayer weights and terrain RGB* in the same new non-overwriting file, subject to codec guards.
+- Color operations cannot yet synchronize the extra 65th sample at cell edges or adjacent AREA tile borders; seams remain a known limitation.
+- The newly added format tests verify raw RGB565, compressed BC2, preservation of unknown BC2 alpha bits and unrelated AREA chunks.
+
 ## Native AREA export: supported vs blocked
 
 Supported (native, data-preserving where possible):
@@ -16,7 +26,7 @@ Supported (native, data-preserving where possible):
 - **Bit 2 and bit 29**: 65×65 four-nibble maps. Changed texels are quantized with a largest-remainder method so all four nibbles sum to 15; untouched source texels remain byte-identical.
 - **Bit 17 and bit 18 (BC1/DXT1)**: changed 4×4 BC1 regions are recompressed from the edited weights. The signed correction block is set to a neutral value **in changed regions only**. All untouched BC1 blocks remain byte-identical.
 - Supports both uncompressed `aera/area` and zlib-compressed `AERA` containers via the shared `RawArea::with_cell_block_changes` writer. All unrelated top-level chunks, unknown per-cell blocks and subchunks, and unmodified zlib cell streams are retained.
-- **Combined height + texture Save As:** builds and validates a new standalone `.area` using the existing height writer and the new texture block writer. The destination is created with `create_new`, so existing files, including source game assets, cannot be overwritten.
+- **Combined height + texture + color Save As:** builds and validates a new standalone `.area` using the existing height writer and the new texture block writer. The destination is created with `create_new`, so existing files, including source game assets, cannot be overwritten.
 
 **Explicitly blocked**:
 - Editing weights in cells containing **bits 19/20**; their relationship to bit 29 needs further disassembly and native roundtrip validation.

@@ -1,0 +1,394 @@
+{
+  "textures": 14,
+  "mips": 53,
+  "results": [
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\BLANK_Grey.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\FX\\Texture\\Blank_WTE.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\BLANK_Black.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\BLANK_Blue.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\BLANK_Color.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\BLANK_Green.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\BLANK_Layer.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\BLANK_Red.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\BLANK_Temp.tex",
+      "mips": [
+        {
+          "width": 64,
+          "height": 64,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 16,
+          "height": 16,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 8,
+          "height": 8,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\BLANK_White.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\gray_test.tex",
+      "mips": [
+        {
+          "width": 32,
+          "height": 32,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 16,
+          "height": 16,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 8,
+          "height": 8,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\Old_Asset.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\STR_Road.tex",
+      "mips": [
+        {
+          "width": 64,
+          "height": 64,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 16,
+          "height": 16,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 8,
+          "height": 8,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "WoWClient\\ClientData\\Art\\Dev\\test.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    }
+  ]
+}

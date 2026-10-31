@@ -1,0 +1,11 @@
+{
+ "models": 34733,
+ "models_with_clips": 34733,
+ "clips": 75741,
+ "start_lt_end": 75014,
+ "bb_dup": 46353,
+ "ids_sorted": 34733,
+ "clips_in_animated_models": 45856,
+ "end_within_timeline": 44396,
+ "start_is_keyframe": 42043
+}

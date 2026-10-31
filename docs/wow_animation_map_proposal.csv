@@ -1,0 +1,17 @@
+ws_id,ws_name,wow_anim_id,wow_name,models
+150,Default_Stand,0,Stand,34733
+210,Default_BasePose,0,"Stand (fallback, base pose)",2954
+165,Default_Death,1,Death,973
+152,Default_Run,5,Run,266
+153,Default_Walk,4,Walk,259
+151,Default_Ready,27,ReadyUnarmed,207
+156,Default_Dodge,33,Dodge,129
+157,Default_Wound,8,StandWound,119
+159,Default_JumpLand,39,JumpEnd,56
+154,Default_WalkBackwards,13,Walkbackwards,55
+166,Default_JumpStart,37,JumpStart,55
+167,Default_JumpLoop,38,Jump,54
+155,Default_Attack,16,AttackUnarmed,42
+164,Default_HandsClosed,15,HandsClosed,32
+161,Default_Swim_Run,42,Swim,31
+163,Default_Swim_Stand,41,SwimIdle,31

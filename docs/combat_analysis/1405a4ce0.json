@@ -1,0 +1,9 @@
+{
+  "program": "WildStar64.exe",
+  "status": "success",
+  "address": "1405a4ce0",
+  "name": "FUN_1405a4ce0",
+  "language_id": "x86:LE:64:default",
+  "variant": "default",
+  "decompiled": "\r\nundefined8 FUN_1405a4ce0(longlong param_1,int *param_2)\r\n\r\n{\r\n  int iVar1;\r\n  longlong lVar2;\r\n  \r\n  lVar2 = DAT_140c65898;\r\n  iVar1 = FUN_1403bad30(DAT_140c65898,*(undefined4 *)(param_1 + 0x40),\r\n                        *(undefined1 *)(DAT_140c65898 + 0x6dec));\r\n  if (((iVar1 != 0) &&\r\n      ((((*(longlong *)(lVar2 + 0x78) != 0 && (lVar2 != 0)) &&\r\n        (lVar2 = FUN_1405a5b90(lVar2,iVar1), lVar2 != 0)) ||\r\n       (lVar2 = FUN_1407a0fd0(DAT_140c65b70,iVar1), lVar2 != 0)))) &&\r\n     (*(int *)(*(longlong *)(lVar2 + 0x70) + 0x194) != 0)) {\r\n    iVar1 = FUN_1403a8000();\r\n    if (iVar1 == 0) {\r\n      return 1;\r\n    }\r\n    if (param_2 != (int *)0x0) {\r\n      *param_2 = iVar1;\r\n    }\r\n    return 2;\r\n  }\r\n  return 0;\r\n}\r\n\r\n"
+}

@@ -1,0 +1,20 @@
+    ps_3_0
+    def c1, -0.5, 0.0666666701, 1, 0
+    dcl vPos.xy
+    add r0.xy, c1.x, vPos
+    mul r0.xy, r0, c1.y
+    mul oC0.xy, r0, c0.x
+    mov r1.x, c0.x
+    mul oC0.z, r1.x, c2.x
+    mul oC1.xy, r0, c0.x
+    mul oC1.z, r1.x, c2.y
+    mul oC2.xy, r0, c0.x
+    mul oC3.xy, r0, c0.x
+    mul oC2.z, r1.x, c2.z
+    mul oC3.z, r1.x, c2.w
+    mov oC0.w, c1.z
+    mov oC1.w, c1.z
+    mov oC2.w, c1.z
+    mov oC3.w, c1.z
+
+// approximately 15 instruction slots used

@@ -1,0 +1,5 @@
+    ps_3_0
+    dcl_texcoord_pp v0.x
+    mov_pp oC0, v0.x
+
+// approximately 1 instruction slot used

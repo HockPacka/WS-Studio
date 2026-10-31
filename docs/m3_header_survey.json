@@ -1,0 +1,422 @@
+{
+ "AP010": {
+  "models": 34733,
+  "total": 75741,
+  "max": 629,
+  "example": "Art\\Character\\Human\\Male\\Human_M.m3",
+  "n": 0
+ },
+ "AP080": {
+  "models": 1277,
+  "total": 12894,
+  "max": 76,
+  "example": "Art\\Character\\Aurin\\Male\\Heads\\Face_03_Aurin_M.m3",
+  "n": 0
+ },
+ "AP0F0": {
+  "models": 34733,
+  "total": 145252,
+  "max": 64,
+  "example": "Art\\Cinematics\\Zones\\Levian_Bay\\CassianArival\\Exports\\Cine_LevianBay_CassianMechariArrival_redo__cassian.m3",
+  "n": 0
+ },
+ "AP180": {
+  "models": 34733,
+  "total": 510522,
+  "max": 255,
+  "example": "Art\\Cinematics\\Zones\\NPE\\Transitions\\Exports\\Cine_NPE_Transitions_Housing_Dominion__prop_A.m3",
+  "n": 0
+ },
+ "AP190": {
+  "models": 18442,
+  "total": 1849099,
+  "max": 129,
+  "example": "Art\\Character\\Aurin\\Female\\Heads\\Hair_05_Aurin_F.m3",
+  "n": 0
+ },
+ "AP1A0": {
+  "models": 20880,
+  "total": 319710,
+  "max": 186,
+  "example": "Art\\Creature\\Avatus\\Avatus.m3",
+  "n": 0
+ },
+ "AP1B0": {
+  "models": 31975,
+  "total": 306361,
+  "max": 469,
+  "example": "Art\\Creature\\StemDragon\\StemDragon.m3",
+  "n": 0
+ },
+ "AP1C0": {
+  "models": 34159,
+  "total": 142259,
+  "max": 92,
+  "example": "Art\\Prop\\Dungeon\\RedMoonTerror\\PRP_RMT_TubeRoom_002.m3",
+  "n": 0
+ },
+ "AP1D0": {
+  "models": 18746,
+  "total": 127016,
+  "max": 13,
+  "example": "Art\\Mount\\Hoverboard\\Cat\\HVR_Cat_000_Back.m3",
+  "n": 0
+ },
+ "AP1E0": {
+  "models": 2588,
+  "total": 7460,
+  "max": 35,
+  "example": "Art\\Prop\\Constructed\\Quest\\Osun\\PRP_Osun_Boundary_Chain_000.m3",
+  "n": 0
+ },
+ "AP1F0": {
+  "models": 31981,
+  "total": 50320,
+  "max": 43,
+  "example": "Art\\Structure\\Model\\Dungeon_Kits\\Datascape\\STR_Datascape_BW_Section_001.m3",
+  "n": 0
+ },
+ "AP200": {
+  "models": 3254,
+  "total": 8073,
+  "max": 28,
+  "example": "Art\\Cinematics\\Zones\\WorldStory02\\OsunCryo\\Exports\\GC123__WS2_Osun_Cryopod_OSUN_inCryo.m3",
+  "n": 0
+ },
+ "AP210": {
+  "models": 3254,
+  "total": 358971,
+  "max": 202,
+  "example": "Art\\Item\\Armor\\Outfit\\Guild_000\\AMR_Outfit_Guild_000_Chest_Draken_M.m3",
+  "n": 0
+ },
+ "AP220": {
+  "models": 0,
+  "total": 0,
+  "max": 0,
+  "example": null,
+  "n": 0
+ },
+ "AP230": {
+  "models": 0,
+  "total": 0,
+  "max": 0,
+  "example": null,
+  "n": 0
+ },
+ "AP240": {
+  "models": 0,
+  "total": 0,
+  "max": 0,
+  "example": null,
+  "n": 0
+ },
+ "AP250": {
+  "models": 34733,
+  "total": 34733,
+  "max": 1,
+  "example": "Art\\Camera\\ShipLinerUpper_HumanCrashedShip.m3",
+  "n": 0
+ },
+ "AP260": {
+  "models": 5918,
+  "total": 51914,
+  "max": 71,
+  "example": "Art\\Cinematics\\Zones\\Galeras\\OsiricDeclaresWar\\EXPORTS\\Cine_Galeras_OsiricDeclaresWar_EXPORT_humanFX.m3",
+  "n": 0
+ },
+ "AP270": {
+  "models": 5918,
+  "total": 480354,
+  "max": 207,
+  "example": "Art\\Character\\Aurin\\Male\\Aurin_M.m3",
+  "n": 0
+ },
+ "AP280": {
+  "models": 1476,
+  "total": 39977,
+  "max": 102,
+  "example": "Art\\Creature\\Osun\\Male\\Osun_M.m3",
+  "n": 0
+ },
+ "AP2A8": {
+  "models": 0,
+  "total": 0,
+  "max": 0,
+  "example": null,
+  "n": 0
+ },
+ "AP2B8": {
+  "models": 1660,
+  "total": 2480,
+  "max": 10,
+  "example": "Art\\Prop\\Constructed\\Terraformer\\Eldan\\PRP_Eldan_Terraformer_000.m3",
+  "n": 0
+ },
+ "AP2C8": {
+  "models": 931,
+  "total": 6273,
+  "max": 58,
+  "example": "Art\\Creature\\Osun\\Male\\Osun_M.m3",
+  "n": 0
+ },
+ "AP2D8": {
+  "models": 0,
+  "total": 0,
+  "max": 0,
+  "example": null,
+  "n": 0
+ },
+ "AP2E8": {
+  "models": 0,
+  "total": 0,
+  "max": 0,
+  "example": null,
+  "n": 0
+ },
+ "AP2F8": {
+  "models": 5023,
+  "total": 41036,
+  "max": 175,
+  "example": "Art\\Prop\\Constructed\\Ship\\GeneralCargoShip\\Darkspur\\PRP_Ship_CargoShip_Darkspur_000.m3",
+  "n": 0
+ },
+ "AP308": {
+  "models": 147,
+  "total": 269,
+  "max": 4,
+  "example": "Art\\Prop\\Natural\\Tree\\PointyPine\\PRP_Tree_PointyPineBroken_000.m3",
+  "n": 0
+ },
+ "AP318": {
+  "models": 1335,
+  "total": 2138,
+  "max": 16,
+  "example": "Art\\Cinematics\\Zones\\Exile_ArcShip\\StoryIntro\\Exports\\Cine_ExileArcShip_StoryIntro__fx.m3",
+  "n": 0
+ },
+ "AP328": {
+  "models": 2388,
+  "total": 7940,
+  "max": 33,
+  "example": "Art\\Cinematics\\Zones\\Northern_Wilds\\Sadie_Death\\Exports\\Sadie_Death_GC174__camera.m3",
+  "n": 0
+ },
+ "AP338": {
+  "models": 2388,
+  "total": 17531,
+  "max": 61,
+  "example": "Art\\Icon\\Weapon_UI_Template.m3",
+  "n": 0
+ },
+ "AP490": {
+  "models": 34733,
+  "total": 35799,
+  "max": 5,
+  "example": "Art\\Prop\\Constructed\\Banner\\Dominion\\PRP_Dominion_Banners_Draped_001.m3",
+  "n": 0
+ },
+ "AP4A0": {
+  "models": 688,
+  "total": 1755,
+  "max": 12,
+  "example": "Art\\Prop\\Constructed\\Floors\\Eldan\\PRP_Floor_Pod_EnergySwitch_000.m3",
+  "n": 0
+ },
+ "AP510": {
+  "models": 192,
+  "total": 26665,
+  "max": 2998,
+  "example": "Art\\Prop\\Dungeon\\Datascape\\TerrainCube\\PRP_Datascape_TerrainCube_000.m3",
+  "n": 0
+ },
+ "AP520": {
+  "models": 192,
+  "total": 132375,
+  "max": 12591,
+  "example": "Art\\Prop\\Dungeon\\Datascape\\TerrainCube\\PRP_Datascape_TerrainCube_000.m3",
+  "n": 0
+ },
+ "AP530": {
+  "models": 160,
+  "total": 7320,
+  "max": 316,
+  "example": "Art\\Prop\\Natural\\Rock\\SkullMountain\\PRP_Rock_SkullMountain_Cave_000.m3",
+  "n": 0
+ },
+ "AP540": {
+  "models": 24,
+  "total": 24,
+  "max": 1,
+  "example": "Art\\Mount\\Cat_Preset\\Mount_Eshara\\Mount_Eshara.m3",
+  "n": 0
+ },
+ "AP550": {
+  "models": 24,
+  "total": 24,
+  "max": 1,
+  "example": "Art\\Mount\\Cat_Preset\\Mount_Eshara\\Mount_Eshara.m3",
+  "n": 0
+ },
+ "AP560": {
+  "models": 1276,
+  "total": 2693,
+  "max": 31,
+  "example": "Art\\Structure\\Model\\Dungeon_Kits\\Datascape\\STR_Datascape_BW_Section_010.m3",
+  "n": 0
+ },
+ "AP570": {
+  "models": 121,
+  "total": 125,
+  "max": 2,
+  "example": "Art\\FX\\Model\\OT\\Stealth\\Stealth_Glitchy_01_BLU.m3",
+  "n": 0
+ },
+ "AP588": {
+  "models": 569,
+  "total": 47164,
+  "max": 83,
+  "example": "Art\\Character\\Human\\Female\\Human_F.m3",
+  "n": 0
+ },
+ "AP598": {
+  "models": 130,
+  "total": 1441,
+  "max": 22,
+  "example": "Art\\Character\\Chua\\Male\\Heads\\Chua_M_Faces.m3",
+  "n": 0
+ },
+ "AP5A8": {
+  "models": 130,
+  "total": 4800,
+  "max": 165,
+  "example": "UI\\Houston\\CostumeModel\\CostumeModel.m3",
+  "n": 0
+ },
+ "DP020": {
+  "models": 430,
+  "total": 2263,
+  "max": 77,
+  "example": "Art\\Character\\Human\\Male\\Human_M.m3",
+  "n": 0
+ },
+ "DP038": {
+  "models": 52,
+  "total": 362,
+  "max": 110,
+  "example": "Art\\Creature\\Strain\\Mauler\\Strain_Mauler.m3",
+  "n": 0
+ },
+ "DP050": {
+  "models": 15,
+  "total": 86,
+  "max": 14,
+  "example": "Art\\Creature\\Strain\\Mauler\\Strain_Mauler.m3",
+  "n": 0
+ },
+ "DP068": {
+  "models": 3,
+  "total": 14,
+  "max": 9,
+  "example": "Art\\Creature\\Avatus\\Avatus_HandRt.m3",
+  "n": 0
+ },
+ "DP090": {
+  "models": 229,
+  "total": 833,
+  "max": 34,
+  "example": "Art\\Prop\\Constructed\\Weapon\\Turret\\PVP\\PRP_PVP_Turret_Beam_000.m3",
+  "n": 0
+ },
+ "DP0A8": {
+  "models": 18,
+  "total": 106,
+  "max": 16,
+  "example": "Art\\FX\\Model\\OT\\Medic\\Field_ProbeRibbon\\Field_ProbeRibbon_8mL_8mW_GRN.m3",
+  "n": 0
+ },
+ "DP0C0": {
+  "models": 7,
+  "total": 86,
+  "max": 21,
+  "example": "Art\\FX\\Model\\OT\\Medic\\Field_GridDotRotate\\Field_GridDotRotate_6mL_5mW_GRN.m3",
+  "n": 0
+ },
+ "DP0D8": {
+  "models": 41,
+  "total": 417,
+  "max": 54,
+  "example": "Art\\Creature\\Ikthian\\Ikthian.m3",
+  "n": 0
+ },
+ "DP100": {
+  "models": 323,
+  "total": 3738,
+  "max": 118,
+  "example": "Art\\FX\\Model\\OT\\Toxic_Bomb_GRN\\Toxic_Bomb_GRN.m3",
+  "n": 0
+ },
+ "DP118": {
+  "models": 291,
+  "total": 3729,
+  "max": 301,
+  "example": "Art\\FX\\Test\\Test_Charge_9.m3",
+  "n": 0
+ },
+ "DP130": {
+  "models": 12,
+  "total": 58,
+  "max": 24,
+  "example": "Art\\FX\\Model\\OT\\Stealth\\Stealth_Glitchy_01_BLU.m3",
+  "n": 0
+ },
+ "DP148": {
+  "models": 5,
+  "total": 16,
+  "max": 6,
+  "example": "Art\\FX\\Model\\Spells\\CinematicStealth\\CinematicStealth_Transition_01_BLU.m3",
+  "n": 0
+ },
+ "DP160": {
+  "models": 7,
+  "total": 7,
+  "max": 1,
+  "example": "Art\\FX\\Model\\Props\\Holograms\\Generic_Holo_GRN\\Generic_Holo_GRN.m3",
+  "n": 0
+ },
+ "DP290": {
+  "models": 801,
+  "total": 448653,
+  "max": 201480,
+  "example": "Art\\Cinematics\\Zones\\Levian_Bay\\ArtemisZin\\Cine_LevianBay_ArtemisZin_Eldercube_EXPORT_cartakerPlayer.m3",
+  "n": 0
+ },
+ "DP350": {
+  "models": 877,
+  "total": 20918,
+  "max": 3981,
+  "example": "Art\\Prop\\Constructed\\Ship\\GeneralCargoShip\\LaCucaracha\\PRP_Ship_CargoShip_LaCucaracha_000.m3",
+  "n": 0
+ },
+ "DP370": {
+  "models": 1534,
+  "total": 850323,
+  "max": 5723,
+  "example": "Art\\Cinematics\\Vistas\\Generic\\Cine_Generic_Vistas.m3",
+  "n": 0
+ },
+ "DP5C0": {
+  "models": 668,
+  "total": 680,
+  "max": 7,
+  "example": "Art\\Prop\\Natural\\Tree\\PointyPine\\PRP_Tree_PointyPineBroken_000.m3",
+  "n": 0
+ },
+ "_models": {
+  "models": 0,
+  "total": 0,
+  "max": 0,
+  "example": null,
+  "n": 34733
+ }
+}

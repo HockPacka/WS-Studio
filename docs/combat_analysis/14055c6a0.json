@@ -1,0 +1,9 @@
+{
+  "program": "WildStar64.exe",
+  "status": "success",
+  "address": "14055c6a0",
+  "name": "FUN_14055c6a0",
+  "language_id": "x86:LE:64:default",
+  "variant": "default",
+  "decompiled": "\r\nundefined8 FUN_14055c6a0(void)\r\n\r\n{\r\n  int iVar1;\r\n  longlong lVar2;\r\n  longlong *plVar3;\r\n  undefined4 uVar4;\r\n  \r\n  FUN_140236320();\r\n  FUN_140238520();\r\n  FUN_140236ba0();\r\n  if (DAT_140c65b70 != (undefined8 *)0x0) {\r\n    (**(code **)*DAT_140c65b70)();\r\n    return 0;\r\n  }\r\n  lVar2 = FUN_14018b280(0x810,0);\r\n  plVar3 = (longlong *)0x0;\r\n  uVar4 = 0;\r\n  if (lVar2 != 0) {\r\n    plVar3 = (longlong *)FUN_14055c940(lVar2);\r\n  }\r\n  iVar1 = (**(code **)(*plVar3 + 0x18))(plVar3);\r\n  if (-1 < iVar1) {\r\n    DAT_140c65b70 = plVar3;\r\n    lVar2 = FUN_140200220(100);\r\n    if (lVar2 != 0) {\r\n      uVar4 = *(undefined4 *)(lVar2 + 4);\r\n    }\r\n    DAT_140c6664c = uVar4;\r\n    return 0;\r\n  }\r\n  (**(code **)(*plVar3 + 8))(plVar3);\r\n  return 0x80004005;\r\n}\r\n\r\n"
+}

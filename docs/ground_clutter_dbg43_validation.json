@@ -1,0 +1,293 @@
+{
+  "placements": 77672,
+  "populated_chunks": 256,
+  "max_per_chunk": 435,
+  "unique_models": 47,
+  "models": [
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Grass_000.m3",
+      "vertices": 6,
+      "indices": 12,
+      "instances": 22474
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Moss_BubbleySoft_GreenDark_002.m3",
+      "vertices": 10,
+      "indices": 48,
+      "instances": 345
+    },
+    {
+      "model": "WS\\Art\\Terrain\\Organic\\Clutter\\Clutter_Organic_ForestBedPineNeedles_GoldDark_005.m3",
+      "vertices": 6,
+      "indices": 24,
+      "instances": 1398
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Grass_001.m3",
+      "vertices": 6,
+      "indices": 12,
+      "instances": 28074
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MudRoad_007.m3",
+      "vertices": 4,
+      "indices": 6,
+      "instances": 5257
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MudRoad_006.m3",
+      "vertices": 4,
+      "indices": 6,
+      "instances": 5306
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Moss_BubbleySoft_GreenDark_003.m3",
+      "vertices": 16,
+      "indices": 60,
+      "instances": 24
+    },
+    {
+      "model": "WS\\Art\\Terrain\\Organic\\Clutter\\Clutter_Organic_ForestBedPineNeedles_GoldDark_000.m3",
+      "vertices": 15,
+      "indices": 108,
+      "instances": 264
+    },
+    {
+      "model": "WS\\Art\\Terrain\\Organic\\Clutter\\Clutter_Organic_ForestBedPineNeedles_GoldDark_001.m3",
+      "vertices": 15,
+      "indices": 108,
+      "instances": 185
+    },
+    {
+      "model": "WS\\Art\\Terrain\\Organic\\Clutter\\Clutter_Organic_ForestBedPineNeedles_GoldDark_002.m3",
+      "vertices": 14,
+      "indices": 48,
+      "instances": 146
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Moss_BubbleySoft_GreenDark_001.m3",
+      "vertices": 128,
+      "indices": 474,
+      "instances": 38
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Grass_002.m3",
+      "vertices": 8,
+      "indices": 24,
+      "instances": 577
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MysticForests_001.m3",
+      "vertices": 16,
+      "indices": 60,
+      "instances": 53
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Moss_BubbleySoft_GreenDark_000.m3",
+      "vertices": 128,
+      "indices": 237,
+      "instances": 42
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Grass_003.m3",
+      "vertices": 22,
+      "indices": 84,
+      "instances": 548
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Lushfields_002.m3",
+      "vertices": 8,
+      "indices": 24,
+      "instances": 3181
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MysticForests_006.m3",
+      "vertices": 4,
+      "indices": 12,
+      "instances": 25
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MysticForests_008.m3",
+      "vertices": 6,
+      "indices": 24,
+      "instances": 17
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MysticForests_002.m3",
+      "vertices": 13,
+      "indices": 60,
+      "instances": 12
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Lushfields_009.m3",
+      "vertices": 4,
+      "indices": 12,
+      "instances": 2180
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Lushfields_001.m3",
+      "vertices": 8,
+      "indices": 24,
+      "instances": 924
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MudRoad_005.m3",
+      "vertices": 8,
+      "indices": 24,
+      "instances": 26
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Lushfields_006.m3",
+      "vertices": 9,
+      "indices": 30,
+      "instances": 1929
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Lushfields_003.m3",
+      "vertices": 8,
+      "indices": 24,
+      "instances": 1424
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Gravel_000.m3",
+      "vertices": 18,
+      "indices": 72,
+      "instances": 134
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Gravel_001.m3",
+      "vertices": 19,
+      "indices": 78,
+      "instances": 126
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Lushfields_005.m3",
+      "vertices": 9,
+      "indices": 48,
+      "instances": 296
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Lushfields_008.m3",
+      "vertices": 18,
+      "indices": 96,
+      "instances": 750
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Lushfields_004.m3",
+      "vertices": 5,
+      "indices": 24,
+      "instances": 313
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Lushfields_007.m3",
+      "vertices": 4,
+      "indices": 12,
+      "instances": 78
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MysticForests_009.m3",
+      "vertices": 5,
+      "indices": 18,
+      "instances": 5
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Gravel_003.m3",
+      "vertices": 14,
+      "indices": 54,
+      "instances": 153
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MysticForests_009b.m3",
+      "vertices": 5,
+      "indices": 18,
+      "instances": 11
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MudRoad_004.m3",
+      "vertices": 128,
+      "indices": 237,
+      "instances": 30
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_Gravel_002.m3",
+      "vertices": 15,
+      "indices": 57,
+      "instances": 171
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MudRoad_002.m3",
+      "vertices": 16,
+      "indices": 60,
+      "instances": 356
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MysticForests_004.m3",
+      "vertices": 4,
+      "indices": 12,
+      "instances": 1
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MudRoad_003.m3",
+      "vertices": 128,
+      "indices": 237,
+      "instances": 27
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MysticForests_004b.m3",
+      "vertices": 12,
+      "indices": 36,
+      "instances": 2
+    },
+    {
+      "model": "WS\\Art\\Terrain\\Gravel\\Clutter\\Clutter_Gravel_SmoothRoundStonesMossy_GreyGreen_000.M3",
+      "vertices": 22,
+      "indices": 93,
+      "instances": 77
+    },
+    {
+      "model": "WS\\Art\\Terrain\\Gravel\\Clutter\\Clutter_Gravel_SmoothRoundStonesMossy_GreyGreen_001.M3",
+      "vertices": 17,
+      "indices": 72,
+      "instances": 98
+    },
+    {
+      "model": "WS\\Art\\Terrain\\Gravel\\Clutter\\Clutter_Gravel_SmoothRoundStonesMossy_GreyGreen_004.M3",
+      "vertices": 19,
+      "indices": 81,
+      "instances": 90
+    },
+    {
+      "model": "WS\\Art\\Terrain\\Gravel\\Clutter\\Clutter_Gravel_SmoothRoundStonesMossy_GreyGreen_002.M3",
+      "vertices": 21,
+      "indices": 90,
+      "instances": 96
+    },
+    {
+      "model": "WS\\Art\\Terrain\\Gravel\\Clutter\\Clutter_Gravel_SmoothRoundStonesMossy_GreyGreen_005.M3",
+      "vertices": 19,
+      "indices": 81,
+      "instances": 82
+    },
+    {
+      "model": "WS\\Art\\Terrain\\Gravel\\Clutter\\Clutter_Gravel_SmoothRoundStonesMossy_GreyGreen_003.M3",
+      "vertices": 23,
+      "indices": 96,
+      "instances": 69
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Whitevale\\_Clutter\\Terrain_Underwater_Flora_Whitevale_000\\Clutter_Underwater_Flora_Whitevale_000.m3",
+      "vertices": 12,
+      "indices": 72,
+      "instances": 168
+    },
+    {
+      "model": "WS\\Art\\Terrain\\_Ellevar\\Clutter\\Clutter_Ellevar_MudRoad_001.m3",
+      "vertices": 6,
+      "indices": 24,
+      "instances": 90
+    }
+  ],
+  "textures": 6,
+  "forbidden_placements": 0,
+  "invalid_presets": 0
+}

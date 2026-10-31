@@ -1,0 +1,52 @@
+    vs_3_0
+    def c7, 1, 0, -1, 0
+    dcl_position v0
+    dcl_normal v1
+    dcl_tangent v2
+    dcl_binormal v3
+    dcl_color v4
+    dcl_texcoord v5
+    dcl_texcoord1 v6
+    dcl_texcoord2 v7
+    dcl_blendweight v8
+    dcl_position o0
+    dcl_color o1
+    dcl_color1 o2
+    dcl_texcoord o3
+    dcl_texcoord1 o4
+    dcl_texcoord2 o5
+    dcl_texcoord3 o6
+    dcl_texcoord4 o7
+    dcl_texcoord5 o8
+    dcl_texcoord6 o9
+    dcl_texcoord7 o10
+    mov r0.w, c7.x
+    dp4 r0.x, v0, c0
+    dp4 r0.y, v0, c1
+    dp4 r0.z, v0, c2
+    dp4 o0.x, r0, c3
+    dp4 o0.y, r0, c4
+    dp4 o0.z, r0, c5
+    dp4 o0.w, r0, c6
+    mul o7, r0.xyzz, c7.xxxz
+    dp3 o3.x, v1, c0
+    dp3 o3.y, v1, c1
+    dp3 o3.z, v1, c2
+    dp3 o4.x, v2, c0
+    dp3 o4.y, v2, c1
+    dp3 o4.z, v2, c2
+    dp3 o5.x, v3, c0
+    dp3 o5.y, v3, c1
+    dp3 o5.z, v3, c2
+    add o5.w, c7.x, -v7.x
+    mov o1, v8
+    mov o2, v4
+    mov o3.w, c7.y
+    mov o4.w, v6.x
+    mov o6, c7.y
+    mov o8, c7.y
+    mov o9.xy, v5
+    mov o9.zw, v0.xyxz
+    mov o10, c7.y
+
+// approximately 28 instruction slots used

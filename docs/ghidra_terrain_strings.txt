@@ -1,0 +1,24 @@
+140aaf668  "clutterFlags"  refs:
+140aafa68  "WorldClutter"  refs: 14024aecb(FUN_14024aea0) 140a71a80(-)
+140aafba0  "DB\WorldClutter.tbl"  refs: 14024b051(FUN_14024aea0)
+140aafbc8  "DB\WorldClutter.tbl"  refs:
+140aafbf8  "DB\WorldClutter.tbl"  refs:
+140aafda8  "worldClutterId02"  refs:
+140aafdd0  "worldClutterId03"  refs:
+140aafdf8  "worldClutterId00"  refs:
+140aafe20  "worldClutterId01"  refs:
+140ae28d0  "WorldClutter"  refs: 140a6e1b8(-)
+140af0930  "the (LandLayerWeight/LandClutterPreset/OceanLayerWeight) specified has no (Land/Ocean) LayerId"  refs: 140af0bb8(-)
+140af0ac0  "E_MAP_REFERENCED_BY_LANDCLUTTERPRESETS"  refs: 140af0be0(-)
+140af0b10  "the LandLayerIds specified are referenced by LandClutterPresets"  refs: 140af0be8(-)
+140af0e10  "ClutterPresetId"  refs: 1402dbfd5(FUN_1402dbc00)
+140af4ab0  "Shaders\ClutterPS.sho"  refs: 14034e206(FUN_14034dc80)
+140af4ae0  "Shaders\ClutterVS.sho"  refs: 14034e1e0(FUN_14034dc80)
+140af5150  "CWorldClutterModel: corrupt model"  refs:
+140af51a0  "CWorldClutterModel: read failed"  refs:
+140b02610  "lod.clutterDensity"  refs: 140c46538(-)
+140b02638  "lod.clutterDistance"  refs: 140c465c8(-)
+140b027a0  "mem.conserveUnlimitClutterDistanceInMegs"  refs: 140c46178(-)
+140b02820  "mem.conserveUnlimitClutterDensityInMegs"  refs: 140c46118(-)
+140b36510  "IsGroundClutterHidden"  refs: 140c5dbf0(-)
+140b36528  "SetGroundClutterHidden"  refs: 140c5dc00(-)

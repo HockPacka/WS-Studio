@@ -1,0 +1,23 @@
+{
+"(('POSITION', '0', 'xyzw', 'int'), ('COLOR', '2', 'xyzw', 'float'), ('TEXCOORD', '0', 'xyzw', 'float'), ('POSITION', '1', 'x', 'float'))": [
+0,
+1,
+2,
+3,
+4
+],
+"(('POSITION', '0', 'xyzw', 'int'), ('COLOR', '2', 'xyzw', 'float'), ('BLENDINDICES', '0', 'xyzw', 'float'), ('BLENDWEIGHT', '0', 'xyzw', 'float'), ('COLOR', '0', 'xyzw', 'float'), ('COLOR', '1', 'xyzw', 'float'), ('TEXCOORD', '0', 'xyzw', 'float'), ('POSITION', '1', 'x', 'float'))": [
+48,
+49,
+50,
+51,
+52
+],
+"(('POSITION', '0', 'xyzw', 'float'), ('COLOR', '2', 'xy', 'float'), ('COLOR', '3', 'xy', 'float'), ('COLOR', '4', 'xy', 'float'), ('BLENDINDICES', '0', 'xyzw', 'float'), ('BLENDWEIGHT', '0', 'xyzw', 'float'), ('COLOR', '0', 'xyzw', 'float'), ('COLOR', '1', 'xyzw', 'float'), ('TEXCOORD', '0', 'xyzw', 'float'), ('TEXCOORD', '1', 'xyzw', 'float'), ('POSITION', '1', 'x', 'float'))": [
+240,
+241,
+242,
+243,
+244
+]
+}

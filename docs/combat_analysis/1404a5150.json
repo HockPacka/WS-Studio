@@ -1,0 +1,9 @@
+{
+  "program": "WildStar64.exe",
+  "status": "success",
+  "address": "1404a5150",
+  "name": "FUN_1404a5150",
+  "language_id": "x86:LE:64:default",
+  "variant": "default",
+  "decompiled": "\r\nundefined8 FUN_1404a5150(undefined8 param_1,ulonglong param_2)\r\n\r\n{\r\n  FUN_1404a5590();\r\n  if ((param_2 & 1) != 0) {\r\n    FUN_14018b900(param_1,0);\r\n  }\r\n  return param_1;\r\n}\r\n\r\n"
+}

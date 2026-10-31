@@ -1,0 +1,45 @@
+    vs_3_0
+    def c0, 2, 765.005859, 1, 0
+    dcl_position v0
+    dcl_blendindices v1
+    dcl_color v2
+    dcl_texcoord v3
+    dcl_position1 v4
+    dcl_position o0
+    dcl_color o1
+    dcl_texcoord o2.xy
+    dcl_texcoord1 o3.xyz
+    dcl_texcoord2 o4.x
+    mov r0.xw, c0.xyzz
+    mad r0.x, v4.x, c10.x, r0.x
+    mad r0.x, v1.z, c0.y, r0.x
+    mul r0.y, v4.x, c10.x
+    frc r0.y, r0.y
+    add r0.x, r0.x, -r0.y
+    mova a0.x, r0.x
+    dp4 r0.x, v0, c10[a0.x]
+    dp4 r0.y, v0, c11[a0.x]
+    dp4 r0.z, v0, c12[a0.x]
+    dp4 o0.x, c2, r0
+    dp4 o0.y, c3, r0
+    dp4 o0.z, c4, r0
+    dp4 o0.w, c5, r0
+    add r1.xyz, r0, -c7
+    dp3 r0.w, r1, c8
+    mad r1.xyz, c8, -r0.w, r1
+    dp3 r0.w, r1, r1
+    rsq r0.w, r0.w
+    rcp r0.w, r0.w
+    mov r1.w, c8.w
+    mad_sat r0.w, r0.w, c7.w, r1.w
+    dp3 r1.x, r0, r0
+    mov o3.xyz, r0
+    mul r0.x, r1.x, c6.x
+    exp r0.x, r0.x
+    mad_sat r0.x, r0.x, c6.y, -c6.y
+    lrp r1.x, r0.w, c0.z, r0.x
+    mul o4.x, r1.x, c9.x
+    mov o1, v2
+    mov o2.xy, v3
+
+// approximately 31 instruction slots used

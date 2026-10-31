@@ -1,0 +1,110 @@
+{
+  "real_models": [
+    {
+      "model": "WoWClient\\ClientData\\Art\\Prop\\Natural\\Flowers\\StarFlower\\PRP_Flower_PurpleStarFlower_000.m3",
+      "modes": [
+        1
+      ],
+      "uv_range": [
+        [
+          0.06207275390625,
+          1.0
+        ],
+        [
+          0.0782470703125,
+          1.0
+        ]
+      ]
+    },
+    {
+      "model": "WoWClient\\ClientData\\Art\\Prop\\Natural\\Bush\\WeepingUmbrella\\PRP_Bush_WeepingUmbrella_000.m3",
+      "modes": [
+        0,
+        1,
+        1
+      ],
+      "uv_range": [
+        [
+          0.0,
+          1.2548828125
+        ],
+        [
+          -0.1339111328125,
+          1.0048828125
+        ]
+      ]
+    },
+    {
+      "model": "WoWClient\\ClientData\\Art\\Prop\\Natural\\Tree\\Withered_Pointy_Pine\\PRP_Tree_Withered_PointyPine_000.m3",
+      "modes": [
+        0,
+        1,
+        1
+      ],
+      "uv_range": [
+        [
+          -0.63720703125,
+          1.4521484375
+        ],
+        [
+          -2.841796875,
+          2.228515625
+        ]
+      ]
+    },
+    {
+      "model": "WoWClient\\ClientData\\Art\\Prop\\Natural\\Rock\\SlantedPointyWhite\\PRP_Rock_SlantedPointyLarge_White_000.m3",
+      "modes": [
+        0
+      ],
+      "uv_range": [
+        [
+          -2.34375,
+          0.966796875
+        ],
+        [
+          -0.50439453125,
+          1.5234375
+        ]
+      ]
+    }
+  ],
+  "controlled_cases": [
+    {
+      "mode": 0
+    },
+    {
+      "mode": 1
+    },
+    {
+      "mode": 2
+    },
+    {
+      "mode": 3
+    },
+    {
+      "mode": 4
+    },
+    {
+      "mode": 5
+    },
+    {
+      "mode": 6
+    },
+    {
+      "opacity": 0.0
+    },
+    {
+      "opacity": 0.25
+    },
+    {
+      "opacity": 0.75
+    },
+    {
+      "opacity": 1.0
+    }
+  ],
+  "white_fallback": true,
+  "depth_flags": true,
+  "single_layer_tint": true
+}

@@ -1,0 +1,9 @@
+{
+  "program": "WildStar64.exe",
+  "status": "success",
+  "address": "140225970",
+  "name": "FUN_140225970",
+  "language_id": "x86:LE:64:default",
+  "variant": "default",
+  "decompiled": "\r\nundefined8 FUN_140225970(void)\r\n\r\n{\r\n  int iVar1;\r\n  undefined8 uVar2;\r\n  \r\n  if (DAT_140c63838 != (code *)0x0) {\r\n                    /* WARNING: Could not recover jumptable at 0x000140225992. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n    uVar2 = (*DAT_140c63838)(&PTR_u_Prerequisite_140a6c2e0,DAT_140c63858);\r\n    return uVar2;\r\n  }\r\n  if (DAT_140c647d0 == 0) {\r\n    iVar1 = FUN_140225760();\r\n    if (-1 < iVar1) {\r\n                    /* WARNING: Could not recover jumptable at 0x0001402259bc. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n      uVar2 = (**(code **)(*DAT_140c64208 + 0x28))();\r\n      return uVar2;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n"
+}

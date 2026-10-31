@@ -1,0 +1,410 @@
+{
+ ".tex": {
+  "count": 74632,
+  "bytes": 9687064676,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 74555,
+   "ClientDataEN": 34,
+   "ClientDataDE": 43
+  },
+  "top_dirs": {
+   "Art": 46249,
+   "UI": 15307,
+   "Map": 12885,
+   "EnvMap": 191
+  },
+  "magics": {
+   "58464700": 12
+  },
+  "samples": [
+   "Art/Character/Aurin/Female/newUVLayout/aurin_f_color.tex",
+   "Art/Character/Aurin/Female/newUVLayout/aurin_f_normal.tex",
+   "Art/Character/Aurin/Female/Textures/Aurin_F_Hair_Color.tex"
+  ]
+ },
+ ".wem": {
+  "count": 59273,
+  "bytes": 4428252638,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 1424,
+   "ClientDataEN": 28945,
+   "ClientDataDE": 28904
+  },
+  "top_dirs": {
+   "Audio": 59273
+  },
+  "magics": {
+   "52494646": 12
+  },
+  "samples": [
+   "Audio/1002142891.wem",
+   "Audio/1002889705.wem",
+   "Audio/100318939.wem"
+  ]
+ },
+ ".m3": {
+  "count": 34733,
+  "bytes": 6578627616,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 34712,
+   "ClientDataDE": 21
+  },
+  "top_dirs": {
+   "Art": 34554,
+   "UI": 179
+  },
+  "magics": {
+   "4c444f4d": 12
+  },
+  "samples": [
+   "Art/Camera/Camera_Shake.m3",
+   "Art/Camera/CinematicCam_EldanTower.m3",
+   "Art/Camera/CinematicCam_GranokDropPod.m3"
+  ]
+ },
+ ".area": {
+  "count": 15051,
+  "bytes": 14625051547,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 15051
+  },
+  "top_dirs": {
+   "Map": 15051
+  },
+  "magics": {
+   "61657261": 12
+  },
+  "samples": [
+   "Map/1x1HousingGamblingInterior/1x1HousingGamblingInterior.3f3f.area",
+   "Map/1x1HousingGamblingInterior/1x1HousingGamblingInterior.3f40.area",
+   "Map/1x1HousingGamblingInterior/1x1HousingGamblingInterior.403f.area"
+  ]
+ },
+ ".i3": {
+  "count": 1704,
+  "bytes": 2079606144,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 1704
+  },
+  "top_dirs": {
+   "Art": 1704
+  },
+  "magics": {
+   "46454449": 6,
+   "46454453": 6
+  },
+  "samples": [
+   "Art/Creature/Grund/Grund.i3",
+   "Art/Creature/Grund/Grund.Scene_Root.i3",
+   "Art/Dev/GamePreview_Dungeon.i3"
+  ]
+ },
+ ".sky": {
+  "count": 1291,
+  "bytes": 9519088,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 1290,
+   "ClientDataDE": 1
+  },
+  "top_dirs": {
+   "Sky": 1291
+  },
+  "magics": {
+   "594b5358": 12
+  },
+  "samples": [
+   "Sky/Adeventure_Algoroc_SpeedUp.sky",
+   "Sky/Adventure_Algoroc_BleedOver.sky",
+   "Sky/Adventure_Algoroc_SlowDown.sky"
+  ]
+ },
+ ".dgn": {
+  "count": 986,
+  "bytes": 111328192,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 986
+  },
+  "top_dirs": {
+   "Art": 986
+  },
+  "magics": {
+   "00000000": 2,
+   "01000000": 1,
+   "02000000": 1,
+   "03000000": 1
+  },
+  "samples": [
+   "Art/Dev/GamePreview_Dungeon_Placeholder.0.dgn",
+   "Art/Dev/GamePreview_Dungeon_Placeholder.1.dgn",
+   "Art/Dev/GamePreview_Dungeon_Placeholder.2.dgn"
+  ]
+ },
+ ".xml": {
+  "count": 562,
+  "bytes": 14437563,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 558,
+   "ClientDataEN": 2,
+   "ClientDataDE": 2
+  },
+  "top_dirs": {
+   "UI": 555,
+   "Common": 7
+  },
+  "magics": {
+   "3c3f786d": 11,
+   "3c416e69": 1
+  },
+  "samples": [
+   "Common/Formula/Spell4CombatChance.xml",
+   "Common/Formula/Spell4HitTablePrimaryAttributeLimit.xml",
+   "Common/Formula/Spell4PrimaryAttributeRelativeModifier.xml"
+  ]
+ },
+ ".tbl": {
+  "count": 384,
+  "bytes": 238071664,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 384
+  },
+  "top_dirs": {
+   "DB": 384
+  },
+  "magics": {
+   "4c425444": 12
+  },
+  "samples": [
+   "DB/AccountCurrencyType.tbl",
+   "DB/AccountItem.tbl",
+   "DB/AccountItemCooldownGroup.tbl"
+  ]
+ },
+ ".sho": {
+  "count": 311,
+  "bytes": 184172736,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 311
+  },
+  "top_dirs": {
+   "Shaders": 311
+  },
+  "magics": {
+   "53544754": 8,
+   "53484452": 4
+  },
+  "samples": [
+   "Shaders/aaPS.ps_3_0.sho",
+   "Shaders/aaPS.ps_4_0.sho",
+   "Shaders/aaPS.sho"
+  ]
+ },
+ ".lua": {
+  "count": 203,
+  "bytes": 6217440,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 203
+  },
+  "top_dirs": {
+   "UI": 203
+  },
+  "magics": {
+   "2d2d2d2d": 10,
+   "0d0a0d0a": 1,
+   "2d2d0d0a": 1
+  },
+  "samples": [
+   "UI/ApolloModule.lua",
+   "UI/CombatFloaterConfig.lua",
+   "UI/Abilities/AbilitiesBuilder.lua"
+  ]
+ },
+ ".bnk": {
+  "count": 146,
+  "bytes": 2054541291,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 134,
+   "ClientDataEN": 6,
+   "ClientDataDE": 6
+  },
+  "top_dirs": {
+   "Audio": 146
+  },
+  "magics": {
+   "424b4844": 12
+  },
+  "samples": [
+   "Audio/Cinematic.bnk",
+   "Audio/Default_Work_Unit.bnk",
+   "Audio/Deprecated_Player.bnk"
+  ]
+ },
+ ".form": {
+  "count": 43,
+  "bytes": 309290,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 43
+  },
+  "top_dirs": {
+   "UI": 43
+  },
+  "magics": {
+   "fffe3c00": 12
+  },
+  "samples": [
+   "UI/_OLD/Console.form",
+   "UI/_OLD/MessageBox.form",
+   "UI/_OLD/MessageBoxColorPicker.form"
+  ]
+ },
+ ".bk2": {
+  "count": 18,
+  "bytes": 838718308,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 16,
+   "ClientDataEN": 1,
+   "ClientDataDE": 1
+  },
+  "top_dirs": {
+   "Art": 18
+  },
+  "magics": {
+   "4b423269": 8
+  },
+  "samples": [
+   "Art/Cinematics/Zones/CHSelect/CHSelect_class_eng.bk2",
+   "Art/Cinematics/Zones/CHSelect/CHSelect_class_esper.bk2",
+   "Art/Cinematics/Zones/CHSelect/CHSelect_class_stalker.bk2"
+  ]
+ },
+ ".map": {
+  "count": 13,
+  "bytes": 3487,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 13
+  },
+  "top_dirs": {
+   "Map": 13
+  },
+  "magics": {
+   "3c4d6170": 12
+  },
+  "samples": [
+   "Map/AdventureGaleras/AdventureGaleras.map",
+   "Map/AdventureHycrest/AdventureHycrest.map",
+   "Map/AdventureLevianBay/AdventureLevianBay.map"
+  ]
+ },
+ ".ttf": {
+  "count": 11,
+  "bytes": 2745724,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 11
+  },
+  "top_dirs": {
+   "UI": 11
+  },
+  "magics": {
+   "00010000": 11
+  },
+  "samples": [
+   "UI/Fonts/CubeOffcCond.ttf",
+   "UI/Fonts/CubeOffcCondLight.ttf",
+   "UI/Fonts/ErasMediumBold.ttf"
+  ]
+ },
+ ".bin": {
+  "count": 2,
+  "bytes": 89430464,
+  "zero_size": 0,
+  "archives": {
+   "ClientDataEN": 1,
+   "ClientDataDE": 1
+  },
+  "top_dirs": {
+   "en-US.bin": 1,
+   "de-DE.bin": 1
+  },
+  "magics": {},
+  "samples": []
+ },
+ ".tga": {
+  "count": 1,
+  "bytes": 16777260,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 1
+  },
+  "top_dirs": {
+   "Art": 1
+  },
+  "magics": {},
+  "samples": []
+ },
+ ".psd": {
+  "count": 1,
+  "bytes": 1256469,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 1
+  },
+  "top_dirs": {
+   "UI": 1
+  },
+  "magics": {
+   "38425053": 1
+  },
+  "samples": [
+   "UI/_OLD/256WindowTech.psd"
+  ]
+ },
+ ".txd": {
+  "count": 1,
+  "bytes": 7632,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 1
+  },
+  "top_dirs": {
+   "UI": 1
+  },
+  "magics": {
+   "68616c62": 1
+  },
+  "samples": [
+   "UI/_OLD/256WindowTech.txd"
+  ]
+ },
+ ".jpg": {
+  "count": 1,
+  "bytes": 325355,
+  "zero_size": 0,
+  "archives": {
+   "ClientData": 1
+  },
+  "top_dirs": {
+   "UI": 1
+  },
+  "magics": {
+   "ffd8ffe0": 1
+  },
+  "samples": [
+   "UI/_OLD/loading.jpg"
+  ]
+ }
+}

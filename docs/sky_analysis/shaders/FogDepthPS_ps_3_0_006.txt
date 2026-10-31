@@ -1,0 +1,8 @@
+    ps_3_0
+    dcl vPos.xy
+    dcl_2d s0
+    mad_pp r0.xy, vPos, c0, c0.zwzw
+    texld_pp r0, r0, s0
+    mov_pp oC0, r0.x
+
+// approximately 3 instruction slots used (1 texture, 2 arithmetic)

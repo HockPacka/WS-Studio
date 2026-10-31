@@ -1,0 +1,9 @@
+{
+  "program": "WildStar64.exe",
+  "status": "success",
+  "address": "1407a0fd0",
+  "name": "FUN_1407a0fd0",
+  "language_id": "x86:LE:64:default",
+  "variant": "default",
+  "decompiled": "\r\nulonglong FUN_1407a0fd0(longlong param_1,int param_2)\r\n\r\n{\r\n  longlong lVar1;\r\n  ulonglong *puVar2;\r\n  int iVar3;\r\n  ulonglong uVar4;\r\n  int local_res10 [2];\r\n  \r\n  if (param_2 == 0) {\r\n    return 0;\r\n  }\r\n  lVar1 = *(longlong *)(param_1 + 0x540);\r\n  if (lVar1 == 0) {\r\n    return 0;\r\n  }\r\n  local_res10[0] = param_2;\r\n  uVar4 = (**(code **)(lVar1 + 0x18))(local_res10);\r\n  puVar2 = *(ulonglong **)(*(longlong *)(lVar1 + 0x10) + (uVar4 % *(ulonglong *)(lVar1 + 8)) * 8);\r\n  while( true ) {\r\n    if (puVar2 == (ulonglong *)0x0) {\r\n      return 0;\r\n    }\r\n    if ((uVar4 == *puVar2) &&\r\n       (iVar3 = (**(code **)(lVar1 + 0x20))(local_res10,puVar2 + 2), iVar3 != 0)) break;\r\n    puVar2 = (ulonglong *)puVar2[1];\r\n  }\r\n  if (puVar2 + 3 == (ulonglong *)0x0) {\r\n    return 0;\r\n  }\r\n  return puVar2[3];\r\n}\r\n\r\n"
+}

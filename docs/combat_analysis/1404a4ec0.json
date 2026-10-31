@@ -1,0 +1,9 @@
+{
+  "program": "WildStar64.exe",
+  "status": "success",
+  "address": "1404a4ec0",
+  "name": "FUN_1404a4ec0",
+  "language_id": "x86:LE:64:default",
+  "variant": "default",
+  "decompiled": "\r\nbool FUN_1404a4ec0(undefined8 param_1,longlong param_2,int param_3,int param_4)\r\n\r\n{\r\n  longlong lVar1;\r\n  bool bVar2;\r\n  int iVar3;\r\n  bool bVar4;\r\n  \r\n  if (param_2 == 0) {\r\n    return false;\r\n  }\r\n  lVar1 = *(longlong *)(param_2 + 0x15c8);\r\n  bVar2 = false;\r\n  do {\r\n    bVar4 = false;\r\n    if (lVar1 == 0) {\r\nLAB_1404a4f19:\r\n      if ((param_3 != 1) && (bVar4 = false, param_3 == 2)) {\r\n        return !bVar2;\r\n      }\r\n      return bVar4;\r\n    }\r\n    iVar3 = (**(code **)(**(longlong **)(lVar1 + 0x38) + 8))();\r\n    if (iVar3 == param_4) {\r\n      bVar2 = true;\r\n      bVar4 = true;\r\n      goto LAB_1404a4f19;\r\n    }\r\n    lVar1 = *(longlong *)(lVar1 + 0x18);\r\n  } while( true );\r\n}\r\n\r\n"
+}

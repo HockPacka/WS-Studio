@@ -1,0 +1,7 @@
+    ps_3_0
+    def c0, 1.5, 0, 0, 0
+    dcl_color v0
+    min oC0.xyz, v0, c0.x
+    mov oC0.w, v0.w
+
+// approximately 2 instruction slots used

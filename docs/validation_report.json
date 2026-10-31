@@ -1,0 +1,112 @@
+{
+ ".tex": {
+  "total": 74632,
+  "ok": 74551,
+  "partial": 81,
+  "fail": 0,
+  "bytes": 9687064676,
+  "known_bytes": 9649407716,
+  "reasons": {},
+  "kinds": {
+   "jpg1": 15794,
+   "fmt13": 15591,
+   "jpg2": 13891,
+   "jpg0": 13801,
+   "fmt6+footer": 4125,
+   "fmt0": 3919,
+   "fmt15": 3808,
+   "fmt6": 2146,
+   "fmt1": 1475,
+   "fmt6?size": 64,
+   "fmt5?size": 15,
+   "fmt18": 2,
+   "fmt13+footer": 1
+  },
+  "fail_examples": []
+ },
+ ".m3": {
+  "total": 34733,
+  "ok": 34733,
+  "partial": 0,
+  "fail": 0,
+  "bytes": 6578627616,
+  "known_bytes": 3518793771,
+  "reasons": {},
+  "kinds": {
+   "v100": 34733
+  },
+  "fail_examples": []
+ },
+ ".area": {
+  "total": 15051,
+  "ok": 2944,
+  "partial": 6567,
+  "fail": 5540,
+  "bytes": 14625051547,
+  "known_bytes": 754640926,
+  "reasons": {
+   "prop path": 5198,
+   "prop overflow": 124,
+   "prop trailer 28": 56,
+   "prop trailer 124": 31,
+   "prop trailer 88": 29,
+   "flag block overflows": 27,
+   "prop trailer 112": 24,
+   "prop trailer 40": 17,
+   "prop trailer 268": 9,
+   "prop trailer 0": 7,
+   "prop trailer 64": 7,
+   "prop trailer 76": 6,
+   "prop trailer 172": 3,
+   "prop trailer 100": 1,
+   "prop trailer 52": 1
+  },
+  "kinds": {
+   "pkg:KNHC": 4464146646,
+   "unknown_flag_bit21": 942883,
+   "unknown_flag_bit17": 190320,
+   "unknown_flag_bit16": 107942,
+   "pkg:pORP": 93374,
+   "pkg:TRUC": 87492,
+   "unknown_flag_bit19": 46693,
+   "unknown_flag_bit9": 34154,
+   "unknown_flag_bit14": 3974,
+   "unknown_flag_bit26": 186,
+   "unknown_flag_bit10": 37,
+   "unknown_flag_bit11": 10,
+   "unknown_flag_bit18": 2
+  },
+  "fail_examples": [
+   "Map\\AdvAstroVoidPrisonPlugMap\\AdvAstroVoidPrisonPlugMap.0100.area",
+   "Map\\AdvGalerasPlugMap\\AdvGalerasPlugMap.0200.area",
+   "Map\\AdvGalerasPlugMap\\AdvGalerasPlugMap.0501.area",
+   "Map\\AdvNorthernWildsPlugMap\\AdvNorthernWildsPlugMap.0000.area",
+   "Map\\AdventureAstrovoidPrison\\AdventureAstrovoidPrison.3e3f.area",
+   "Map\\AdvAstroVoidPrisonPlugMap\\AdvAstroVoidPrisonPlugMap.0101.area",
+   "Map\\AdvGalerasPlugMap\\AdvGalerasPlugMap.0202.area",
+   "Map\\AdvGalerasPlugMap\\AdvGalerasPlugMap.0505.area"
+  ]
+ },
+ ".tbl": {
+  "total": 384,
+  "ok": 384,
+  "partial": 0,
+  "fail": 0,
+  "bytes": 238071664,
+  "known_bytes": 238071664,
+  "reasons": {},
+  "kinds": {},
+  "fail_examples": []
+ },
+ ".bin": {
+  "total": 2,
+  "ok": 2,
+  "partial": 0,
+  "fail": 0,
+  "bytes": 89430464,
+  "known_bytes": 89430464,
+  "reasons": {},
+  "kinds": {},
+  "fail_examples": []
+ }
+}

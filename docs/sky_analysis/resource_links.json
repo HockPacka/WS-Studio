@@ -1,0 +1,7673 @@
+{
+  "world_sky_rows": 886,
+  "cloud_set_rows": 7,
+  "cloud_track_rows": 22,
+  "cloud_ids_in_sky": {
+    "0": 502,
+    "1": 394,
+    "2": 109,
+    "4": 46,
+    "6": 62,
+    "3": 4,
+    "5": 28
+  },
+  "unknown_sky_or_cloud_ids": [],
+  "missing_cloud_tracks": [],
+  "missing_resources": [
+    {
+      "owner": "Adventure_Farside_Farm.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Arcterra_01.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Haze_000.m3"
+    },
+    {
+      "owner": "Arcterra_01.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_002.m3"
+    },
+    {
+      "owner": "Arcterra_01.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_001.m3"
+    },
+    {
+      "owner": "Arcterra_01.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_000.m3"
+    },
+    {
+      "owner": "Arcterra_Blizzard.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Haze_000.m3"
+    },
+    {
+      "owner": "Arcterra_Blizzard.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_002.m3"
+    },
+    {
+      "owner": "Arcterra_Blizzard.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_001.m3"
+    },
+    {
+      "owner": "Arcterra_Blizzard.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_000.m3"
+    },
+    {
+      "owner": "Auroria_Gloomy.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Auroria_Main04.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Auroria_Main_005.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Auroria_SZ_Aurin_000.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Auroria_SZ_Buzzbing_002.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Buzzbing.tex"
+    },
+    {
+      "owner": "Auroria_SZ_Buzzbing_003.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Buzzbing.tex"
+    },
+    {
+      "owner": "Auroria_SZ_Digsite_001.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Auroria_SZ_DominionFort.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Dominion.tex"
+    },
+    {
+      "owner": "Auroria_SZ_DominionFort_002.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Dominion.tex"
+    },
+    {
+      "owner": "Auroria_SZ_OsunAttack_001.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Osun.tex"
+    },
+    {
+      "owner": "Auroria_SZ_OsunAttack_002.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Auroria_SZ_OsunCity_002.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Osun.tex"
+    },
+    {
+      "owner": "Auroria_SZ_OsunCity_01.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Osun.tex"
+    },
+    {
+      "owner": "Auroria_SZ_OsunCity_Heat.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Osun.tex"
+    },
+    {
+      "owner": "Auroria_SZ_OsunCity_Heat_002.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Osun.tex"
+    },
+    {
+      "owner": "Auroria_SZ_Swamps_001.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Auroria_SZ_Terminite.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Auroria_SZ_Terminite_002.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Cinematics_Arcterra_01_No_Snow.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Haze_000.m3"
+    },
+    {
+      "owner": "Cinematics_Arcterra_01_No_Snow.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_002.m3"
+    },
+    {
+      "owner": "Cinematics_Arcterra_01_No_Snow.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_001.m3"
+    },
+    {
+      "owner": "Cinematics_Arcterra_01_No_Snow.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_000.m3"
+    },
+    {
+      "owner": "Cinematics_Arcterra_01_No_Snow_Reduced_Fog.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Haze_000.m3"
+    },
+    {
+      "owner": "Cinematics_Arcterra_01_No_Snow_Reduced_Fog.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_002.m3"
+    },
+    {
+      "owner": "Cinematics_Arcterra_01_No_Snow_Reduced_Fog.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_001.m3"
+    },
+    {
+      "owner": "Cinematics_Arcterra_01_No_Snow_Reduced_Fog.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_000.m3"
+    },
+    {
+      "owner": "Cinematics_Illium_Main_Sky.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "CopyofArcterra_01.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Haze_000.m3"
+    },
+    {
+      "owner": "CopyofArcterra_01.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_002.m3"
+    },
+    {
+      "owner": "CopyofArcterra_01.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_001.m3"
+    },
+    {
+      "owner": "CopyofArcterra_01.sky",
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Zigzag_000.m3"
+    },
+    {
+      "owner": "CopyofAuroria_SZ_Buzzbing_003.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Buzzbing.tex"
+    },
+    {
+      "owner": "CopyofAuroria_SZ_GronyxValley_001.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "CopyofAuroria_SZ_HayFields_001.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "CopyofFluxIdea01.sky",
+      "path": "Art\\Sky\\Flux\\Sky_Skybox_Flux01.M3"
+    },
+    {
+      "owner": "CopyofFluxIdea01Copy.sky",
+      "path": "Art\\Sky\\Flux\\Sky_Skybox_Flux01.M3"
+    },
+    {
+      "owner": "CopyofNorthernWilds_Flux.sky",
+      "path": "Art\\Sky\\Flux\\Sky_Skybox_Flux01.m3"
+    },
+    {
+      "owner": "CrimsonIsle_Main_000.sky",
+      "path": "Art\\Sky\\Celestial\\Objects\\Sky_Celestial_Ship_CrimsonIsle_000.m3"
+    },
+    {
+      "owner": "DebugTestDeleteMe.sky",
+      "path": "Art\\Sky\\SkyBox\\Galeras\\Sky_Galeras_StormCloudSpiralingClouds_000.m3"
+    },
+    {
+      "owner": "Deradune_Main06.sky",
+      "path": "Art\\Sky\\Celestial\\Atmospherics\\Sky_Celestial_Atmospheric_PlasmaField_000.m3"
+    },
+    {
+      "owner": "Deradune_Main06.sky",
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_Moon_003.m3"
+    },
+    {
+      "owner": "Deradune_Main06.sky",
+      "path": "Art\\Sky\\Celestial\\Atmospherics\\Sky_Celestial_Atmospheric_Clouds_001a.m3"
+    },
+    {
+      "owner": "Dreadmoor_SZ_Terminite.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Dungeon_ProtostarAcademy_Dreadmoore.sky",
+      "path": "EnvMap\\EnvMap.10542.D0BC0469.tex"
+    },
+    {
+      "owner": "Ellevar_LightReachMission.sky",
+      "path": "Art\\Sky\\SkyBox\\Ellevar\\Sky_Ellevar_CloudCover_Ring_000.m3"
+    },
+    {
+      "owner": "Flux_Dark.sky",
+      "path": "Art\\Sky\\Flux\\Sky_Skybox_Flux01.M3"
+    },
+    {
+      "owner": "FluxIdea01.sky",
+      "path": "Art\\Sky\\Flux\\Sky_Skybox_Flux01.M3"
+    },
+    {
+      "owner": "FluxIdea01GreenYellow.sky",
+      "path": "Art\\Sky\\Flux\\Sky_Skybox_Flux01.M3"
+    },
+    {
+      "owner": "Galeras_Main04.sky",
+      "path": "EnvMap\\EnvMap.10542.D0BC0469.tex"
+    },
+    {
+      "owner": "Galeras_Main06.sky",
+      "path": "Art\\Sky\\SkyBox\\Galeras\\Sky_Galeras_StormCloudSpiralingClouds_000.m3"
+    },
+    {
+      "owner": "HalonRing_Main.sky",
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_HalonAstroidbelt_DarkBlue.m3"
+    },
+    {
+      "owner": "Housing_Exterior_ProtostarAcademy.sky",
+      "path": "EnvMap\\EnvMap.10542.D0BC0469.tex"
+    },
+    {
+      "owner": "Housing_FloatingPlot_JordanTest.sky",
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_Mountains.m3"
+    },
+    {
+      "owner": "Isle_of_Time_Buried.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Isle_of_Time_Revealed.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Isle_of_Time_Revealed_002.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Justin_Test_Sky.sky",
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\DataScape\\SKY_CircuitFunnel_000.m3"
+    },
+    {
+      "owner": "LevianBay_Main_002.sky",
+      "path": "Art\\Sky\\SkyBox\\LevianBay\\SKY_LevianBay_CloudBurst_001.m3"
+    },
+    {
+      "owner": "LevianBay_Main_003.sky",
+      "path": "Art\\Sky\\SkyBox\\LevianBay\\SKY_LevianBay_CloudBurst_001.m3"
+    },
+    {
+      "owner": "LevianBay_Main_NoFunnel.sky",
+      "path": "Art\\Sky\\SkyBox\\LevianBay\\SKY_LevianBay_CloudBurst_001.m3"
+    },
+    {
+      "owner": "Malgrave_QT_Daytime.sky",
+      "path": "EnvMap\\EnvMap.10542.D0BC0469.tex"
+    },
+    {
+      "owner": "Malgrave_QT_Daytime_Fire.sky",
+      "path": "EnvMap\\EnvMap.10542.D0BC0469.tex"
+    },
+    {
+      "owner": "Malgrave_QT_DuskDawn.sky",
+      "path": "EnvMap\\EnvMap.10542.D0BC0469.tex"
+    },
+    {
+      "owner": "Malgrave_QT_HeatWave.sky",
+      "path": "EnvMap\\EnvMap.10542.D0BC0469.tex"
+    },
+    {
+      "owner": "Malgrave_QT_Nighttime.sky",
+      "path": "EnvMap\\EnvMap.10542.D0BC0469.tex"
+    },
+    {
+      "owner": "Malgrave_QT_Storm.sky",
+      "path": "EnvMap\\EnvMap.10542.D0BC0469.tex"
+    },
+    {
+      "owner": "NorthernWilds_002_SkydomeTest.sky",
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_Moon_000.m3"
+    },
+    {
+      "owner": "NorthernWilds_002_SkydomeTest.sky",
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_Ship_BurningArk_000.m3"
+    },
+    {
+      "owner": "NorthernWilds_Flux.sky",
+      "path": "Art\\Sky\\Flux\\Sky_Skybox_Flux01.m3"
+    },
+    {
+      "owner": "PreviewFlux.sky",
+      "path": "Art\\Sky\\Flux\\Sky_Skybox_Flux01.M3"
+    },
+    {
+      "owner": "Protogames_Auroria_Main.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "RMT_Bathroom.sky",
+      "path": "EnvMap\\WESTERN\\Auroria\\Auroria_Field.tex"
+    },
+    {
+      "owner": "Rustic.sky",
+      "path": "Art\\Sky\\Flux\\Sky_Skybox_Flux01.m3"
+    },
+    {
+      "owner": "SteveTestCopyofNorthernWilds_Flux.sky",
+      "path": "Art\\Sky\\Flux\\Sky_Skybox_Flux01.m3"
+    },
+    {
+      "owner": "WorldSky 733",
+      "path": "Sky\\Housing_Interior_Fog_BlueOrange.sky"
+    },
+    {
+      "owner": "WorldSky 838",
+      "path": "Sky\\Cinematics_ Marketing_MC22_Planets_Character_Login.sky"
+    },
+    {
+      "owner": "SkyTrackCloudSet 14",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track4_006.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 14",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track4_007.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 15",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_002.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 15",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_004.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 15",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_005.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 15",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_006.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 15",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_007.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 15",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_008.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 15",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_009.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 15",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_010.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 15",
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_011.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 22",
+      "path": "Art\\Sky\\Clouds\\Astroid\\Sky_Astroid_000.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 22",
+      "path": "Art\\Sky\\Clouds\\Astroid\\Sky_Astroid_000.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 22",
+      "path": "Art\\Sky\\Clouds\\Astroid\\Sky_Astroid_000.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 22",
+      "path": "Art\\Sky\\Clouds\\Astroid\\Sky_Astroid_000.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 22",
+      "path": "Art\\Sky\\Clouds\\Astroid\\Sky_Astroid_000.m3"
+    },
+    {
+      "owner": "SkyTrackCloudSet 22",
+      "path": "Art\\Sky\\Clouds\\Astroid\\Sky_Astroid_000.m3"
+    }
+  ],
+  "time_anomalies": [
+    {
+      "file": "NorthernWilds_Main.sky",
+      "tracks": [
+        {
+          "descriptor": "0x2a0",
+          "base": 1216,
+          "issue": "unsorted source times",
+          "times": [
+            0,
+            9960,
+            19980,
+            30000,
+            43200,
+            60000,
+            69960,
+            60,
+            86400
+          ]
+        }
+      ]
+    },
+    {
+      "file": "WhiteVale_Main.sky",
+      "tracks": [
+        {
+          "descriptor": "0x3180",
+          "base": 12704,
+          "issue": "unsorted source times",
+          "times": [
+            0,
+            10740,
+            14340,
+            28740,
+            30600,
+            50400,
+            52140,
+            72000,
+            73740,
+            75600,
+            99960,
+            86400
+          ]
+        }
+      ]
+    },
+    {
+      "file": "WhiteVale_Main02.sky",
+      "tracks": [
+        {
+          "descriptor": "0x2ed0",
+          "base": 12016,
+          "issue": "unsorted source times",
+          "times": [
+            0,
+            10740,
+            14340,
+            28740,
+            30600,
+            50400,
+            52140,
+            72000,
+            75600,
+            99960,
+            86400
+          ]
+        }
+      ]
+    }
+  ],
+  "tile": {
+    "file": "WoWClient\\ClientData\\Map\\Western\\Western.393b.area",
+    "cells": 256,
+    "skies": [
+      {
+        "id": 14,
+        "weight_sum": 164.1941176470584,
+        "asset": "Sky\\Ellevar_Main_005.sky"
+      },
+      {
+        "id": 16,
+        "weight_sum": 91.80588235294105,
+        "asset": "Sky\\Ellevar_SZ_CreepyForest_001.sky"
+      }
+    ]
+  },
+  "resources": [
+    {
+      "path": "Art\\Sky\\NightSky\\Sky_Night_StarBase_000.m3",
+      "bytes": 15520
+    },
+    {
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_StandardSun_White.m3",
+      "bytes": 5152
+    },
+    {
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_Sun_Tiny_000.m3",
+      "bytes": 4240
+    },
+    {
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_Sun_000.m3",
+      "bytes": 3888
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_PlasmaField_001.m3",
+      "bytes": 8656
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Deradune\\Sky_Dome_Starfield_Deradune_000.m3",
+      "bytes": 7760
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\Sky_Algoroc_PlanetSmall_000.m3",
+      "bytes": 2512
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\SKY_Algoroc_Meteor_000.m3",
+      "bytes": 13680
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\Sky_Algoroc_Nebula_000.m3",
+      "bytes": 4192
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\Sky_Algoroc_Nebula_001.m3",
+      "bytes": 4192
+    },
+    {
+      "path": "Art\\Sky\\Glare\\Sky_Glare_AdvancedSunGlare_White.m3",
+      "bytes": 3600
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\SKY_Algoroc_Moon_000.m3",
+      "bytes": 3744
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\SKY_Algoroc_Haze_000.m3",
+      "bytes": 8640
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\Algoroc_Clouds_000.m3",
+      "bytes": 8736
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\SKY_Algoroc_Clouds_Cirrus_000.m3",
+      "bytes": 32624
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\SKY_Algoroc_Clouds_Cirrus_001.m3",
+      "bytes": 31200
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\Algoroc_Gallow.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Glare\\Sky_Glare_StandardSunGlare_White.m3",
+      "bytes": 6944
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Tech_Squares_BLU\\Tech_Squares_Blu.m3",
+      "bytes": 11344
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Tech_Squares_RED\\Tech_Squares_RED.m3",
+      "bytes": 11696
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Tech_Squares_GLD\\Tech_Squares_GLD.m3",
+      "bytes": 11344
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Astrovoid\\Sky_Astrovoid_All_000.m3",
+      "bytes": 55056
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\SpaceTravel\\Sky_SpaceTravel_Mist_000.m3",
+      "bytes": 13216
+    },
+    {
+      "path": "EnvMap\\HALON\\Halon_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Glare\\Sky_Glare_AdvancedSunGlare_Yellow.m3",
+      "bytes": 3600
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Astrovoid\\Sky_Astrovoid_PlanetAtmosphere_000.m3",
+      "bytes": 166656
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\SpaceDebri_WTE\\SpaceDebri_WTE.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "EnvMap\\EnvMap.10553.75ABE953.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Rain_LightDown_BLU\\Rain_LightDown_BLU.m3",
+      "bytes": 11360
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Grimvault\\SKY_Grimvault_Core_ColorSphere_001.m3",
+      "bytes": 15264
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\EverstarGrove\\Sky_EverstarGrove_Fire_000.m3",
+      "bytes": 9520
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Grimvault\\SKY_Grimvault_Core_Matrix_000.m3",
+      "bytes": 9408
+    },
+    {
+      "path": "EnvMap\\ARKSHIP\\Arkship_Exile_Room.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Glare\\Sky_Glare_AdvancedSunGlare_Yellow_Small.m3",
+      "bytes": 3600
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_PlasmaField_000.m3",
+      "bytes": 8656
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Farside\\Sky_Farside_Asteroids_small_001.m3",
+      "bytes": 5280
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Farside\\Sky_Farside_Asteroids_small_000.m3",
+      "bytes": 5360
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Farside\\Sky_Farside_Asteroids_000.m3",
+      "bytes": 4320
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Farside\\Sky_Farside_Asteroids_small_002.m3",
+      "bytes": 5184
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Farside\\SKY_Farside_Haze_000.m3",
+      "bytes": 8640
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Farside\\Sky_Farside_Asteroids_001.m3",
+      "bytes": 4864
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Farside\\Sky_Farside_Horizon_000.m3",
+      "bytes": 8864
+    },
+    {
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_Sun_Small_000.m3",
+      "bytes": 3888
+    },
+    {
+      "path": "EnvMap\\FARSIDE\\Farside_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Dust_Moon_GRY\\Dust_Moon_GRY.m3",
+      "bytes": 11424
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\None\\None.m3",
+      "bytes": 2512
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Galeras\\Sky_Galeras_CloudCover_001.m3",
+      "bytes": 16528
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\DataScape\\Sky_Datascape_Fire_Mountains_000.m3",
+      "bytes": 10960
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\SandStorm_HeavyDirectional_YLW\\SandStorm_HeavyDirectional_YLW.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Galeras\\Galeras_Normal2.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Dust_Dirt_BRN\\Dust_Dirt_BRN.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\SandStorm_MediumDirectional_YLW\\SandStorm_MediumDirectional_YLW.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_StandardSun_White_NoAnim.m3",
+      "bytes": 4160
+    },
+    {
+      "path": "Art\\Sky\\NightSky\\Sky_Night_StarBase_000.M3",
+      "bytes": 15520
+    },
+    {
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_Moon_White.m3",
+      "bytes": 3440
+    },
+    {
+      "path": "EnvMap\\EASTERN\\NorthernWilds\\NW_Snowy.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Snow_LightDown_WTE\\Snow_LightDown_WTE.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Deradune\\Sky_Dome_PlasmaField_Deradune_000.m3",
+      "bytes": 8320
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\SpaceTravel\\Sky_SpaceTravel_Stars_000.m3",
+      "bytes": 10992
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\SpaceTravel\\Sky_SpaceTravel_Stars_001.m3",
+      "bytes": 11040
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Tech_Squares_GRN\\Tech_Squares_GRN.m3",
+      "bytes": 11344
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_CloudSwirlLarge_000.m3",
+      "bytes": 29024
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_Planet_Together_000.m3",
+      "bytes": 3520
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_Planet_Small_000.m3",
+      "bytes": 8912
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_CloudsHorizon_000.m3",
+      "bytes": 8976
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Whitevale\\Whitevale_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Snow_VeryLightDown_WTE\\Snow_VeryLightDown_WTE.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_StarMask_000.m3",
+      "bytes": 8640
+    },
+    {
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_StandardSun_White.M3",
+      "bytes": 5152
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_Mist_000.m3",
+      "bytes": 13232
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Snow_HeavyDirectional_WTE\\Snow_HeavyDirectional_WTE.m3",
+      "bytes": 20128
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\FireEmbers_Medium_ORG\\FireEmbers_Medium_ORG.m3",
+      "bytes": 20032
+    },
+    {
+      "path": "Art\\Sky\\NightSky\\Sky_Night_AsteroidBelt_000.M3",
+      "bytes": 6032
+    },
+    {
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_Moon_White.M3",
+      "bytes": 3440
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\Algoroc_Fog.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Mist_Light_BLU\\Mist_Light_BLU.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\Algoroc_Loftite.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\NorthernWilds\\Sky_NorthernWilds_Moon_000.m3",
+      "bytes": 3392
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\Sky_Algoroc_Ring_001.m3",
+      "bytes": 13344
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\Sky_Algoroc_Ring_000.m3",
+      "bytes": 12384
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\NorthernWilds\\Sky_NorthernWilds_Planet_001.m3",
+      "bytes": 7536
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Algoroc\\Sky_Algoroc_Ring_003.m3",
+      "bytes": 12416
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\Algoroc_Snow.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\Algoroc_Mine.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\Algoroc_Slug.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Snow_MediumDown_WTE\\Snow_MediumDown_WTE.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\NorthernWilds\\Sky_NothernWilds_Clouds_000.m3",
+      "bytes": 12288
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\NorthernWilds\\Sky_NothernWilds_Clouds_001.m3",
+      "bytes": 18272
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_NightAurora_000.m3",
+      "bytes": 17584
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_NightAurora_002.m3",
+      "bytes": 8896
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_NightAurora_003.m3",
+      "bytes": 8864
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Mountains_000.m3",
+      "bytes": 10960
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Snow_BlizzardDirectional_BLU\\Snow_BlizzardDirectional_BLU.m3",
+      "bytes": 28768
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Bones_000.m3",
+      "bytes": 49488
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Arcterra_EXT_Bones.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\Arcterra\\Arcterra_Bone_001.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Forest_000.m3",
+      "bytes": 49488
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Arcterra_EXT_Forest.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\Arcterra\\Arcterra_Forest_001.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Ice_000.m3",
+      "bytes": 49488
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Arcterra_EXT_Ice.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\Arcterra\\Arcterra_ice_001.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Borealis_001.m3",
+      "bytes": 36448
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Borealis_000.m3",
+      "bytes": 18560
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Osun_000.m3",
+      "bytes": 49488
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Arcterra_EXT_Osun.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\Arcterra\\Arcterra_osun_001.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Arcterra\\Sky_Arcterra_Main_000.m3",
+      "bytes": 49488
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Arcterra_EXT_TowerMain.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\Arcterra\\Arcterra_Main_001.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Sky_Envmap_Arcterra_INT_BlackHoods.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Sky_Envmap_Arcterra_INT_IceBlood_Barrow.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Sky_Envmap_Arcterra_INT_IceCave_Pell.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Sky_Envmap_Arcterra_INT_Shiverskull_BossRoom.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Sky_Envmap_Arcterra_INT_Shiverskull_Hallways.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Sky_Envmap_Arcterra_INT_Shiverskull_WitchRoom.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Arcterra\\Sky_Envmap_Arcterra_INT_ICI_Research.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Hay_LightDirectional_YLW\\Hay_LightDirectional_YLW.m3",
+      "bytes": 11424
+    },
+    {
+      "path": "EnvMap\\EnvMap.10552.CF7BCA26.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Pollen_LightDown_WTE\\Pollen_LightDown_WTE.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Pollen_HeavyDown_WTE\\Pollen_HeavyDown_WTE.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Tornado\\SKY_TornadoStorm_000.m3",
+      "bytes": 19680
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_Mountains_002.m3",
+      "bytes": 11232
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Tornado\\SKY_TornadoFunnel_000.m3",
+      "bytes": 16048
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_Mountains_001.m3",
+      "bytes": 10960
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_SphereCloudTest.m3",
+      "bytes": 20928
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\SpaceTravel\\Sky_SpaceTravel_Stars_002.m3",
+      "bytes": 11040
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\SpaceTravel\\Sky_SpaceTravel_MistVertical_000.m3",
+      "bytes": 13216
+    },
+    {
+      "path": "EnvMap\\ARKSHIP\\Arkship_Dominion_Room.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\BattleChase\\LUT_BattleChase_Dominion.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\BattleChase\\LUT_BattleChase_Exile.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Celestion\\SKY_Celestion_Canopy_000.m3",
+      "bytes": 10064
+    },
+    {
+      "path": "EnvMap\\EASTERN\\NorthernWilds\\NW_Snowy_Crisp.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\Arcterra\\Arcterra_Ice_001.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\Arcterra\\Arcterra_Osun_001.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\CrimsonIsle\\Sky_CrimsonIsle_HexPattern_000.m3",
+      "bytes": 16544
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Everstar\\Everstar_Dark_Crisp.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NPE\\NPE_Combat_Main.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\CrimsonIsle\\Sky_CrimsonIsle_HexPattern_003.m3",
+      "bytes": 16960
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NPE\\NPE_IcyPeak_Boss.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Snow_HeavyDirectional_WTE\\Snow_HeavyDirectional_Hoth_Forward_WTE.m3",
+      "bytes": 20128
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\FireFlies_Light_YLW\\FireFlies_Light_YLW.m3",
+      "bytes": 11264
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Celestion\\Celestion_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Celestion\\Celestion_Fire.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Ash_LightDown_GRY\\Ash_LightDown_GRY.m3",
+      "bytes": 251648
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Rain_HeavyDown_BLU\\Rain_HeavyDown_BLU.m3",
+      "bytes": 11360
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Galeras\\Sky_Galeras_CloudCover_000.m3",
+      "bytes": 18000
+    },
+    {
+      "path": "EnvMap\\EnvMap.10554.17D3C61E.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Dust_HeavyAmbient_WTE\\Dust_HeavyAmbient_WTE.m3",
+      "bytes": 11424
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Grass_LightDirectional_GRN\\Grass_LightDirectional_GRN.m3",
+      "bytes": 251744
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Ash_LightDownSlow_GRY\\Ash_LightDownSlow_GRY.m3",
+      "bytes": 251648
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Leaves_Celestion_REDGRN\\Leaves_Celestion_REDGRN.m3",
+      "bytes": 20272
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Celestion\\Sky_Celestion_ShipExplosion_000.m3",
+      "bytes": 16224
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\ShipParts_HeavyDown\\ShipParts_HeavyDownFast.m3",
+      "bytes": 11264
+    },
+    {
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_StandardSun_NoAnim.m3",
+      "bytes": 4160
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Ellevar\\Sky_Ellevar_Clouds_000.m3",
+      "bytes": 13632
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\CharacterCreation\\Sky_Envmap_CharacterCreation.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NPE\\NPE_Night_Stars.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\SpaceTravel\\Sky_SpaceTravel_Mist_Slow_001.m3",
+      "bytes": 13904
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\SpaceTravel\\Sky_SpaceTravel_Mist_Slow_000.m3",
+      "bytes": 13216
+    },
+    {
+      "path": "Art\\Sky\\NightSky\\Sky_Night_StarBase_TopOnly_000.m3",
+      "bytes": 6784
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\LevianBay\\SKY_LevianBay_CloudBurst_000.m3",
+      "bytes": 103024
+    },
+    {
+      "path": "Art\\FX\\Model\\Props\\Lightning_AmbientRandom_BLU\\Lightning_AmbientRandom_BLU.m3",
+      "bytes": 272496
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\LevianBay\\SKY_LevianBay_Cloudbase_000.m3",
+      "bytes": 21840
+    },
+    {
+      "path": "EnvMap\\WESTERN\\LevianBay\\LevianBay_Eldan.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Tech_Squares_GRN\\Tech_Squares_Pixels_Tumble_GRN.m3",
+      "bytes": 11696
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\Algoroc_MechaForge_Crisp.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Everstar\\Everstar_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\ARKSHIP\\Arkship_Exile_Atrium.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EnvMap.10516.4CA4A3E3.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Deradune\\Sky_Celestial_Moon_004.m3",
+      "bytes": 3376
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Deradune\\Sky_Dome_Clouds_Deradune_000.m3",
+      "bytes": 7296
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_Main.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_Planet_000.m3",
+      "bytes": 4832
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Galeras\\Galeras_Battle.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_Nebula_000.m3",
+      "bytes": 3984
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_Belt_000.m3",
+      "bytes": 3488
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_Planet_NoRings_000.m3",
+      "bytes": 3392
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_Asteroids_001.m3",
+      "bytes": 9360
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_Belt_001.m3",
+      "bytes": 3712
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_Asteroids_000.m3",
+      "bytes": 10272
+    },
+    {
+      "path": "EnvMap\\WESTERN\\CrimsonIsle\\CrimsonIsle_Dregg.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_Nebula_002.m3",
+      "bytes": 174592
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Dust_LightDirt_BRN\\Dust_LightDirt_BRN.m3",
+      "bytes": 2512
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Galeras\\EarthRender.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Galeras\\Sky_Galeras_Clouds_000.m3",
+      "bytes": 8832
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\LevianBay\\SKY_LevianBay_Lighting_000.m3",
+      "bytes": 272496
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Dust_LightAmbient_WTE\\Dust_LightAmbient_WTE.m3",
+      "bytes": 11424
+    },
+    {
+      "path": "Art\\Prop\\Natural\\Grass\\HayBales\\PRP_Hay_Large_Bales_000.m3",
+      "bytes": 32032
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Tornado\\SKY_TornadoDebri_000.m3",
+      "bytes": 15936
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Pollen_HeavyUp_WTE\\Pollen_HeavyUp_WTE.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\FairyDust_MedDown\\FairyDust_MedDown.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\NorthernWilds\\Sky_NorthernWilds_Clouds_Soft_000.m3",
+      "bytes": 6064
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_HazeHorizon.m3",
+      "bytes": 9744
+    },
+    {
+      "path": "EnvMap\\CORALUS\\Coralus_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\CORALUS\\Coralus_Main_Canopy.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Props\\Lightning_Ambient_BLU\\Lightning_Ambient_BLU.m3",
+      "bytes": 39600
+    },
+    {
+      "path": "EnvMap\\CORALUS\\Coralus_Thunderhead.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Rain_HeavyDirectional_BLU\\Rain_HeavyDirectional_BLU.m3",
+      "bytes": 11360
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Rain_MediumDown_BLU\\Rain_MediumDown_BLU.m3",
+      "bytes": 11360
+    },
+    {
+      "path": "Art\\Sky\\Lut\\CrimsonIsle\\LUT_CrimsonIsle_Exterior_Main.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\CrimsonIsle\\Sky_CrimsonIsle_HexPattern_Shield_000.m3",
+      "bytes": 16352
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\CrimsonIsle\\Sky_CrimsonIsle_HexPattern_Shield_001.m3",
+      "bytes": 16352
+    },
+    {
+      "path": "Art\\Sky\\Lut\\CrimsonIsle\\LUT_CrimsonIsle_Exterior_DefianceCamp.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\DemoSkybox.M3",
+      "bytes": 31360
+    },
+    {
+      "path": "Art\\Sky\\Particulates\\Sky_Particulates_SimplePollen.m3",
+      "bytes": 11232
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Tech_Squares_GRN\\Tech_Squares_Pixels_GRN.m3",
+      "bytes": 11344
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\SpaceTravel\\Sky_SpaceTravel_Mist_001.m3",
+      "bytes": 13216
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\CrimsonIsle\\Sky_CrimsonIsle_HexPattern_001.m3",
+      "bytes": 16544
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Grimvault\\SKY_Grimvault_Core_Matrix_001.m3",
+      "bytes": 22176
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Death_Sigils_WTE\\Death_Sigils_WTE.m3",
+      "bytes": 11840
+    },
+    {
+      "path": "Art\\Sky\\Celestial\\Sky_Celestial_Planet_Orange_000.m3",
+      "bytes": 3456
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_Moon.m3",
+      "bytes": 3376
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_CloudHorizon.m3",
+      "bytes": 9120
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_SphereGroundTest.m3",
+      "bytes": 16912
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Galeras\\Sky_Galeras_StormCloud_000.m3",
+      "bytes": 4912
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_BloodFeast.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\FireEmbers_Medium_ORG\\FireEmbers_NoPuff_Medium_ORG.m3",
+      "bytes": 20032
+    },
+    {
+      "path": "EnvMap\\EnvMap.10544.D7862F75.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_Moodie.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_AurinPortal.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_Beach.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_Falkrin.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_Tarpit.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_Terminite.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_Terraformer.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Dreadmoor\\Dreadmoor_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Dreadmoor\\Dreadmoor_Blackwater.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Dreadmoor\\Dreadmoor_BrackenHollow.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Dreadmoor\\Dreadmoor_Chua_Main.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Dreadmoor\\Dreadmoor_South_Canopy.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Dreadmoor\\Dreadmoor_Chua.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Snow_HeavyDirectional_WTE\\Snow_HeavyDirectional_Hoth_WTE.m3",
+      "bytes": 20128
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\DataScape\\Sky_Datascape_Air_Clouds_000.m3",
+      "bytes": 58528
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Tornado\\SKY_TornadoDebri_001.m3",
+      "bytes": 15936
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Galeras\\Sky_LunarFlames_000.m3",
+      "bytes": 12144
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Galeras\\Sky_Galeras_PlanetSmall_000.m3",
+      "bytes": 2512
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Tornado\\SKY_TornadoFunnel_001.m3",
+      "bytes": 16880
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Bubbles_Small\\Bubbles_Small.m3",
+      "bytes": 11728
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\KelVoreth\\SKY_KelVoreth_CloudBurst_000.m3",
+      "bytes": 3584
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\Algoroc_MechaForge_Crisp2.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Grimvault\\SKY_Clouds_Lightspire_000.m3",
+      "bytes": 6512
+    },
+    {
+      "path": "EnvMap\\EASTERN\\NorthernWilds\\NW_Eldan.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Death_Sigils_WTE\\Death_Sigils_Light_WTE.m3",
+      "bytes": 11840
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Intro_Landing.tex",
+      "bytes": 2097424,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Intro_Landing.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\Algoroc_SkullEye.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Skullcano\\SKY_Skullcano_Volcano_000.m3",
+      "bytes": 3584
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Skullcano\\SKY_Skullcano_Smoke_000.m3",
+      "bytes": 4176
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\WorldStory1\\SKY_Dungeon_WorldStory1_DataFlow_000.m3",
+      "bytes": 50960
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Tech_Squares_GRN\\Tech_Squares_DataFlow_GRN.m3",
+      "bytes": 11344
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Data_Squares\\Data_Squares_BLU.m3",
+      "bytes": 20112
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\WorldStory2\\Sky_WorldStory2_Landing_000.m3",
+      "bytes": 49584
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_EXT_PartlyCloudy.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_EXT_StormDoom.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\WorldStory2\\Sky_WorldStory2_PartlyCloudy_000.m3",
+      "bytes": 49616
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\WorldStory2\\Sky_WorldStory2_StormBuilding_000.m3",
+      "bytes": 49616
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_EXT_Bridge.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\WorldStory2\\Sky_WorldStory2_StormDoom_000.m3",
+      "bytes": 49616
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_EXT_Fortress.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Snow_HeavyDirectional_WTE\\Snow_MediumDirectional_WTE.m3",
+      "bytes": 20128
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\WorldStory2\\Sky_WorldStory2_StormDoomBoss_000.m3",
+      "bytes": 49744
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Ellevar\\Ellevar_Main_Canopy.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\NorthernWilds\\Sky_NothernWilds_SkyGradient_000.m3",
+      "bytes": 7264
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Ellevar\\Ellevar_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\SpaceTravel\\Sky_SpaceTravel_Mist_Slow_003.m3",
+      "bytes": 17728
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Ellevar\\Ellevar_Ikthian.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Ellevar\\SKY_Ellevar_SkyCircle_000.m3",
+      "bytes": 3728
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Ellevar\\SKY_Ellevar_CloudVolume_000.m3",
+      "bytes": 19264
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Ellevar\\Ellevar_Pastoral.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Ellevar\\Sky_Ellevar_Haze_000.m3",
+      "bytes": 8640
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\EverstarGrove\\Sky_Skybox_EverstarGrove_FireArea_000.m3",
+      "bytes": 84688
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Celestion\\Celestion_Fire_Crisp.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\EverstarGrove\\Sky_Skybox_EverstarGrove_Main_000.m3",
+      "bytes": 277968
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Everstar\\Everstar_Main_Crisp.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Everstar\\Everstar_Dark.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Pollen_LightDown_PLE\\Pollen_LightDown_PLE.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Spellslinger_Dots_ORG\\Spellslinger_Dots_Light_ORG.m3",
+      "bytes": 11264
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\CryoplexArena\\Sky_Skybox_Cryoplex_000.m3",
+      "bytes": 44880
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\NorthernWilds\\Sky_NorthernWilds_Mountains_000.m3",
+      "bytes": 18896
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_Mountains_Grimvault_000.m3",
+      "bytes": 18928
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Whitevale\\Whitevale_Main_Crisp.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Deck.tex",
+      "bytes": 2097424,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Deck_Boss.tex",
+      "bytes": 2097424,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Map_Boss.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_MapRoom.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\FARSIDE\\Farside_Canyon.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Farside\\Sky_Farside_BrokenSiloTop_000.m3",
+      "bytes": 87648
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Farside\\Sky_Farside_RotatingAsteroid_000.m3",
+      "bytes": 41568
+    },
+    {
+      "path": "EnvMap\\FARSIDE\\Farside_Silo_Desert.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\FARSIDE\\Farside_Silo_Green.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\ShipParts_HeavyDown\\ShipParts_HeavyDown.m3",
+      "bytes": 20016
+    },
+    {
+      "path": "Art\\Sky\\Lut\\Fortune\\Fortune_Spooky_Sky.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_INT_OsunSector.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Galeras\\Sky_Galeras_GlowSmall_000.m3",
+      "bytes": 3600
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Galeras\\Sky_Galeras_Haze_000.m3",
+      "bytes": 8640
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Galeras\\Galeras_Canyon.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Galeras\\Galeras_Falkrin.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Rocks_Windy_BRN\\Rocks_Windy_BRN.m3",
+      "bytes": 20128
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Galeras\\Galeras_Forest.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Galeras\\Galeras_Murge.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Thayd\\Thayd_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_Nebula_001.m3",
+      "bytes": 3984
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NPE\\NPE_GC294_Cinematic_Ext.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\CENTRAL\\Grimvault_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Leaves_Thayd_Light_WTE\\Leaves_Thayd_Med_WTE.m3",
+      "bytes": 11392
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Entity\\SKY_Entity_Tornado_000.m3",
+      "bytes": 19008
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Rain_MediumDown_Acid_GRN\\Rain_MediumDown_PNK.m3",
+      "bytes": 11360
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Entity\\SKY_Entity_Face_000.m3",
+      "bytes": 87152
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\NorthernWilds\\Sky_NorthernWilds_Planet_000.m3",
+      "bytes": 2512
+    },
+    {
+      "path": "EnvMap\\HALON\\Halon_Jellient.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\Retro\\LUT_Housing_Exotic.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_Lightning_000.m3",
+      "bytes": 272496
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Winterfest\\Sky_Skybox_Winterfest_Supermall_000.m3",
+      "bytes": 44976
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Snow_MediumDownGlisten_WTE\\Snow_MediumDownGlisten_WTE.m3",
+      "bytes": 48032
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_Fireworks_ORE_000.m3",
+      "bytes": 51008
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Generic\\Fireworks\\SKY_Gen_FireworksStar.m3",
+      "bytes": 34864
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Generic\\Fireworks\\SKY_Gen_FireworksStack.m3",
+      "bytes": 33088
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Generic\\Fireworks\\SKY_Gen_FireworksSpiral.m3",
+      "bytes": 57072
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Generic\\Fireworks\\SKY_Gen_FireworksCircle.m3",
+      "bytes": 43680
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Generic\\Fireworks\\SKY_Gen_FireworksMultiRound.m3",
+      "bytes": 30384
+    },
+    {
+      "path": "EnvMap\\WESTERN\\LevianBay\\LevianBay_Sunset.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NPE\\NPE_Beach_Main.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Leaves_Murkmire_BRN\\Leaves_Murkmire_BRN.m3",
+      "bytes": 20144
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_CloudsHorizon_000.m3",
+      "bytes": 6432
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_TallCloud_000.m3",
+      "bytes": 3392
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_Waves_001.m3",
+      "bytes": 5104
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_TallCloud_001.m3",
+      "bytes": 3392
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_Waves_002.m3",
+      "bytes": 5104
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Happyland_Crawlingshine_000.m3",
+      "bytes": 7296
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_Waves_000.m3",
+      "bytes": 5104
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_Mountains_001.m3",
+      "bytes": 5184
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_HappyLand_Mountains_000.m3",
+      "bytes": 5184
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_CloudsPink_000.m3",
+      "bytes": 9152
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_Rainbow_000.m3",
+      "bytes": 11008
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_Rainbow_001.m3",
+      "bytes": 11008
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\HappyLand\\Sky_Housing_HappyLand_Rainbowburst_000.m3",
+      "bytes": 3712
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_004.m3",
+      "bytes": 7072
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_010.m3",
+      "bytes": 5216
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_003.m3",
+      "bytes": 8608
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_000.m3",
+      "bytes": 5312
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_001.m3",
+      "bytes": 7408
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_002.m3",
+      "bytes": 6768
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_005.m3",
+      "bytes": 6416
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_006.m3",
+      "bytes": 5696
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_007.m3",
+      "bytes": 5120
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_008.m3",
+      "bytes": 5088
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Holiday\\Winterfest\\Sky_Housing_Winterfest_Ad_009.m3",
+      "bytes": 5088
+    },
+    {
+      "path": "EnvMap\\CENTRAL\\Malgrave_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_Whitevale_NightAurora_001.m3",
+      "bytes": 8928
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\SpaceTravel\\Sky_SpaceTravel_Mist_Slow_002.m3",
+      "bytes": 17728
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Retro_Sky\\Sky_Housing_Cloud_Retro.m3",
+      "bytes": 13728
+    },
+    {
+      "path": "Art\\Sky\\Lut\\Retro\\LUT_Retro_Sky.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\ShadesEve\\Sky_Housing_ShadesEve_Pumpkin_000.m3",
+      "bytes": 3408
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Space\\SKY_Housing_Space_Sun_Orange_000.m3",
+      "bytes": 205648
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Space\\SKY_Housing_Space_Sun_Blue_000.m3",
+      "bytes": 276784
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Space\\PRP_Ship_Distant_Flying_000.m3",
+      "bytes": 84464
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Space\\Sky_Space_Belt_000.m3",
+      "bytes": 3872
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Space\\Sky_Space_Asteroids_000.m3",
+      "bytes": 16192
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Space\\Sky_Space_Asteroids_001.m3",
+      "bytes": 8592
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Space\\PRP_Ship_Wreckage_Floating_000.m3",
+      "bytes": 916224
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Space\\PRP_Ship_Whole_Flying_000.m3",
+      "bytes": 379040
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Space\\SKY_Space_FantasticVoyage_000.m3",
+      "bytes": 405888
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Space\\SKY_Housing_Space_SunCrash_000.m3",
+      "bytes": 1195696
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Housing\\Sky_Housing_Grimvault_Spires_000.m3",
+      "bytes": 6352
+    },
+    {
+      "path": "Art\\Prop\\Housing\\Islands\\PRP_SkymapMatte_Algoroc.m3",
+      "bytes": 7728
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Pollen_LightDown_PLE\\Pollen_LightDown_PLE_DRK.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Dungeon\\Osun\\Sky_Osun_Mountains_000.m3",
+      "bytes": 10960
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Lavaka.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\NorthernWilds\\NW_SkeetchCave.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NorthernWilds\\LUT_NW_Skeetch_Cave.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\AlgorocCrystalCave.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\LevianBay\\LUT_LevianBay_Interior_Mine.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\ARKSHIP\\Arkship_Dominion_Atrium.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Halon_Ring\\Sky_HalonRing_PlanetSmaller_000.m3",
+      "bytes": 4832
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_DrakenInterior.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Deradune\\Deradune_DrakenInterior_Crisp.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\NorthernWilds\\NW_CrashedShip.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NorthernWilds\\LUT_NW_Interior_Exolab_10.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Wilderrun\\SKY_Wilderrun_Canopy_000.m3",
+      "bytes": 10064
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Wilderrun\\Wilderrun_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\LevianBay\\LUT_LevianBay_Interior_Cave.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NorthernWilds\\LUT_NW_Interior_EldanTower_Exolab.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Mist_Light_Up_BLU\\Mist_Light_Up_BLU.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Poison_Low_GRN\\Poison_Low_GRN.m3",
+      "bytes": 11376
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\Winterfest\\Sky_Envmap_Winterfest_Interior_Facade_Small.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\ARKSHIP\\Arkship_Dominion_Room_Crisp.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_AirLock.tex",
+      "bytes": 2097424,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Airlock_MainBoss.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Airlock_PreBoss.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Atrium.tex",
+      "bytes": 2097424,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Atrium.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Bridge.tex",
+      "bytes": 2097424,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Bridge.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Brig_Main.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Brig_Main.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_CaptainCoffer.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_CaptainCoffer.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Elevator.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Elevator.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Engine_Main.tex",
+      "bytes": 2097424,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Engine_Start.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Engine_Start.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Greasy_Galley.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Greasy_Galley.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_GreenHouse.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_GreenHouse.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Kino_Cave.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Kino_Cave.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Lavaka_CustomDeath.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Lavaka_CustomDeath.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Lavaka_Main.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Lavaka_Start.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_MapRoom.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Medbay_Lobby.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Medbay_Main.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Morgue.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Morgue.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Rebomination.tex",
+      "bytes": 2097424,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Rebomination.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Shaft.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Shredder.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_ShellarkTank.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_ShellarkTank.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Shredder.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_Swabbin_Shower.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_Swabbin_Shower.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_TorpedoRoom.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\RMT\\LUT_RMT_TorpedoRoom.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_TubeRoom.tex",
+      "bytes": 1048768,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\RMT\\Sky_Envmap_RMT_UtilityCloset.tex",
+      "bytes": 2097424,
+      "width": 512,
+      "height": 512,
+      "depth": 1,
+      "faces": 6,
+      "mips": 10,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NorthernWilds\\LUT_NW_Interior_Crashed_Ship.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Leaves_Thayd_Light_WTE\\Leaves_Thayd_Light_WTE.m3",
+      "bytes": 11392
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Whitevale\\Sky_NorthernWilds_Moon_Large_000.m3",
+      "bytes": 3392
+    },
+    {
+      "path": "EnvMap\\WESTERN\\LevianBay\\LevianBay_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\LevianBay\\LUT_LevianBay_Foggy.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Algoroc\\Algoroc_Gallow_Crisp.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\LevianBay\\SKY_LevianBay_CloudSwirl_BG_000.m3",
+      "bytes": 33728
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\LevianBay\\SKY_LevianBay_Beam_000.m3",
+      "bytes": 17648
+    },
+    {
+      "path": "Art\\Sky\\Lut\\LevianBay\\LUT_LevianBay_Main.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\LevianBay\\LUT_LevianBay_Eldan.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\LevianBay\\LUT_LevianBay_Sunset.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Malgrave\\Sky_Malgrave_Horizon_000.m3",
+      "bytes": 9200
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Murkmire\\Murkmire_Main.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Murkmire\\Murkmire_Canopy.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Murkmire\\Murkmire_Osun.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\NorthernWilds\\NW_Sunny.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Test\\SLee\\TS_Particulates.m3",
+      "bytes": 28992
+    },
+    {
+      "path": "EnvMap\\EASTERN\\NorthernWilds\\NW_Imperium.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NorthernWilds\\LUT_NW_Exterior_Imperium.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NorthernWilds\\LUT_NW_Exterior_Skeetch.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NorthernWilds\\LUT_NW_Exterior_Main.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Generic\\Fireworks\\SKY_Gen_FireworksMultiV.m3",
+      "bytes": 36448
+    },
+    {
+      "path": "Art\\Sky\\Lut\\NPE\\NPE_IcyPeak_Normal.tex",
+      "bytes": 16496,
+      "width": 16,
+      "height": 16,
+      "depth": 16,
+      "faces": 1,
+      "mips": 1,
+      "format": 0,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Galeras\\Galeras_Thayd.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\WESTERN\\Wilderrun\\Wilderrun_LowFog.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Spellslinger_Dots_ORG\\Spellslinger_Dots_ORG.m3",
+      "bytes": 11264
+    },
+    {
+      "path": "Art\\FX\\Test\\MMalley\\Test_SkyFX_Issue_000.m3",
+      "bytes": 20288
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Whitevale\\Whitevale_Main_Blurred.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Snow_HeavyDirectional_WTE\\Snow_HeavyDirectional_2D_WTE.m3",
+      "bytes": 20128
+    },
+    {
+      "path": "EnvMap\\EnvMap.10545.A0708022.tex",
+      "bytes": 524560,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Whitevale\\Whitevale_Terraformer_Blurred.tex",
+      "bytes": 262336,
+      "width": 256,
+      "height": 256,
+      "depth": 1,
+      "faces": 6,
+      "mips": 9,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\FX\\Model\\Particulates\\Rain_MediumDown_Acid_GRN\\Rain_MediumDown_Acid_GRN.m3",
+      "bytes": 11360
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Whitevale\\Whitevale_Terraformer.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "EnvMap\\EASTERN\\Whitevale\\Whitevale_Tundra.tex",
+      "bytes": 131344,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 15,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\SkyBox\\Wilderrun\\SKY_Wilderrun_Canopy_001.m3",
+      "bytes": 9520
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_INT_Eldan_Sector.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_INT_Eldan_Sector_Alert.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_INT_IceCave_000.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_INT_SpiralTower_LavaRoom.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_INT_SpiralTower_LowerRoom.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Art\\Sky\\EnvMap\\WorldStory_2\\Sky_Envmap_WS2_INT_SpiralTower_WitchRoom.tex",
+      "bytes": 65728,
+      "width": 128,
+      "height": 128,
+      "depth": 1,
+      "faces": 6,
+      "mips": 8,
+      "format": 13,
+      "jpeg": 0
+    },
+    {
+      "path": "Sky\\TestReference.sky",
+      "bytes": 3200
+    },
+    {
+      "path": "Sky\\NorthernWilds_Flux.sky",
+      "bytes": 4416
+    },
+    {
+      "path": "Sky\\Murkmire_SZ_TheBreach_001.sky",
+      "bytes": 5936
+    },
+    {
+      "path": "Sky\\Murkmire_SZ_Osun002.sky",
+      "bytes": 2848
+    },
+    {
+      "path": "Sky\\Algoroc_Snowy02.sky",
+      "bytes": 3200
+    },
+    {
+      "path": "Sky\\Algoroc_StripMine3.sky",
+      "bytes": 5904
+    },
+    {
+      "path": "Sky\\Algoroc_Loftite2.sky",
+      "bytes": 5680
+    },
+    {
+      "path": "Sky\\Algoroc_Grimstone02.sky",
+      "bytes": 5936
+    },
+    {
+      "path": "Sky\\Algoroc_Main_008.sky",
+      "bytes": 25584
+    },
+    {
+      "path": "Sky\\Galeras_Main_007.sky",
+      "bytes": 20176
+    },
+    {
+      "path": "Sky\\FluxIdea01.sky",
+      "bytes": 6416
+    },
+    {
+      "path": "Sky\\Ellevar_Main_005.sky",
+      "bytes": 19344
+    },
+    {
+      "path": "Sky\\Galeras_SZ_Chasm001.sky",
+      "bytes": 2928
+    },
+    {
+      "path": "Sky\\Ellevar_SZ_CreepyForest_001.sky",
+      "bytes": 14960
+    },
+    {
+      "path": "Sky\\Auroria_Main_005.sky",
+      "bytes": 22960
+    },
+    {
+      "path": "Sky\\Galeras_SZ_MurghCamps_002.sky",
+      "bytes": 17776
+    },
+    {
+      "path": "Sky\\Galeras_SZ_DominionBase_000.sky",
+      "bytes": 3056
+    },
+    {
+      "path": "Sky\\WhiteVale_Main03.sky",
+      "bytes": 20816
+    },
+    {
+      "path": "Sky\\Flux_Dark.sky",
+      "bytes": 5456
+    },
+    {
+      "path": "Sky\\Ellevar_SZ_MainStorm.sky",
+      "bytes": 18864
+    },
+    {
+      "path": "Sky\\Galeras_SZ_Falkrin_002.sky",
+      "bytes": 4688
+    },
+    {
+      "path": "Sky\\Celestion_Main_003.sky",
+      "bytes": 17984
+    },
+    {
+      "path": "Sky\\Murkmire_Main02.sky",
+      "bytes": 17312
+    },
+    {
+      "path": "Sky\\Auroria_SZ_Swamps_001.sky",
+      "bytes": 5696
+    },
+    {
+      "path": "Sky\\Deradune_SZ_Beaches_002.sky",
+      "bytes": 16768
+    },
+    {
+      "path": "Sky\\Galeras_SZ_Forested_000.sky",
+      "bytes": 7520
+    },
+    {
+      "path": "Sky\\Olyssia_Main.sky",
+      "bytes": 5552
+    },
+    {
+      "path": "Sky\\Interoir_Test01.sky",
+      "bytes": 1968
+    },
+    {
+      "path": "Sky\\Malgrave_Main.sky",
+      "bytes": 16816
+    },
+    {
+      "path": "sky\\Malgrave_Rocky.sky",
+      "bytes": 4752
+    },
+    {
+      "path": "Sky\\Murkmire_SZ_SpookyForest_000.sky",
+      "bytes": 2768
+    },
+    {
+      "path": "Sky\\Deradune_Main_012.sky",
+      "bytes": 21776
+    },
+    {
+      "path": "Sky\\Deradune_SZ_FalkrinMurge_004.sky",
+      "bytes": 18272
+    },
+    {
+      "path": "Sky\\Dreadmoor_Main02.sky",
+      "bytes": 17840
+    },
+    {
+      "path": "Sky\\Galeras_SZ_FocusofAir_02.sky",
+      "bytes": 3216
+    },
+    {
+      "path": "Sky\\Malgrave_SZ_Chasms_01.sky",
+      "bytes": 15904
+    },
+    {
+      "path": "sky\\fullBright.sky",
+      "bytes": 2992
+    },
+    {
+      "path": "Sky\\HalonRing_Main_004.sky",
+      "bytes": 7392
+    },
+    {
+      "path": "Sky\\SmoretTestSky.sky",
+      "bytes": 1552
+    },
+    {
+      "path": "Sky\\LevianBay_Main_003.sky",
+      "bytes": 6976
+    },
+    {
+      "path": "Sky\\CaveAmbient.sky",
+      "bytes": 2688
+    },
+    {
+      "path": "Sky\\JackTest.sky",
+      "bytes": 2160
+    },
+    {
+      "path": "Sky\\Deradune_SZ_Tarpits_002.sky",
+      "bytes": 19536
+    },
+    {
+      "path": "Sky\\Death.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Deradune_SZ_AurinPortal_003.sky",
+      "bytes": 19104
+    },
+    {
+      "path": "Sky\\Murkmire_SZ_SwampMarsh_001.sky",
+      "bytes": 2752
+    },
+    {
+      "path": "Sky\\Murkmire_SZ_ForestFall_001.sky",
+      "bytes": 2768
+    },
+    {
+      "path": "Sky\\Wilderun_Main03.sky",
+      "bytes": 11664
+    },
+    {
+      "path": "Sky\\Deradune_Moodie_003.sky",
+      "bytes": 19232
+    },
+    {
+      "path": "Sky\\Deradune_Blood04.sky",
+      "bytes": 6720
+    },
+    {
+      "path": "Sky\\Celestion_SZ_Bees_002.sky",
+      "bytes": 18176
+    },
+    {
+      "path": "Sky\\cloudtest001.sky",
+      "bytes": 8064
+    },
+    {
+      "path": "Sky\\Celestion_SZ_QuietForest.sky",
+      "bytes": 17936
+    },
+    {
+      "path": "Sky\\Celestion_SZ_Moodie_002.sky",
+      "bytes": 18144
+    },
+    {
+      "path": "Sky\\Cloud_Test_Algoroc_Main3.sky",
+      "bytes": 5808
+    },
+    {
+      "path": "Sky\\CrimsonIsle_Main_004.sky",
+      "bytes": 7536
+    },
+    {
+      "path": "Sky\\Celestion_SZ_Drakken_002.sky",
+      "bytes": 14736
+    },
+    {
+      "path": "Sky\\Celestion_SZ_BurnedForest_002.sky",
+      "bytes": 10912
+    },
+    {
+      "path": "Sky\\Deradune_SZ_Terminite_004.sky",
+      "bytes": 19040
+    },
+    {
+      "path": "Sky\\Algoroc_Spooky_Sky.sky",
+      "bytes": 5568
+    },
+    {
+      "path": "Sky\\Icecave_Skeech_002.sky",
+      "bytes": 4688
+    },
+    {
+      "path": "Sky\\NorthernWilds_002.sky",
+      "bytes": 8080
+    },
+    {
+      "path": "Sky\\NorthernWilds_Tower_002.sky",
+      "bytes": 6480
+    },
+    {
+      "path": "Sky\\NorthernWilds_Skeetch_002.sky",
+      "bytes": 6720
+    },
+    {
+      "path": "Sky\\Interior_JaggedRockMine_002.sky",
+      "bytes": 3584
+    },
+    {
+      "path": "Sky\\Interior_SpaceshipBlue.sky",
+      "bytes": 3376
+    },
+    {
+      "path": "Sky\\Interior_EldanDark2.sky",
+      "bytes": 3568
+    },
+    {
+      "path": "Sky\\Interior_AurinMatriarch.sky",
+      "bytes": 3584
+    },
+    {
+      "path": "Sky\\Interior_PumeraMine_002.sky",
+      "bytes": 3136
+    },
+    {
+      "path": "Sky\\SpaceShipDark.sky",
+      "bytes": 2976
+    },
+    {
+      "path": "Sky\\Ellevar_SZ_RainyMisty_001.sky",
+      "bytes": 16752
+    },
+    {
+      "path": "Sky\\Interior_DrakkenHousing_002.sky",
+      "bytes": 4736
+    },
+    {
+      "path": "Sky\\NorthernWilds_Imperium_002.sky",
+      "bytes": 7696
+    },
+    {
+      "path": "Sky\\Interior_ChuaHouse.sky",
+      "bytes": 3520
+    },
+    {
+      "path": "Sky\\Interior_terminite.sky",
+      "bytes": 2880
+    },
+    {
+      "path": "Sky\\Outerspace.sky",
+      "bytes": 4224
+    },
+    {
+      "path": "Sky\\Interior_CrashedShip.sky",
+      "bytes": 3808
+    },
+    {
+      "path": "Sky\\Deradune_SZ_Terraformer_002.sky",
+      "bytes": 19328
+    },
+    {
+      "path": "Sky\\Deradune_SZ_Terraformer_ON_002.sky",
+      "bytes": 19248
+    },
+    {
+      "path": "Sky\\Housing_IceCave.sky",
+      "bytes": 4912
+    },
+    {
+      "path": "Sky\\Housing_Chua.sky",
+      "bytes": 3472
+    },
+    {
+      "path": "Sky\\Housing_Drakken.sky",
+      "bytes": 5312
+    },
+    {
+      "path": "Sky\\Interior_Housing_Default2.sky",
+      "bytes": 3120
+    },
+    {
+      "path": "Sky\\Interior_Housing_Default3.sky",
+      "bytes": 3040
+    },
+    {
+      "path": "Sky\\Housing_Aurin.sky",
+      "bytes": 3568
+    },
+    {
+      "path": "Sky\\Housing_Hellfire.sky",
+      "bytes": 3152
+    },
+    {
+      "path": "Sky\\Housing_Green_Goth_002.sky",
+      "bytes": 3136
+    },
+    {
+      "path": "Sky\\Housing_Steamy.sky",
+      "bytes": 3104
+    },
+    {
+      "path": "Sky\\Housing_Underwater.sky",
+      "bytes": 3424
+    },
+    {
+      "path": "Sky\\Housing_Neon.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Housing_Cute.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Interior_AurinHouse2.sky",
+      "bytes": 2944
+    },
+    {
+      "path": "Sky\\Interior_EldanOcculusBoss.sky",
+      "bytes": 5840
+    },
+    {
+      "path": "Sky\\IcecaveSkeech_Fog_002.sky",
+      "bytes": 4496
+    },
+    {
+      "path": "Sky\\CopyofAuroria_SZ_GronyxValley_001.sky",
+      "bytes": 2848
+    },
+    {
+      "path": "Sky\\Interior_GalerasInn_002.sky",
+      "bytes": 3312
+    },
+    {
+      "path": "Sky\\Interior_AlgorocMine_002.sky",
+      "bytes": 3584
+    },
+    {
+      "path": "Sky\\Interior_RMC_Upper.sky",
+      "bytes": 3728
+    },
+    {
+      "path": "Sky\\Interior_AlgorocMine_Foggy_002.sky",
+      "bytes": 3600
+    },
+    {
+      "path": "Sky\\Whitevale_sz_tundra04.sky",
+      "bytes": 17968
+    },
+    {
+      "path": "Sky\\Whitevale_SZ_Glacial.sky",
+      "bytes": 2848
+    },
+    {
+      "path": "Sky\\Whitevale_SZ_Arcterra.sky",
+      "bytes": 15760
+    },
+    {
+      "path": "Sky\\Whitevale_SZ_FocusOfWater01.sky",
+      "bytes": 14656
+    },
+    {
+      "path": "Sky\\Interior_EldanRuinedTower.sky",
+      "bytes": 2720
+    },
+    {
+      "path": "Sky\\Auroria_SZ_Digsite_001.sky",
+      "bytes": 2880
+    },
+    {
+      "path": "Sky\\CopyofAuroria_SZ_HayFields_001.sky",
+      "bytes": 6016
+    },
+    {
+      "path": "Sky\\Auroria_SZ_OsunAttack_002.sky",
+      "bytes": 23008
+    },
+    {
+      "path": "Sky\\Auroria_SZ_Buzzbing_003.sky",
+      "bytes": 14496
+    },
+    {
+      "path": "Sky\\Auroria_SZ_Aurin_001.sky",
+      "bytes": 2704
+    },
+    {
+      "path": "Sky\\Auroria_SZ_OsunCity_002.sky",
+      "bytes": 6784
+    },
+    {
+      "path": "Sky\\Galeras_SZ_OpenBattlefield_001.sky",
+      "bytes": 3024
+    },
+    {
+      "path": "Sky\\Interior_Earthrender_Creepy_003.sky",
+      "bytes": 4480
+    },
+    {
+      "path": "Sky\\Interior_Earthrender_Foggy_004.sky",
+      "bytes": 4160
+    },
+    {
+      "path": "Sky\\Ellevar_SZ_Deforest_000.sky",
+      "bytes": 13952
+    },
+    {
+      "path": "Sky\\Ellevar_SZ_PastoralValley_001.sky",
+      "bytes": 22960
+    },
+    {
+      "path": "Sky\\Ellevar_SZ_IkthianBase001.sky",
+      "bytes": 5008
+    },
+    {
+      "path": "Sky\\Interior_Protostar.sky",
+      "bytes": 2688
+    },
+    {
+      "path": "Sky\\Algoroc_No_Night.sky",
+      "bytes": 6576
+    },
+    {
+      "path": "Sky\\Jeff_Tse_Test.sky",
+      "bytes": 8944
+    },
+    {
+      "path": "Sky\\Algoroc_SZ_ColdMountainSlug.sky",
+      "bytes": 3520
+    },
+    {
+      "path": "Sky\\Interior_YetiIceCave_002.sky",
+      "bytes": 3728
+    },
+    {
+      "path": "Sky\\Interior_GalerasInnCool.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Interior_GalerasInnCoolFoggy.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Auroria_Main_NIGHTONLY.sky",
+      "bytes": 5504
+    },
+    {
+      "path": "Sky\\Auroria_Main_MorningOnly.sky",
+      "bytes": 6688
+    },
+    {
+      "path": "Sky\\Murkmire_SZ_Field.sky",
+      "bytes": 2656
+    },
+    {
+      "path": "Sky\\Galeras_SZ_Chasm_LessDusty_000.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Everstar_Main_005.sky",
+      "bytes": 4240
+    },
+    {
+      "path": "Sky\\HalonRing_SZ_Breathable_03.sky",
+      "bytes": 8384
+    },
+    {
+      "path": "Sky\\HalonRing_SZ_Hazy_01.sky",
+      "bytes": 8352
+    },
+    {
+      "path": "Sky\\HalonRing_SZ_HealtyAtmo_02.sky",
+      "bytes": 8224
+    },
+    {
+      "path": "Sky\\Interior_AlgorocMine_Dark_002.sky",
+      "bytes": 3072
+    },
+    {
+      "path": "Sky\\Malgrave_QT_Daytime.sky",
+      "bytes": 5616
+    },
+    {
+      "path": "Sky\\Malgrave_QT_Nighttime.sky",
+      "bytes": 5536
+    },
+    {
+      "path": "Sky\\Malgrave_QT_DuskDawn.sky",
+      "bytes": 5536
+    },
+    {
+      "path": "Sky\\Malgrave_QT_Storm.sky",
+      "bytes": 5200
+    },
+    {
+      "path": "Sky\\Interior_Arc_StartPod.sky",
+      "bytes": 2688
+    },
+    {
+      "path": "Sky\\Interior_Arc_Tram.sky",
+      "bytes": 5888
+    },
+    {
+      "path": "Sky\\Malgrave_QT_HeatWave.sky",
+      "bytes": 5536
+    },
+    {
+      "path": "Sky\\Interior_Arc_Recovery_002.sky",
+      "bytes": 6160
+    },
+    {
+      "path": "Sky\\Interior_Arc_LifeSupport.sky",
+      "bytes": 2560
+    },
+    {
+      "path": "Sky\\Interior_Arc_LivingQuarters.sky",
+      "bytes": 6320
+    },
+    {
+      "path": "Sky\\Interior_Arc_DockingBay_01.sky",
+      "bytes": 5328
+    },
+    {
+      "path": "Sky\\Interior_Arc_Medbay_01.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Interior_Arc_MedbayRedRoom.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Interior_Arc_Bridge_02.sky",
+      "bytes": 6112
+    },
+    {
+      "path": "Sky\\Interior_Arc_Armory.sky",
+      "bytes": 2496
+    },
+    {
+      "path": "Sky\\Interior_Arc_Greenhouse.sky",
+      "bytes": 2688
+    },
+    {
+      "path": "Sky\\Housing_Solo_Algoroc.sky",
+      "bytes": 18624
+    },
+    {
+      "path": "Sky\\Interior_Arc_Logistics.sky",
+      "bytes": 5168
+    },
+    {
+      "path": "Sky\\Andy_test_sky_01.sky",
+      "bytes": 8608
+    },
+    {
+      "path": "Sky\\Housing_FloatingPlot_002.sky",
+      "bytes": 22544
+    },
+    {
+      "path": "Sky\\Galeras_SZ_Eldan_002.sky",
+      "bytes": 15584
+    },
+    {
+      "path": "Sky\\Galeras_SZ_Thayd_002.sky",
+      "bytes": 19728
+    },
+    {
+      "path": "Sky\\CrimsonIsle_SpiderCanyon_001.sky",
+      "bytes": 6384
+    },
+    {
+      "path": "Sky\\CrimsonIsle_Dregg_003.sky",
+      "bytes": 6832
+    },
+    {
+      "path": "Sky\\CrimsonIsle_Robot_002.sky",
+      "bytes": 6736
+    },
+    {
+      "path": "Sky\\PreviewSky.sky",
+      "bytes": 1568
+    },
+    {
+      "path": "Sky\\PreviewFlux.sky",
+      "bytes": 6416
+    },
+    {
+      "path": "Sky\\FogDepthTool.sky",
+      "bytes": 1392
+    },
+    {
+      "path": "Sky\\Osun_Ruined_City_002.sky",
+      "bytes": 5360
+    },
+    {
+      "path": "Sky\\Adventure_Galeras2.sky",
+      "bytes": 14672
+    },
+    {
+      "path": "Sky\\Adventure_Galeras3.sky",
+      "bytes": 14256
+    },
+    {
+      "path": "Sky\\Skullcano_Forest_002.sky",
+      "bytes": 5104
+    },
+    {
+      "path": "Sky\\Housing_DarkAmbient.sky",
+      "bytes": 2992
+    },
+    {
+      "path": "Sky\\Housing_DarkAmbientFoggy.sky",
+      "bytes": 3120
+    },
+    {
+      "path": "Sky\\Adeventure_Algoroc_SpeedUp.sky",
+      "bytes": 23648
+    },
+    {
+      "path": "Sky\\Adventure_Algoroc_SlowDown.sky",
+      "bytes": 23648
+    },
+    {
+      "path": "Sky\\Dungeon_Skullcano_Beach_002.sky",
+      "bytes": 5536
+    },
+    {
+      "path": "Sky\\Dungeon_Skullcano_Mountain_002.sky",
+      "bytes": 5392
+    },
+    {
+      "path": "Sky\\Dungeon_Skullcano_Interior_Lava_002.sky",
+      "bytes": 3264
+    },
+    {
+      "path": "Sky\\Dungeon_Skullcano_Snow_002.sky",
+      "bytes": 5296
+    },
+    {
+      "path": "Sky\\Deradune_Ritual.sky",
+      "bytes": 10672
+    },
+    {
+      "path": "Sky\\Adventure_Algoroc_BleedOver.sky",
+      "bytes": 23648
+    },
+    {
+      "path": "Sky\\Interior_PoisonFog.sky",
+      "bytes": 2896
+    },
+    {
+      "path": "Sky\\Interior_Exolab_010_Benevolent.sky",
+      "bytes": 3856
+    },
+    {
+      "path": "Sky\\Dungeon_Skullcano_BeachFoggy_002.sky",
+      "bytes": 5040
+    },
+    {
+      "path": "Sky\\Interior_ShipAliens_002.sky",
+      "bytes": 6848
+    },
+    {
+      "path": "Sky\\Interior_ShipAliens_Steamy.sky",
+      "bytes": 3040
+    },
+    {
+      "path": "Sky\\Interior_ShipAliens_Darkness.sky",
+      "bytes": 3360
+    },
+    {
+      "path": "Sky\\Interior_TEST_midkey.sky",
+      "bytes": 2896
+    },
+    {
+      "path": "Sky\\Interior_TEST_lowkey.sky",
+      "bytes": 2896
+    },
+    {
+      "path": "Sky\\Interior_TEST_highkey.sky",
+      "bytes": 2896
+    },
+    {
+      "path": "Sky\\Interior_AccelerateMine.sky",
+      "bytes": 3648
+    },
+    {
+      "path": "Sky\\Interior_SpaceTerminiteMine.sky",
+      "bytes": 3360
+    },
+    {
+      "path": "Sky\\Adventure_Ellevar_Dark.sky",
+      "bytes": 4048
+    },
+    {
+      "path": "Sky\\Auroria_Gloomy.sky",
+      "bytes": 21792
+    },
+    {
+      "path": "Sky\\Dungeon_Mechaforge.sky",
+      "bytes": 3472
+    },
+    {
+      "path": "Sky\\Dungeon_Mechaforge_SmallRoom.sky",
+      "bytes": 3488
+    },
+    {
+      "path": "Sky\\Dungeon_Mechaforge_RedRoom.sky",
+      "bytes": 3488
+    },
+    {
+      "path": "Sky\\Interior_WitchrockPassage.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Whitevale_SZ_TerraformerAcid_01.sky",
+      "bytes": 4512
+    },
+    {
+      "path": "Sky\\Interior_WitchrockPassage_LargeRoom.sky",
+      "bytes": 3536
+    },
+    {
+      "path": "Sky\\Interior_WitchrockCatacombs.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Interior_NoLights.sky",
+      "bytes": 3264
+    },
+    {
+      "path": "Sky\\Interior_Default_DONOTDELETE.sky",
+      "bytes": 3056
+    },
+    {
+      "path": "Sky\\Dungeon_Tornado.sky",
+      "bytes": 4256
+    },
+    {
+      "path": "Sky\\Adventure_NorthernWilds.sky",
+      "bytes": 6944
+    },
+    {
+      "path": "Sky\\Skullcano_ForestLava_002.sky",
+      "bytes": 5104
+    },
+    {
+      "path": "Sky\\Whitevale_StormySky_00.sky",
+      "bytes": 9664
+    },
+    {
+      "path": "Sky\\Dungeon_DataScape_Dark.sky",
+      "bytes": 3744
+    },
+    {
+      "path": "Sky\\LevianBay_Foggy_002.sky",
+      "bytes": 5792
+    },
+    {
+      "path": "Sky\\Interior_BuzzbingHive.sky",
+      "bytes": 2848
+    },
+    {
+      "path": "Sky\\LevianBay_LeastFoggy_002.sky",
+      "bytes": 6576
+    },
+    {
+      "path": "Sky\\LevianBay_Sunset_002.sky",
+      "bytes": 7360
+    },
+    {
+      "path": "Sky\\Datascape_AlgorocExt.sky",
+      "bytes": 3120
+    },
+    {
+      "path": "Sky\\Adventure_SpaceTravel_00.sky",
+      "bytes": 5808
+    },
+    {
+      "path": "Sky\\Dungeon_Skullcano_Interior_Lava_ThickFog.sky",
+      "bytes": 3840
+    },
+    {
+      "path": "Sky\\Cinematics_ProtostarOffice_002_ShadowsOn.sky",
+      "bytes": 3152
+    },
+    {
+      "path": "Sky\\WhiteVale_ChuaPoison.sky",
+      "bytes": 17824
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Foyer.sky",
+      "bytes": 4320
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_HallsoftheInfinite.sky",
+      "bytes": 3280
+    },
+    {
+      "path": "Sky\\Farside_Main_01.sky",
+      "bytes": 6832
+    },
+    {
+      "path": "Sky\\SpacePrison_Shield_ON_001.sky",
+      "bytes": 7040
+    },
+    {
+      "path": "Sky\\LevianBay_Main_NoRain.sky",
+      "bytes": 5856
+    },
+    {
+      "path": "Sky\\Interior_AccelerateMine_ThickFog_002.sky",
+      "bytes": 2848
+    },
+    {
+      "path": "Sky\\Farside_Canyon.sky",
+      "bytes": 4448
+    },
+    {
+      "path": "Sky\\Farside_DerelictSilo.sky",
+      "bytes": 5664
+    },
+    {
+      "path": "Sky\\Tester_Desaturate.sky",
+      "bytes": 3216
+    },
+    {
+      "path": "Sky\\Farside_RotatingAsteroid.sky",
+      "bytes": 3808
+    },
+    {
+      "path": "Sky\\Dungeon_Torine.sky",
+      "bytes": 4208
+    },
+    {
+      "path": "Sky\\Ellevar_SZ_HardRain_001.sky",
+      "bytes": 17968
+    },
+    {
+      "path": "Sky\\Dungeon_Torine_Main.sky",
+      "bytes": 5120
+    },
+    {
+      "path": "Sky\\HalonRing_vortex_02.sky",
+      "bytes": 8512
+    },
+    {
+      "path": "Sky\\Interior_NoLights_YellowFog.sky",
+      "bytes": 2880
+    },
+    {
+      "path": "Sky\\Character_Creation.sky",
+      "bytes": 7040
+    },
+    {
+      "path": "Sky\\Dungeon_GeneticArchives.sky",
+      "bytes": 3456
+    },
+    {
+      "path": "Sky\\Exterior_LightRig.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Cinematics_Cassian.sky",
+      "bytes": 5728
+    },
+    {
+      "path": "Sky\\Cinematics_Draken.sky",
+      "bytes": 6768
+    },
+    {
+      "path": "Sky\\Cinematics_Mal.sky",
+      "bytes": 2944
+    },
+    {
+      "path": "Sky\\Dungeon_Skullcano_Golden_002.sky",
+      "bytes": 6816
+    },
+    {
+      "path": "Sky\\Dungeon_Skullcano_Boss_002.sky",
+      "bytes": 4640
+    },
+    {
+      "path": "Sky\\Interior_NoLights_Bloom.sky",
+      "bytes": 2768
+    },
+    {
+      "path": "Sky\\Interior_Spirit_Foggy.sky",
+      "bytes": 3920
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Fire.sky",
+      "bytes": 5760
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Air.sky",
+      "bytes": 4544
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Water_002.sky",
+      "bytes": 5088
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Earth.sky",
+      "bytes": 5744
+    },
+    {
+      "path": "Sky\\Grimvault_Main_01.sky",
+      "bytes": 6160
+    },
+    {
+      "path": "Sky\\Malgrave_QT_Daytime_Fire.sky",
+      "bytes": 6080
+    },
+    {
+      "path": "Sky\\Malgrave_QT_ThunderStorm.sky",
+      "bytes": 5168
+    },
+    {
+      "path": "Sky\\Dungeon_Torine_Interior.sky",
+      "bytes": 4816
+    },
+    {
+      "path": "Sky\\Auroria_SZ_DominionFort_002.sky",
+      "bytes": 20544
+    },
+    {
+      "path": "Sky\\Auroria_SZ_Terminite_002.sky",
+      "bytes": 19712
+    },
+    {
+      "path": "Sky\\Auroria_SZ_OsunCity_Heat_002.sky",
+      "bytes": 5200
+    },
+    {
+      "path": "Sky\\Dungeon_KelVoreth_Forge_002.sky",
+      "bytes": 4976
+    },
+    {
+      "path": "Sky\\Dungeon_KelVoreth_Arena_002.sky",
+      "bytes": 6720
+    },
+    {
+      "path": "Sky\\Dungeon_KelVoreth_Eldan_002.sky",
+      "bytes": 6784
+    },
+    {
+      "path": "Sky\\Interior_Exolab_TarFoggy.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Planets.sky",
+      "bytes": 6032
+    },
+    {
+      "path": "Sky\\Celestion_SZ_MordeshGas_002.sky",
+      "bytes": 10112
+    },
+    {
+      "path": "Sky\\Wilderun_LowFog_01.sky",
+      "bytes": 11664
+    },
+    {
+      "path": "Sky\\Celestion_SZ_Trippy.sky",
+      "bytes": 9248
+    },
+    {
+      "path": "Sky\\Cinematics_HumanBar.sky",
+      "bytes": 3616
+    },
+    {
+      "path": "Sky\\Cinematics_Kit.sky",
+      "bytes": 2992
+    },
+    {
+      "path": "Sky\\Cinematics_Aurin.sky",
+      "bytes": 5888
+    },
+    {
+      "path": "Sky\\Celestion_Main_LessFog_003.sky",
+      "bytes": 17968
+    },
+    {
+      "path": "Sky\\Cinematics_GranokBattle.sky",
+      "bytes": 3856
+    },
+    {
+      "path": "Sky\\Grimvault_Exanite.sky",
+      "bytes": 3904
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_EnglishMoor.sky",
+      "bytes": 15856
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_DenseSwamp.sky",
+      "bytes": 15936
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_ScaryCreepy.sky",
+      "bytes": 15024
+    },
+    {
+      "path": "Sky\\Character_Creation_Tech.sky",
+      "bytes": 3872
+    },
+    {
+      "path": "Sky\\Greenscreen.sky",
+      "bytes": 4544
+    },
+    {
+      "path": "Sky\\Character_Creation_New01.sky",
+      "bytes": 2688
+    },
+    {
+      "path": "Sky\\EverstarGrove_SZ_DarkStart.sky",
+      "bytes": 5632
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_Coastline.sky",
+      "bytes": 21200
+    },
+    {
+      "path": "Sky\\Interior_PvP_Arena.sky",
+      "bytes": 5600
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_AmazonJungle_01.sky",
+      "bytes": 16384
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_Chua.sky",
+      "bytes": 12192
+    },
+    {
+      "path": "Sky\\Whitevale_Terraformer_Core.sky",
+      "bytes": 5600
+    },
+    {
+      "path": "Sky\\Interior_Ark_RelicRoom.sky",
+      "bytes": 6464
+    },
+    {
+      "path": "Sky\\Justin_test.sky",
+      "bytes": 12624
+    },
+    {
+      "path": "Sky\\Spellslinger_Phase_01.sky",
+      "bytes": 6384
+    },
+    {
+      "path": "Sky\\Coralus_01.sky",
+      "bytes": 16896
+    },
+    {
+      "path": "Sky\\Everstar_SZ_Terminite_002.sky",
+      "bytes": 7936
+    },
+    {
+      "path": "Sky\\Interior_Exolab_010_Particulate.sky",
+      "bytes": 3600
+    },
+    {
+      "path": "Sky\\Cine_Domina.sky",
+      "bytes": 13296
+    },
+    {
+      "path": "Sky\\Wilderun_Main_Dark_Forest.sky",
+      "bytes": 17584
+    },
+    {
+      "path": "Sky\\Celestion_Main_LeastFog_002.sky",
+      "bytes": 16992
+    },
+    {
+      "path": "Sky\\Farside_Silo_Desert.sky",
+      "bytes": 6112
+    },
+    {
+      "path": "Sky\\Farside_Silo_Jungle.sky",
+      "bytes": 6064
+    },
+    {
+      "path": "Sky\\Battleground_Quarry.sky",
+      "bytes": 5952
+    },
+    {
+      "path": "Sky\\Interior_Exolab_010_Foggy_002.sky",
+      "bytes": 2864
+    },
+    {
+      "path": "Sky\\Interior_MysticalBark_ThickFog.sky",
+      "bytes": 3312
+    },
+    {
+      "path": "Sky\\testtestest.sky",
+      "bytes": 3344
+    },
+    {
+      "path": "Sky\\Cinematics_Paths_Explorer.sky",
+      "bytes": 2768
+    },
+    {
+      "path": "Sky\\Whitevale_SZ_Hotsprings.sky",
+      "bytes": 21680
+    },
+    {
+      "path": "Sky\\Grimvault_Low_Fog.sky",
+      "bytes": 6016
+    },
+    {
+      "path": "Sky\\Wilderrun_SZ_Strain.sky",
+      "bytes": 8208
+    },
+    {
+      "path": "Sky\\Grimvault_Main_NuclearGlow.sky",
+      "bytes": 5312
+    },
+    {
+      "path": "Sky\\Whitevale_SZ_Prison.sky",
+      "bytes": 19984
+    },
+    {
+      "path": "Sky\\Wilderrun_SZ_OsunTower.sky",
+      "bytes": 12032
+    },
+    {
+      "path": "Sky\\Coralus_SZ_Foggy.sky",
+      "bytes": 16512
+    },
+    {
+      "path": "Sky\\Interior_YetiIceCave_FoggyCold.sky",
+      "bytes": 3856
+    },
+    {
+      "path": "Sky\\Housing_BurningSmoke.sky",
+      "bytes": 3376
+    },
+    {
+      "path": "Sky\\Adventure_Whitevale_Night.sky",
+      "bytes": 7760
+    },
+    {
+      "path": "Sky\\Adventure_Whitevale_NightFogFire.sky",
+      "bytes": 6560
+    },
+    {
+      "path": "Sky\\Adventure_Whitevale_Dawn.sky",
+      "bytes": 7008
+    },
+    {
+      "path": "Sky\\Dungeon_Torine_MainCenter.sky",
+      "bytes": 5152
+    },
+    {
+      "path": "Sky\\Dungeon_Torine_Crystals.sky",
+      "bytes": 5008
+    },
+    {
+      "path": "Sky\\Dungeon_Torine_SmokeyFire.sky",
+      "bytes": 6048
+    },
+    {
+      "path": "Sky\\Dungeon_Torine_FoggyMystical.sky",
+      "bytes": 4736
+    },
+    {
+      "path": "Sky\\Housing_Fog_Green.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Housing_Fog_Red.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Housing_Fog_Blue.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Housing_Sepia.sky",
+      "bytes": 3200
+    },
+    {
+      "path": "Sky\\Housing_DreamState.sky",
+      "bytes": 2864
+    },
+    {
+      "path": "Sky\\Housing_Industrial.sky",
+      "bytes": 3488
+    },
+    {
+      "path": "Sky\\Housing_Fireflies.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Housing_Noir.sky",
+      "bytes": 3088
+    },
+    {
+      "path": "Sky\\Housing_Spooky_Variants.sky",
+      "bytes": 4496
+    },
+    {
+      "path": "Sky\\Housing_Spooky_Foggy.sky",
+      "bytes": 3008
+    },
+    {
+      "path": "Sky\\Housing_Spooky_Foggy_2.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Housing_Spooky_Dark_2.sky",
+      "bytes": 3008
+    },
+    {
+      "path": "Sky\\PVP_HoldtheLine_Room2.sky",
+      "bytes": 4272
+    },
+    {
+      "path": "Sky\\Housing_NoLights.sky",
+      "bytes": 2880
+    },
+    {
+      "path": "Sky\\Interior_Aquatic.sky",
+      "bytes": 3440
+    },
+    {
+      "path": "Sky\\Farside_Silo_Desert_Lava.sky",
+      "bytes": 6272
+    },
+    {
+      "path": "Sky\\Farside_Silo_Jungle_Foggy.sky",
+      "bytes": 6080
+    },
+    {
+      "path": "Sky\\Grimvault_heavenlyGlow.sky",
+      "bytes": 4736
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Fireworks.sky",
+      "bytes": 9744
+    },
+    {
+      "path": "Sky\\Housing_Exterior_StarryNight.sky",
+      "bytes": 9328
+    },
+    {
+      "path": "Sky\\Housing_Exterior_NothernLights.sky",
+      "bytes": 8624
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Cold.sky",
+      "bytes": 23376
+    },
+    {
+      "path": "Sky\\Housing_Exterior_HappyLand.sky",
+      "bytes": 27968
+    },
+    {
+      "path": "Sky\\Housing_Exterior_WorldDestroyer.sky",
+      "bytes": 6848
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Galeras.sky",
+      "bytes": 24784
+    },
+    {
+      "path": "Sky\\PVP_HoldtheLine_Room1.sky",
+      "bytes": 4064
+    },
+    {
+      "path": "Sky\\PVP_HoldtheLine_Room3_01.sky",
+      "bytes": 5312
+    },
+    {
+      "path": "Sky\\Housing_Exterior_noLights.sky",
+      "bytes": 3472
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Underwater.sky",
+      "bytes": 5312
+    },
+    {
+      "path": "Sky\\Interior_Cave_Foggy_Particulate.sky",
+      "bytes": 4480
+    },
+    {
+      "path": "Sky\\Celestion_SZ_Spooky_002.sky",
+      "bytes": 10032
+    },
+    {
+      "path": "Sky\\Interior_StrainMine_Foggy.sky",
+      "bytes": 3360
+    },
+    {
+      "path": "Sky\\Grimvault_sz_OutsidetheWall.sky",
+      "bytes": 7152
+    },
+    {
+      "path": "Sky\\tsmith_skyTest_3.sky",
+      "bytes": 15760
+    },
+    {
+      "path": "Sky\\Coralus_SZ_Thunderhead.sky",
+      "bytes": 17264
+    },
+    {
+      "path": "Sky\\Farside_Biodome_Water.sky",
+      "bytes": 3152
+    },
+    {
+      "path": "Sky\\Planets_Character_Login.sky",
+      "bytes": 5792
+    },
+    {
+      "path": "Sky\\Coralus_SZ_Stormy.sky",
+      "bytes": 18128
+    },
+    {
+      "path": "Sky\\Farside_SZ_FallingDebris.sky",
+      "bytes": 6240
+    },
+    {
+      "path": "Sky\\Interior_Arc_Bridge_Dominion.sky",
+      "bytes": 6128
+    },
+    {
+      "path": "Sky\\Interior_Arc_Recovery_Dominion.sky",
+      "bytes": 7648
+    },
+    {
+      "path": "Sky\\Interior_Arc_Recovery_Cinematics.sky",
+      "bytes": 5920
+    },
+    {
+      "path": "Sky\\Interior_Arc_DockingTerminal_Dominion.sky",
+      "bytes": 5936
+    },
+    {
+      "path": "Sky\\Interior_Arc_PrayerRoom_Dominion.sky",
+      "bytes": 5184
+    },
+    {
+      "path": "Sky\\Interior_Arc_DockingBay_Dominion.sky",
+      "bytes": 5936
+    },
+    {
+      "path": "Sky\\Caboose.sky",
+      "bytes": 1392
+    },
+    {
+      "path": "Sky\\Cinematics_Mal2.sky",
+      "bytes": 2576
+    },
+    {
+      "path": "Sky\\Interior_Arc_Recovery_Cinematics_BlackSky.sky",
+      "bytes": 3920
+    },
+    {
+      "path": "Sky\\Interior_Arc_Holodeck_Dominion_2.sky",
+      "bytes": 6992
+    },
+    {
+      "path": "Sky\\Interior_Arc_Holodeck_Dominion_Human.sky",
+      "bytes": 3824
+    },
+    {
+      "path": "Sky\\Interior_Arc_Holodeck_Dominion_Aurin.sky",
+      "bytes": 3760
+    },
+    {
+      "path": "Sky\\Interior_Arc_Holodeck_Dominion_Granok.sky",
+      "bytes": 4160
+    },
+    {
+      "path": "Sky\\Interior_Arc_Holodeck_Cassian.sky",
+      "bytes": 3952
+    },
+    {
+      "path": "Sky\\Whitevale_Terraformer_Tier2_01.sky",
+      "bytes": 5648
+    },
+    {
+      "path": "Sky\\HalonRing_SZ_Dead.sky",
+      "bytes": 8256
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_Chua_Orange.sky",
+      "bytes": 13568
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_ShipDesert.sky",
+      "bytes": 4880
+    },
+    {
+      "path": "Sky\\Interior_Ikthian.sky",
+      "bytes": 2704
+    },
+    {
+      "path": "Sky\\Warplots_Furnace.sky",
+      "bytes": 4416
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_OutsidetheWall_Foggy.sky",
+      "bytes": 7168
+    },
+    {
+      "path": "Sky\\Warplots_Main_Exterior_01.sky",
+      "bytes": 7328
+    },
+    {
+      "path": "Sky\\Warplots_Main_InTheWalls.sky",
+      "bytes": 7328
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Whiteout.sky",
+      "bytes": 4064
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_SentinelRoom.sky",
+      "bytes": 3120
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_SentinelRoom_Bright.sky",
+      "bytes": 4336
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_BlackwaterBog.sky",
+      "bytes": 15536
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_BrackenHollow.sky",
+      "bytes": 13584
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_SentinelSideRoom.sky",
+      "bytes": 4336
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_BW_Corrupt_Dark.sky",
+      "bytes": 6080
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_BW_Purified.sky",
+      "bytes": 5776
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_BlackwaterBog_Poison.sky",
+      "bytes": 9728
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_WaterFire.sky",
+      "bytes": 6016
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Esher.sky",
+      "bytes": 5952
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Datacore_WaterAir.sky",
+      "bytes": 4912
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Datacore_WaterFire.sky",
+      "bytes": 5520
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Datacore_WaterLogic.sky",
+      "bytes": 5184
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Datacore_EarthAir.sky",
+      "bytes": 5184
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Datacore_EarthFire.sky",
+      "bytes": 5184
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Datacore_EarthLogic.sky",
+      "bytes": 5184
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Datacore_LifeAir.sky",
+      "bytes": 5184
+    },
+    {
+      "path": "Sky\\CopyofDungeon_Datascape_Datacore_LifeFire.sky",
+      "bytes": 5200
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Datacore_LifeLogic.sky",
+      "bytes": 5184
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Escher2_002.sky",
+      "bytes": 5920
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_Escher3_002.sky",
+      "bytes": 5952
+    },
+    {
+      "path": "Sky\\Exterior_Cold_Mystical.sky",
+      "bytes": 5344
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_Protostar.sky",
+      "bytes": 15728
+    },
+    {
+      "path": "Sky\\Malgrave_SZ_Pocket_Cap.sky",
+      "bytes": 16992
+    },
+    {
+      "path": "Sky\\Dreadmoor_SZ_Terminite.sky",
+      "bytes": 17056
+    },
+    {
+      "path": "Sky\\Warplots_GasPlant.sky",
+      "bytes": 5536
+    },
+    {
+      "path": "Sky\\Cinematics_MC07_Bar.sky",
+      "bytes": 3616
+    },
+    {
+      "path": "Sky\\Warplots_FrizletPen.sky",
+      "bytes": 4688
+    },
+    {
+      "path": "Sky\\Warplots_NuclearPlant.sky",
+      "bytes": 3920
+    },
+    {
+      "path": "Sky\\Adventure_Hycrest_Night_NoRed.sky",
+      "bytes": 5376
+    },
+    {
+      "path": "Sky\\Adventure_Astrovoid.sky",
+      "bytes": 4656
+    },
+    {
+      "path": "Sky\\Adventure_Astrovoid_Atmosphere.sky",
+      "bytes": 5312
+    },
+    {
+      "path": "Sky\\Isle_of_Time_Revealed_002.sky",
+      "bytes": 16208
+    },
+    {
+      "path": "Sky\\Adventure_Astrovoid_Bright.sky",
+      "bytes": 5120
+    },
+    {
+      "path": "Sky\\Isle_of_Time_Buried.sky",
+      "bytes": 15488
+    },
+    {
+      "path": "Sky\\Dungeon_Datascape_WorldDestroyer.sky",
+      "bytes": 6448
+    },
+    {
+      "path": "Sky\\LevianBay_Main_ExplorerVista_002.sky",
+      "bytes": 6752
+    },
+    {
+      "path": "Sky\\Thayd_Bazzar.sky",
+      "bytes": 6480
+    },
+    {
+      "path": "Sky\\Thayd_Blackhoods.sky",
+      "bytes": 6496
+    },
+    {
+      "path": "Sky\\EverstarGrove_SZ_BurnedForest_002.sky",
+      "bytes": 4944
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_IdealCorrupt.sky",
+      "bytes": 18224
+    },
+    {
+      "path": "Sky\\Everstar_SZ_Psychic_01_Revamp.sky",
+      "bytes": 1840
+    },
+    {
+      "path": "Sky\\Interior_Imperium_Church.sky",
+      "bytes": 3184
+    },
+    {
+      "path": "Sky\\Interior_Exolab_010_Alert.sky",
+      "bytes": 3360
+    },
+    {
+      "path": "Sky\\Interior_Arc_Tavern_Exile.sky",
+      "bytes": 6640
+    },
+    {
+      "path": "Sky\\Interior_Arc_MedbayRedRoom_2.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Interior_Arc_Recovery_Static.sky",
+      "bytes": 5472
+    },
+    {
+      "path": "Sky\\Interior_Arc_Recovery2_Static_002.sky",
+      "bytes": 7248
+    },
+    {
+      "path": "Sky\\Dungeon_Skullcano_CinematicsMC07.sky",
+      "bytes": 4720
+    },
+    {
+      "path": "Sky\\Interior_Arc_Tram_Cinematic_Exile.sky",
+      "bytes": 6992
+    },
+    {
+      "path": "Sky\\Ellevar_LightReachMission.sky",
+      "bytes": 19664
+    },
+    {
+      "path": "Sky\\MarketingArt.sky",
+      "bytes": 2032
+    },
+    {
+      "path": "Sky\\Interior_Arc_DockingBay_Bay.sky",
+      "bytes": 5248
+    },
+    {
+      "path": "Sky\\Deradune_Main11.sky",
+      "bytes": 18656
+    },
+    {
+      "path": "Sky\\Algoroc_Main7.sky",
+      "bytes": 23568
+    },
+    {
+      "path": "Sky\\Dungeon_Skullcano_Mountain.sky",
+      "bytes": 4896
+    },
+    {
+      "path": "Sky\\Skullcano_ForestLava.sky",
+      "bytes": 4688
+    },
+    {
+      "path": "Sky\\Interior_Arc_Greenhouse_2.sky",
+      "bytes": 6480
+    },
+    {
+      "path": "Sky\\Level_Up.sky",
+      "bytes": 3200
+    },
+    {
+      "path": "Sky\\MiniMapRender01.sky",
+      "bytes": 2352
+    },
+    {
+      "path": "Sky\\Adventure_Whitevale_Night_Blizzard.sky",
+      "bytes": 5808
+    },
+    {
+      "path": "Sky\\Celestion_SZ_ShipDebri.sky",
+      "bytes": 17488
+    },
+    {
+      "path": "Sky\\RealmSelect.sky",
+      "bytes": 11328
+    },
+    {
+      "path": "Sky\\Celestion_SZ_PoolsofVirara.sky",
+      "bytes": 5392
+    },
+    {
+      "path": "Sky\\Interior_RedRoom_LeastFog_test.sky",
+      "bytes": 2976
+    },
+    {
+      "path": "Sky\\Adventure_SpiritDeath.sky",
+      "bytes": 3712
+    },
+    {
+      "path": "Sky\\Interior_ShipAliens_NoSkybox_01.sky",
+      "bytes": 3552
+    },
+    {
+      "path": "Sky\\Interior_Grimvault_ExaniteGlow_Foggy.sky",
+      "bytes": 3504
+    },
+    {
+      "path": "Sky\\Grimvault_HeavenlyGlow_FarFog.sky",
+      "bytes": 4736
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_IntestineChasm.sky",
+      "bytes": 4768
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_IntestineChasm_Foggy.sky",
+      "bytes": 4784
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_EldanFacility.sky",
+      "bytes": 6416
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_Element_Fire.sky",
+      "bytes": 3920
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_Element_Snow.sky",
+      "bytes": 3680
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_CankertoobSwamp.sky",
+      "bytes": 5744
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_Element_Desert.sky",
+      "bytes": 3632
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_EldanFields_002.sky",
+      "bytes": 5632
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_Entity.sky",
+      "bytes": 5104
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_BlackFocus.sky",
+      "bytes": 5296
+    },
+    {
+      "path": "Sky\\Interior_StrainMine_LessFoggy.sky",
+      "bytes": 3360
+    },
+    {
+      "path": "Sky\\Interior_StrainMine_LeastFoggy.sky",
+      "bytes": 3376
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_SpiderQueenLair.sky",
+      "bytes": 5120
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_CorruptedForest.sky",
+      "bytes": 5344
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_Battlefield_002.sky",
+      "bytes": 5552
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_Gauntlet_002.sky",
+      "bytes": 5952
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_MysticalGarden.sky",
+      "bytes": 4256
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_Shipcrash.sky",
+      "bytes": 4880
+    },
+    {
+      "path": "Sky\\Warplots_SZ_Boss.sky",
+      "bytes": 5488
+    },
+    {
+      "path": "Sky\\Grimvault_Lightspire.sky",
+      "bytes": 5824
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_Core.sky",
+      "bytes": 4464
+    },
+    {
+      "path": "Sky\\Interior_Arc_Dominion_Museum_Static.sky",
+      "bytes": 6848
+    },
+    {
+      "path": "Sky\\Interior_Expedition8.sky",
+      "bytes": 7216
+    },
+    {
+      "path": "Sky\\Marketing_Space_BlueScreen.sky",
+      "bytes": 9280
+    },
+    {
+      "path": "Sky\\Farside_Biodome_Geo.sky",
+      "bytes": 3152
+    },
+    {
+      "path": "Sky\\Interior_Arc_TramStation_Dominion.sky",
+      "bytes": 5952
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_Core_Purple.sky",
+      "bytes": 4240
+    },
+    {
+      "path": "Sky\\Interior_Arc_Tram_Dominion.sky",
+      "bytes": 7952
+    },
+    {
+      "path": "Sky\\Interior_Arc_DockingTerminal_Dominion_002.sky",
+      "bytes": 4432
+    },
+    {
+      "path": "Sky\\Interior_Arc_Recovery_NoPlanets_Dominion.sky",
+      "bytes": 5712
+    },
+    {
+      "path": "Sky\\Interior_Arc_PrayerRoomExterior_Dominion.sky",
+      "bytes": 6816
+    },
+    {
+      "path": "Sky\\Interior_CankerToob.sky",
+      "bytes": 4496
+    },
+    {
+      "path": "Sky\\Wilderun_Main_Orange.sky",
+      "bytes": 11696
+    },
+    {
+      "path": "Sky\\Wilderun_Main_Orange_LowFog.sky",
+      "bytes": 11664
+    },
+    {
+      "path": "Sky\\Wilderrun_SZ_Pink.sky",
+      "bytes": 11744
+    },
+    {
+      "path": "Sky\\Wilderrun_SZ_Pink_LowFog.sky",
+      "bytes": 12416
+    },
+    {
+      "path": "Sky\\Interior_GeneticArchive_Act1.sky",
+      "bytes": 3104
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_EldanFacility_LowFog.sky",
+      "bytes": 6208
+    },
+    {
+      "path": "Sky\\Adventure_Start_Green.sky",
+      "bytes": 5360
+    },
+    {
+      "path": "Sky\\CopyofAdventure_Fail_Red.sky",
+      "bytes": 5376
+    },
+    {
+      "path": "Sky\\Interior_GeneticArchive_Act1_LowFog.sky",
+      "bytes": 2976
+    },
+    {
+      "path": "Sky\\Datascape_Avatus_Engaged.sky",
+      "bytes": 5712
+    },
+    {
+      "path": "Sky\\Wilderrun_Main_Blue_Seaside.sky",
+      "bytes": 12336
+    },
+    {
+      "path": "Sky\\Datascape_Avatus_DangerRoom_01.sky",
+      "bytes": 5264
+    },
+    {
+      "path": "Sky\\Datascape_Avatus_Soldier.sky",
+      "bytes": 4672
+    },
+    {
+      "path": "Sky\\Datascape_Avatus_Scientist_002.sky",
+      "bytes": 4688
+    },
+    {
+      "path": "Sky\\Datascape_Avatus_Explorer_002.sky",
+      "bytes": 4672
+    },
+    {
+      "path": "Sky\\Datascape_Avatus_Settler_002.sky",
+      "bytes": 4560
+    },
+    {
+      "path": "Sky\\Datascape_Avatus_Showdown.sky",
+      "bytes": 6960
+    },
+    {
+      "path": "Sky\\Cinematics_Adventures_Decisions.sky",
+      "bytes": 3392
+    },
+    {
+      "path": "Sky\\Farside_SZ_Ikthian.sky",
+      "bytes": 6160
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_Entity_Red.sky",
+      "bytes": 5328
+    },
+    {
+      "path": "Sky\\Cinematics_MC08_Caretaker.sky",
+      "bytes": 9696
+    },
+    {
+      "path": "Sky\\Interior_Arc_Emperor_Dominion.sky",
+      "bytes": 6688
+    },
+    {
+      "path": "Sky\\Interior_GeneticArchive_Act2_Halls.sky",
+      "bytes": 2912
+    },
+    {
+      "path": "Sky\\Interior_Arc_DominionCryo.sky",
+      "bytes": 6320
+    },
+    {
+      "path": "Sky\\Interior_GeneticArchive_Act2_Center_002.sky",
+      "bytes": 2928
+    },
+    {
+      "path": "Sky\\Interior_GeneticArchive_Act2_LongHalls.sky",
+      "bytes": 2928
+    },
+    {
+      "path": "Sky\\Cinematics_MC08_Granok_NoLights.sky",
+      "bytes": 5312
+    },
+    {
+      "path": "Sky\\Protogames_Dreadmoor_Chua.sky",
+      "bytes": 4896
+    },
+    {
+      "path": "Sky\\Protogames_Dreadmoor_DenseSwamp.sky",
+      "bytes": 5696
+    },
+    {
+      "path": "Sky\\Protogames_Murkmire_Main.sky",
+      "bytes": 5696
+    },
+    {
+      "path": "Sky\\Protogames_Celestion_BurnedForest.sky",
+      "bytes": 4448
+    },
+    {
+      "path": "Sky\\Protogames_Celestion_DrakenHold.sky",
+      "bytes": 5232
+    },
+    {
+      "path": "Sky\\Protogames_Celestion_Moodie.sky",
+      "bytes": 6448
+    },
+    {
+      "path": "Sky\\Protogames_Deradune.sky",
+      "bytes": 6720
+    },
+    {
+      "path": "Sky\\Protogames_Whitevale_Arcterra.sky",
+      "bytes": 5616
+    },
+    {
+      "path": "Sky\\Protogames_Whitevale_Prison.sky",
+      "bytes": 6688
+    },
+    {
+      "path": "Sky\\Protogames_Dreadmoor_Main.sky",
+      "bytes": 6400
+    },
+    {
+      "path": "Sky\\Protogames_Wilderrun_Blue.sky",
+      "bytes": 6144
+    },
+    {
+      "path": "Sky\\Protogames_Auroria_Main.sky",
+      "bytes": 6672
+    },
+    {
+      "path": "Sky\\Protogames_Wilderrun_Canyon.sky",
+      "bytes": 5488
+    },
+    {
+      "path": "Sky\\Protogames_Whitevale_Prison_Evening.sky",
+      "bytes": 6560
+    },
+    {
+      "path": "Sky\\Protogames_Whitevale_Prison_Night.sky",
+      "bytes": 8032
+    },
+    {
+      "path": "Sky\\Warplots_Battle_Gloomy.sky",
+      "bytes": 16688
+    },
+    {
+      "path": "Sky\\Interior_GeneticArchive_Act2_Boss.sky",
+      "bytes": 2912
+    },
+    {
+      "path": "Sky\\Cinematics_BlackandWhite_Camera.sky",
+      "bytes": 3760
+    },
+    {
+      "path": "Sky\\Interior_GeneticArchive_Act2_Ohmna.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Grimvault_heavenlyGlow_HoloRing.sky",
+      "bytes": 4480
+    },
+    {
+      "path": "Sky\\Interior_GeneticArchive_Act1_BossDark.sky",
+      "bytes": 3120
+    },
+    {
+      "path": "Sky\\Interior_Exolab_Red.sky",
+      "bytes": 5008
+    },
+    {
+      "path": "Sky\\Cinematics_GC090_TramTube_Dominion.sky",
+      "bytes": 5952
+    },
+    {
+      "path": "Sky\\Cinematics_GC090_TramStation_Dominion_Foggy.sky",
+      "bytes": 5968
+    },
+    {
+      "path": "Sky\\PVP_Sabotage.sky",
+      "bytes": 6336
+    },
+    {
+      "path": "Sky\\Galeras_SZ_ThaydFoggy.sky",
+      "bytes": 19712
+    },
+    {
+      "path": "Sky\\Interior_Cave_Earthrender_Creepy.sky",
+      "bytes": 2944
+    },
+    {
+      "path": "Sky\\Hazard_Fatigue.sky",
+      "bytes": 2416
+    },
+    {
+      "path": "Sky\\Exterior_Basic_LightRig.sky",
+      "bytes": 11504
+    },
+    {
+      "path": "Sky\\Cinematics_MC09_Office.sky",
+      "bytes": 23568
+    },
+    {
+      "path": "Sky\\Cinematics_Exolab_Camera_Monochromatic.sky",
+      "bytes": 2896
+    },
+    {
+      "path": "Sky\\Cinematics_MC09_Lawnchair.sky",
+      "bytes": 21744
+    },
+    {
+      "path": "Sky\\Cinematics_MC09_Battlefield.sky",
+      "bytes": 10224
+    },
+    {
+      "path": "Sky\\Cinematics_Farside_Cannon.sky",
+      "bytes": 6000
+    },
+    {
+      "path": "Sky\\Interior_Arc_Holodeck_Dominion_Blue.sky",
+      "bytes": 7104
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Malgrave.sky",
+      "bytes": 14656
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Whitevale_002.sky",
+      "bytes": 7648
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Skullcano_Golden.sky",
+      "bytes": 7776
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Noir_002.sky",
+      "bytes": 5792
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Sepia.sky",
+      "bytes": 5904
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Datascape_Datacore_WaterAir.sky",
+      "bytes": 5600
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Datascape_Air.sky",
+      "bytes": 5408
+    },
+    {
+      "path": "Sky\\Cinematics_GC031_Exolab_010_Foggy.sky",
+      "bytes": 2880
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Strain_000.sky",
+      "bytes": 19024
+    },
+    {
+      "path": "Sky\\Cinematics_MC09_Outerspace_000.sky",
+      "bytes": 5936
+    },
+    {
+      "path": "Sky\\PVP_Walatiki_ShadesEve.sky",
+      "bytes": 7584
+    },
+    {
+      "path": "Sky\\NateTest_02.sky",
+      "bytes": 20592
+    },
+    {
+      "path": "Sky\\Grimvault_OutOfWorld_JumpPuzzle.sky",
+      "bytes": 5520
+    },
+    {
+      "path": "Sky\\Cinematics_StoryIntro_Dominion.sky",
+      "bytes": 6304
+    },
+    {
+      "path": "Sky\\Cinematics_StoryIntro_Exile.sky",
+      "bytes": 6384
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Strain.sky",
+      "bytes": 7072
+    },
+    {
+      "path": "Sky\\Dungeon_Hoth_SnowStorm_03.sky",
+      "bytes": 5328
+    },
+    {
+      "path": "Sky\\Dugeon_Hoth_SnowStorm_NoParticulates.sky",
+      "bytes": 5184
+    },
+    {
+      "path": "Sky\\Dugeon_Hoth_GrandView.sky",
+      "bytes": 5104
+    },
+    {
+      "path": "Sky\\Dungeon_Hoth_Interior_Foggy.sky",
+      "bytes": 5168
+    },
+    {
+      "path": "Sky\\Dugeon_Hoth_Interior.sky",
+      "bytes": 5296
+    },
+    {
+      "path": "Sky\\Holiday_ShadesEve_Murkmire.sky",
+      "bytes": 3760
+    },
+    {
+      "path": "Sky\\Holiday_ShadesEve_Murkmire_JacksComing.sky",
+      "bytes": 4496
+    },
+    {
+      "path": "Sky\\Housing_Exterior_ShadesEve.sky",
+      "bytes": 7680
+    },
+    {
+      "path": "Sky\\Dungeon_Hoth_HeatedBoss.sky",
+      "bytes": 5392
+    },
+    {
+      "path": "Sky\\Interior_WorldStory1.sky",
+      "bytes": 2944
+    },
+    {
+      "path": "Sky\\Interior_WorldStory1_Halls.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Interior_WorldStory1_MemoryCore.sky",
+      "bytes": 2832
+    },
+    {
+      "path": "Sky\\CrimsonIsle_Main_NoShield.sky",
+      "bytes": 6624
+    },
+    {
+      "path": "Sky\\Holiday_ShadesEve_MurkmireDark.sky",
+      "bytes": 3776
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_BlackFocus_Snow.sky",
+      "bytes": 5248
+    },
+    {
+      "path": "Sky\\Cinematics_StoryIntro_Exile_2.sky",
+      "bytes": 6384
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory1_UnderFog.sky",
+      "bytes": 3648
+    },
+    {
+      "path": "Sky\\Adventure_Farside_GalerasDestruction.sky",
+      "bytes": 4384
+    },
+    {
+      "path": "Sky\\Adventure_Farside_Afternoon.sky",
+      "bytes": 6432
+    },
+    {
+      "path": "Sky\\Adventure_Farside_Noon.sky",
+      "bytes": 6432
+    },
+    {
+      "path": "Sky\\Adventure_Farside_Morning.sky",
+      "bytes": 6432
+    },
+    {
+      "path": "Sky\\Adventure_Farside_Farm.sky",
+      "bytes": 6160
+    },
+    {
+      "path": "Sky\\Interior_EldanSilo_GrimvaultT3.sky",
+      "bytes": 3536
+    },
+    {
+      "path": "Sky\\PVP_Sabotage_Foggy.sky",
+      "bytes": 6480
+    },
+    {
+      "path": "Sky\\Adventure_Fail_Red_LessIntense.sky",
+      "bytes": 5552
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory1_DataFlow.sky",
+      "bytes": 4528
+    },
+    {
+      "path": "Sky\\Cinematics_StoryIntro_Dorian.sky",
+      "bytes": 6352
+    },
+    {
+      "path": "Sky\\Protogames_MalgraveTornado.sky",
+      "bytes": 5424
+    },
+    {
+      "path": "Sky\\Cinematics_StoryIntro_Dorian2.sky",
+      "bytes": 6368
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_CankertoobSwamp_Dead.sky",
+      "bytes": 5904
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory1_NoLightsDarkness.sky",
+      "bytes": 2784
+    },
+    {
+      "path": "Sky\\Interior_Arc_DockingBay_Dominion_NoLights.sky",
+      "bytes": 4208
+    },
+    {
+      "path": "Sky\\PVP_Snow_Fog_01.sky",
+      "bytes": 5280
+    },
+    {
+      "path": "Sky\\Holiday_ShadesEve_Foggy.sky",
+      "bytes": 5472
+    },
+    {
+      "path": "Sky\\HalonRing_Frozen.sky",
+      "bytes": 7920
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory3_Outerspace.sky",
+      "bytes": 6416
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory3_InteriorFoggy.sky",
+      "bytes": 3216
+    },
+    {
+      "path": "Sky\\Cinematics_Strain_Foggy.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory3_InteriorWhite_LessFog.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Holiday_ShadesEve_DarkThickFog.sky",
+      "bytes": 3760
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Holiday_WinterfestAds.sky",
+      "bytes": 31152
+    },
+    {
+      "path": "Sky\\Dungeon_RMT_exterior_space.sky",
+      "bytes": 7456
+    },
+    {
+      "path": "Sky\\Housing_Fog_Yellow.sky",
+      "bytes": 3632
+    },
+    {
+      "path": "Sky\\Housing_Fog_Purple.sky",
+      "bytes": 3632
+    },
+    {
+      "path": "Sky\\Housing_Interior_HauntedHouse_Green.sky",
+      "bytes": 4048
+    },
+    {
+      "path": "Sky\\Housing_Interior_Groovy.sky",
+      "bytes": 5408
+    },
+    {
+      "path": "Sky\\Housing_Interior_Fog_PinkTeal.sky",
+      "bytes": 3920
+    },
+    {
+      "path": "Sky\\Housing_Interior_Fog_GreenYellow.sky",
+      "bytes": 3808
+    },
+    {
+      "path": "Sky\\Housing_Interior_Fog_BlackGold.sky",
+      "bytes": 4240
+    },
+    {
+      "path": "Sky\\Housing_Interior_Datascape.sky",
+      "bytes": 3904
+    },
+    {
+      "path": "Sky\\Housing_Interior_Fog_Strain.sky",
+      "bytes": 3984
+    },
+    {
+      "path": "Sky\\Coralus_SZ_Jungle.sky",
+      "bytes": 16304
+    },
+    {
+      "path": "Sky\\Cinematics_WorldStory1_Dark.sky",
+      "bytes": 3072
+    },
+    {
+      "path": "Sky\\WS_Eldan_Room_01.sky",
+      "bytes": 3472
+    },
+    {
+      "path": "Sky\\Spooky_Icecave.sky",
+      "bytes": 3392
+    },
+    {
+      "path": "Sky\\Interior_Poison_Icecave.sky",
+      "bytes": 2992
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory1_LargeCircleRoom.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Dungeon_RMT_Engine.sky",
+      "bytes": 3792
+    },
+    {
+      "path": "Sky\\ProtostarMall_Basic.sky",
+      "bytes": 2976
+    },
+    {
+      "path": "Sky\\Dungeon_RMT_RedFogThick.sky",
+      "bytes": 3648
+    },
+    {
+      "path": "Sky\\Cinematics_WorldStory1_HolographicSlideshow.sky",
+      "bytes": 2992
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Winterfest.sky",
+      "bytes": 10528
+    },
+    {
+      "path": "Sky\\Dungeon_RMT_40Man_Outerspace.sky",
+      "bytes": 6912
+    },
+    {
+      "path": "Sky\\ProtostarMall_Dark.sky",
+      "bytes": 2976
+    },
+    {
+      "path": "Sky\\ProtostarMall_ExpoHall.sky",
+      "bytes": 2992
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Winterfest_Snow.sky",
+      "bytes": 23136
+    },
+    {
+      "path": "Sky\\Cinematics_HyperlexIntro_Room.sky",
+      "bytes": 2864
+    },
+    {
+      "path": "Sky\\Cinematics_WorldStory1_VeryDark.sky",
+      "bytes": 3088
+    },
+    {
+      "path": "Sky\\Interior_ProtostarMall_SmallRoom.sky",
+      "bytes": 3056
+    },
+    {
+      "path": "Sky\\HalonRing_Vortex_LessFog.sky",
+      "bytes": 8528
+    },
+    {
+      "path": "Sky\\Dungeon_RMT_StorageElevator.sky",
+      "bytes": 3680
+    },
+    {
+      "path": "Sky\\Protogames_Dreadmoor_Tornado.sky",
+      "bytes": 6224
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_EldanFacility_HeavyFog.sky",
+      "bytes": 6432
+    },
+    {
+      "path": "Sky\\Grimvault_SZ_EldanFacility_CinematicsFog.sky",
+      "bytes": 6336
+    },
+    {
+      "path": "Sky\\Winterfest_ProtostarMall_Exterior_002.sky",
+      "bytes": 8128
+    },
+    {
+      "path": "Sky\\Soldier_Red.sky",
+      "bytes": 4080
+    },
+    {
+      "path": "Sky\\Cinematics_HalonRing_Main.sky",
+      "bytes": 7408
+    },
+    {
+      "path": "Sky\\WorldStory0_LightspireDream.sky",
+      "bytes": 7936
+    },
+    {
+      "path": "Sky\\Holiday_Winterfest_Cities.sky",
+      "bytes": 5376
+    },
+    {
+      "path": "Sky\\Dungeon_RMT_Lavaka.sky",
+      "bytes": 3024
+    },
+    {
+      "path": "Sky\\Dungeon_RMT_Morgue.sky",
+      "bytes": 3088
+    },
+    {
+      "path": "Sky\\Interior_Rustic.sky",
+      "bytes": 2912
+    },
+    {
+      "path": "Sky\\Interior_Regal.sky",
+      "bytes": 2912
+    },
+    {
+      "path": "Sky\\Interior_Regal_Ambient.sky",
+      "bytes": 2928
+    },
+    {
+      "path": "Sky\\Interior_Supply_Room.sky",
+      "bytes": 2912
+    },
+    {
+      "path": "Sky\\Interior_Dominion_Explorer.sky",
+      "bytes": 2928
+    },
+    {
+      "path": "Sky\\Cinematics_Marketing_Housing01.sky",
+      "bytes": 5728
+    },
+    {
+      "path": "Sky\\Interior_Dominion_Explorer_Library.sky",
+      "bytes": 2880
+    },
+    {
+      "path": "Sky\\CopyofCinematics_Marketing_Housing02.sky",
+      "bytes": 5728
+    },
+    {
+      "path": "Sky\\Interior_Dominion_Scientist.sky",
+      "bytes": 2864
+    },
+    {
+      "path": "Sky\\Dungeon_Proto_Academy_Snow.sky",
+      "bytes": 6816
+    },
+    {
+      "path": "Sky\\Interior_Exile_Scientist.sky",
+      "bytes": 6176
+    },
+    {
+      "path": "Sky\\Cinematics_HalonRing_BW.sky",
+      "bytes": 7408
+    },
+    {
+      "path": "Sky\\Dungeon_ProtostarAcademy_Dreadmoore.sky",
+      "bytes": 5760
+    },
+    {
+      "path": "Sky\\Dungeon_ProtoAcademy_Room3_Night.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Cinematic_Adventure_SpaceTravel_Black.sky",
+      "bytes": 5824
+    },
+    {
+      "path": "Sky\\Cinematic_MC20_Outside_Sky.sky",
+      "bytes": 8304
+    },
+    {
+      "path": "Sky\\CinematicVintageOuterspace.sky",
+      "bytes": 4256
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Space_2_Suns.sky",
+      "bytes": 6944
+    },
+    {
+      "path": "Sky\\TestSkyFX.sky",
+      "bytes": 3776
+    },
+    {
+      "path": "Sky\\Cine_LevianBay_LeastFoggy_002.sky",
+      "bytes": 6576
+    },
+    {
+      "path": "Sky\\Arcterra_EXT_TowerMain.sky",
+      "bytes": 5600
+    },
+    {
+      "path": "Sky\\LevianBay_Main_NoFunnel.sky",
+      "bytes": 6560
+    },
+    {
+      "path": "Sky\\Arcterra_Blizzard.sky",
+      "bytes": 6848
+    },
+    {
+      "path": "Sky\\Lopp_Party_Evening_001.sky",
+      "bytes": 7392
+    },
+    {
+      "path": "Sky\\Arcterra_PellIceCave.sky",
+      "bytes": 3312
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Space_SunCrash_01.sky",
+      "bytes": 5040
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Space_FantasticVoyage.sky",
+      "bytes": 5232
+    },
+    {
+      "path": "Sky\\Interior_Spooky_Eldan.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Interior_Witch_Tomb.sky",
+      "bytes": 2960
+    },
+    {
+      "path": "Sky\\Interior_Witch_Tomb_Hall.sky",
+      "bytes": 2944
+    },
+    {
+      "path": "Sky\\HoloConstruct_01.sky",
+      "bytes": 4224
+    },
+    {
+      "path": "Sky\\Cinematic_Marketing_MC22_Tower.sky",
+      "bytes": 4896
+    },
+    {
+      "path": "Sky\\Cinematics_Marketing_MC22_Outerspace_000.sky",
+      "bytes": 5952
+    },
+    {
+      "path": "Sky\\Interior_Witch_Tomb_Foggy.sky",
+      "bytes": 2832
+    },
+    {
+      "path": "Sky\\Interior_Witch_Room_Boss.sky",
+      "bytes": 2976
+    },
+    {
+      "path": "Sky\\Cinematics_Marketing_MC22_Outerspace_Black_000.sky",
+      "bytes": 2144
+    },
+    {
+      "path": "Sky\\Cinematic_Interior_NoLights.sky",
+      "bytes": 3280
+    },
+    {
+      "path": "Sky\\Cinematics_MC22_Cockpit.sky",
+      "bytes": 2944
+    },
+    {
+      "path": "Sky\\Cinematics_Marketing_MC22_Nexus_Sky.sky",
+      "bytes": 5872
+    },
+    {
+      "path": "Sky\\Interior_Osun_Cold_01.sky",
+      "bytes": 2864
+    },
+    {
+      "path": "Sky\\mc22_cinematic_arcterra.sky",
+      "bytes": 5408
+    },
+    {
+      "path": "Sky\\mc22_chua_ball_sky.sky",
+      "bytes": 6608
+    },
+    {
+      "path": "Sky\\Cinematics_Beacon_Caretaker.sky",
+      "bytes": 1552
+    },
+    {
+      "path": "Sky\\Lopp_Party_Night_001.sky",
+      "bytes": 9232
+    },
+    {
+      "path": "Sky\\Lopp_Party_Noon_001.sky",
+      "bytes": 5712
+    },
+    {
+      "path": "Sky\\Lopp_Party_Morning_001.sky",
+      "bytes": 7520
+    },
+    {
+      "path": "Sky\\CombatRoom_Support_001.sky",
+      "bytes": 3392
+    },
+    {
+      "path": "Sky\\MMFortunes_001.sky",
+      "bytes": 2512
+    },
+    {
+      "path": "Sky\\Housing_Tropical_001.sky",
+      "bytes": 6928
+    },
+    {
+      "path": "Sky\\Housing_PleasantMorning_001.sky",
+      "bytes": 7856
+    },
+    {
+      "path": "Sky\\Housing_WarmSunset_001.sky",
+      "bytes": 7728
+    },
+    {
+      "path": "Sky\\Housing_Filters_Hipster_001.sky",
+      "bytes": 5696
+    },
+    {
+      "path": "Sky\\Housing_Ext_VortexofChaos_001.sky",
+      "bytes": 7552
+    },
+    {
+      "path": "Sky\\MC22_aurin_tree_sky.sky",
+      "bytes": 6288
+    },
+    {
+      "path": "Sky\\GC247_248_evil_from_the_ether.sky",
+      "bytes": 6192
+    },
+    {
+      "path": "Sky\\GC247_248_evil_from_the_ether_black.sky",
+      "bytes": 6208
+    },
+    {
+      "path": "Sky\\Housing_Ext_Spooky_01.sky",
+      "bytes": 4320
+    },
+    {
+      "path": "Sky\\Housing_Ext_Wonder_01.sky",
+      "bytes": 5568
+    },
+    {
+      "path": "Sky\\Bio_cinematics.sky",
+      "bytes": 1744
+    },
+    {
+      "path": "Sky\\Interior_Witch_Room_Boss_Snowy.sky",
+      "bytes": 3008
+    },
+    {
+      "path": "Sky\\Housing_BurningSmoke_LowFog.sky",
+      "bytes": 3392
+    },
+    {
+      "path": "Sky\\Housing_Interior_Datascape_LowFog.sky",
+      "bytes": 3984
+    },
+    {
+      "path": "Sky\\Housing_IceCave_LowFog.sky",
+      "bytes": 4928
+    },
+    {
+      "path": "Sky\\Housing_Industrial_LowFog.sky",
+      "bytes": 3504
+    },
+    {
+      "path": "Sky\\Housing_Steamy_LowFog.sky",
+      "bytes": 3104
+    },
+    {
+      "path": "Sky\\Housing_Interior_Strain_LowFog.sky",
+      "bytes": 4000
+    },
+    {
+      "path": "Sky\\Housing_Spooky_LessFoggy.sky",
+      "bytes": 3024
+    },
+    {
+      "path": "Sky\\Housing_LowFog_Blue.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Housing_LowFog_Green.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Housing_LowFog_Red.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Interior_Arkship_Boss_Room.sky",
+      "bytes": 3008
+    },
+    {
+      "path": "Sky\\Cinematics_Arcterra_01_No_Snow.sky",
+      "bytes": 6720
+    },
+    {
+      "path": "Sky\\Interior_Osun_Spooky_IceCave.sky",
+      "bytes": 3664
+    },
+    {
+      "path": "Sky\\Vanity_Out_of_Orbit.sky",
+      "bytes": 7360
+    },
+    {
+      "path": "Sky\\RMT_Greenhouse.sky",
+      "bytes": 5056
+    },
+    {
+      "path": "Sky\\RMT_Kitchen.sky",
+      "bytes": 2800
+    },
+    {
+      "path": "Sky\\RMT_bar.sky",
+      "bytes": 3088
+    },
+    {
+      "path": "Sky\\RMT_Bathroom.sky",
+      "bytes": 2656
+    },
+    {
+      "path": "Sky\\RMT_Interrogation.sky",
+      "bytes": 4512
+    },
+    {
+      "path": "Sky\\RMT_Treasure.sky",
+      "bytes": 3152
+    },
+    {
+      "path": "Sky\\Interior_Arc_StartPod001.sky",
+      "bytes": 2704
+    },
+    {
+      "path": "Sky\\Interior_Arc_Recovery_Static001.sky",
+      "bytes": 5536
+    },
+    {
+      "path": "Sky\\Interior_Arc_Medbay_02_Revamp.sky",
+      "bytes": 3088
+    },
+    {
+      "path": "Sky\\Interior_Arc_Recovery_Dominion_Revamp.sky",
+      "bytes": 7920
+    },
+    {
+      "path": "Sky\\Interior_Arc_MedbayRedRoom_Revamp.sky",
+      "bytes": 3104
+    },
+    {
+      "path": "Sky\\Interior_Arc_TramStation_Dominion_Revamp.sky",
+      "bytes": 5984
+    },
+    {
+      "path": "Sky\\Interior_Arc_TramStation_Revamp.sky",
+      "bytes": 6384
+    },
+    {
+      "path": "Sky\\Interior_Arc_CryotubeRed_Revamp.sky",
+      "bytes": 3104
+    },
+    {
+      "path": "Sky\\Interior_Arc_Dominion_Medbay_Revamp.sky",
+      "bytes": 6384
+    },
+    {
+      "path": "Sky\\Interior_Arc_DominionCryoTube_Revamp.sky",
+      "bytes": 6384
+    },
+    {
+      "path": "Sky\\Interior_Arc_Holodeck_Dominion_Revamp.sky",
+      "bytes": 7040
+    },
+    {
+      "path": "Sky\\Interior_Arc_Greenhouse_Revamp.sky",
+      "bytes": 6208
+    },
+    {
+      "path": "Sky\\Interior_Arc_Holodeck_Dominion_Mordesh_Revamp.sky",
+      "bytes": 3440
+    },
+    {
+      "path": "Sky\\Interior_Arc_Holodeck_Dominion_Aurin_Revamp.sky",
+      "bytes": 3696
+    },
+    {
+      "path": "Sky\\Interior_Arc_Bridge_Dominion_Revamp.sky",
+      "bytes": 6080
+    },
+    {
+      "path": "Sky\\Interior_Arc_Bridge_Revamp.sky",
+      "bytes": 6048
+    },
+    {
+      "path": "Sky\\Interior_Arc_DockingTerminal_Dominion_Revamp.sky",
+      "bytes": 4480
+    },
+    {
+      "path": "Sky\\Interior_Arc_Bridge_Dominion_Main_Revamp.sky",
+      "bytes": 6096
+    },
+    {
+      "path": "Sky\\Interior_Arc_DockingTerminal_Dominion_Docks_Revamp.sky",
+      "bytes": 7072
+    },
+    {
+      "path": "Sky\\Everstar_Terminite_Revamp_001.sky",
+      "bytes": 4256
+    },
+    {
+      "path": "Sky\\Interior_Arkship_Boss_Room_Revamp.sky",
+      "bytes": 3008
+    },
+    {
+      "path": "Sky\\Everstar_FireArea_001_Revamp.sky",
+      "bytes": 4512
+    },
+    {
+      "path": "Sky\\GC126_Cinematic_Exterior_001.sky",
+      "bytes": 8112
+    },
+    {
+      "path": "Sky\\Interior_Arc_Departures_Revamp.sky",
+      "bytes": 2848
+    },
+    {
+      "path": "Sky\\Interior_Arc_DockingBay_Revamp.sky",
+      "bytes": 5200
+    },
+    {
+      "path": "Sky\\Interior_Witch_Room_Boss_Blizzard.sky",
+      "bytes": 3008
+    },
+    {
+      "path": "Sky\\Everstar_Main_005_Foggy_Revamp.sky",
+      "bytes": 4272
+    },
+    {
+      "path": "Sky\\INT_Cave_GraystoneJungle_Revamp_001.sky",
+      "bytes": 2720
+    },
+    {
+      "path": "Sky\\Interior_ProtostarMall_Facade_Small_Revamp.sky",
+      "bytes": 2832
+    },
+    {
+      "path": "Sky\\Interior_Arc_Recovery_Dominion_Red_Alert.sky",
+      "bytes": 7936
+    },
+    {
+      "path": "Sky\\Winterfest_Supermall_Ext_Revamp_001.sky",
+      "bytes": 4224
+    },
+    {
+      "path": "Sky\\Interior_ProtostarMall_Main_Event.sky",
+      "bytes": 2816
+    },
+    {
+      "path": "Sky\\Interior_ProtostarMall_Bargain_Basement.sky",
+      "bytes": 2832
+    },
+    {
+      "path": "Sky\\Interior_ProtostarMall_ShopTilDrop.sky",
+      "bytes": 2816
+    },
+    {
+      "path": "Sky\\Interior_ProtostarMall_BogoStick.sky",
+      "bytes": 2816
+    },
+    {
+      "path": "Sky\\ProtostarMall_PapaPhineas.sky",
+      "bytes": 2912
+    },
+    {
+      "path": "Sky\\Interior_ProtostarMall_SlashingPrices.sky",
+      "bytes": 2816
+    },
+    {
+      "path": "Sky\\Cinematics_Arcterra_01_No_Snow_Reduced_Fog.sky",
+      "bytes": 6736
+    },
+    {
+      "path": "Sky\\Interior_ProtostarMall_Automania.sky",
+      "bytes": 2784
+    },
+    {
+      "path": "Sky\\Interior_ProtostarMall_Arcade.sky",
+      "bytes": 2912
+    },
+    {
+      "path": "Sky\\Interior_ProtostarMall_Furnishings.sky",
+      "bytes": 2928
+    },
+    {
+      "path": "Sky\\GC126_Winterfest_Cinematic_Interior.sky",
+      "bytes": 11104
+    },
+    {
+      "path": "Sky\\Exterior_Cryoplex_Revamp.sky",
+      "bytes": 4800
+    },
+    {
+      "path": "Sky\\Housing_Ext_Winterfest_001.sky",
+      "bytes": 4208
+    },
+    {
+      "path": "Sky\\Design_Boss_20man_001.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory2_Landing.sky",
+      "bytes": 4640
+    },
+    {
+      "path": "Sky\\WS2_Pell_Graveyard_Revamp.sky",
+      "bytes": 3280
+    },
+    {
+      "path": "Sky\\WS2_Wampa_Cave_Revamp.sky",
+      "bytes": 3264
+    },
+    {
+      "path": "Sky\\WS2_Pell_WarhoundKennel_Revamp.sky",
+      "bytes": 3296
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory2_PartlyCloudy.sky",
+      "bytes": 4368
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory2_StormBuilding.sky",
+      "bytes": 4240
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory2_StormDoom.sky",
+      "bytes": 4112
+    },
+    {
+      "path": "Sky\\WS2_SoulRotStorage_Revamp.sky",
+      "bytes": 3280
+    },
+    {
+      "path": "Sky\\WS2_Spiral_Tower_WitchRoom.sky",
+      "bytes": 3312
+    },
+    {
+      "path": "Sky\\WS2_Spiral_Tower_LavaRoom.sky",
+      "bytes": 3296
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory2_LandingLedge.sky",
+      "bytes": 4560
+    },
+    {
+      "path": "Sky\\gc130_gc131_frost_fort_intro.sky",
+      "bytes": 3616
+    },
+    {
+      "path": "Sky\\WS2_Spiral_Tower_LowerRoom.sky",
+      "bytes": 3312
+    },
+    {
+      "path": "Sky\\WS2_Spiral_Tower_Halls.sky",
+      "bytes": 3296
+    },
+    {
+      "path": "Sky\\Arcterra_EXT_Forest.sky",
+      "bytes": 5632
+    },
+    {
+      "path": "Sky\\Arcterra_EXT_Ice.sky",
+      "bytes": 5520
+    },
+    {
+      "path": "Sky\\Arcterra_EXT_Bones.sky",
+      "bytes": 5600
+    },
+    {
+      "path": "Sky\\Arcterra_EXT_Osun.sky",
+      "bytes": 5600
+    },
+    {
+      "path": "Sky\\WS2_HOTH_OsunSector.sky",
+      "bytes": 3264
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory2_ShadowSide.sky",
+      "bytes": 4272
+    },
+    {
+      "path": "Sky\\WS2_HOTH_IceCaveSector.sky",
+      "bytes": 3280
+    },
+    {
+      "path": "Sky\\WS2_HOTH_EldanSector.sky",
+      "bytes": 3376
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory2_SpikePit.sky",
+      "bytes": 4320
+    },
+    {
+      "path": "Sky\\WS2_HOTH_OsunSector_ALERT.sky",
+      "bytes": 3280
+    },
+    {
+      "path": "Sky\\WS2_HOTH_EldanSector_ALERT.sky",
+      "bytes": 3408
+    },
+    {
+      "path": "Sky\\GC130_Dungeon_WorldStory2_Landing.sky",
+      "bytes": 4624
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_Misc_Small.sky",
+      "bytes": 3136
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory2_Waterfall.sky",
+      "bytes": 4224
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_GirrokCave.sky",
+      "bytes": 3136
+    },
+    {
+      "path": "Sky\\gc123_osun_cryopods_sky.sky",
+      "bytes": 5232
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_MineralCave.sky",
+      "bytes": 3136
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_Pell_Tech.sky",
+      "bytes": 3136
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_Spiders.sky",
+      "bytes": 3120
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_SnowKeep.sky",
+      "bytes": 3120
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_KeepFish.sky",
+      "bytes": 3120
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_Shiverskull_WitchRoom.sky",
+      "bytes": 3168
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_Shiverskull_Hallways.sky",
+      "bytes": 3168
+    },
+    {
+      "path": "Sky\\Boss_Arcterra_Matuk.sky",
+      "bytes": 2912
+    },
+    {
+      "path": "Sky\\Boss_Arcterra_Kundar.sky",
+      "bytes": 2912
+    },
+    {
+      "path": "Sky\\Boss_Arcterra_Frostgale.sky",
+      "bytes": 2928
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_Shiverskull_MidSection.sky",
+      "bytes": 3168
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceCave_Shiverskull_BossRoom.sky",
+      "bytes": 3168
+    },
+    {
+      "path": "Sky\\Arcterra_INT_ICI_Research.sky",
+      "bytes": 3120
+    },
+    {
+      "path": "Sky\\fWS2_HOTH_OsunSector_Cinematic.sky",
+      "bytes": 3376
+    },
+    {
+      "path": "Sky\\Arcterra_INT_BlackHoods.sky",
+      "bytes": 3104
+    },
+    {
+      "path": "Sky\\Arcterra_INT_IceBlood_Burrow.sky",
+      "bytes": 3120
+    },
+    {
+      "path": "Sky\\Housing_Adventure_Start_Green.sky",
+      "bytes": 3552
+    },
+    {
+      "path": "Sky\\Housing_Adventure_Fail_Red.sky",
+      "bytes": 4624
+    },
+    {
+      "path": "Sky\\Housing_Arcterra_EXT_TowerMain.sky",
+      "bytes": 5504
+    },
+    {
+      "path": "Sky\\Housing_Arcterra_EXT_Ice.sky",
+      "bytes": 5104
+    },
+    {
+      "path": "Sky\\Housing_Arcterra_EXT_Forest.sky",
+      "bytes": 5216
+    },
+    {
+      "path": "Sky\\Dungeon_WorldStory2_StormDoomBoss.sky",
+      "bytes": 4128
+    },
+    {
+      "path": "Sky\\Housing_HallOfTheHundred.sky",
+      "bytes": 4112
+    },
+    {
+      "path": "Sky\\Cinematics_Arcterra_EXT_TowerMain.sky",
+      "bytes": 5728
+    },
+    {
+      "path": "Sky\\GC294_Cinematic_Holo_Ext.sky",
+      "bytes": 3152
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Osun_Forge.sky",
+      "bytes": 4960
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Torine_Phased.sky",
+      "bytes": 4240
+    },
+    {
+      "path": "Sky\\Housing_Exterior_ProtostarAcademy.sky",
+      "bytes": 5760
+    },
+    {
+      "path": "Sky\\NPE_MainIsland_Beach.sky",
+      "bytes": 6064
+    },
+    {
+      "path": "Sky\\NPE_MainIsland_Forest.sky",
+      "bytes": 5072
+    },
+    {
+      "path": "Sky\\NPE_MainIsland_IcyPeak.sky",
+      "bytes": 6432
+    },
+    {
+      "path": "Sky\\gc237_gc238_worldstory2_cinematic_outro.sky",
+      "bytes": 4256
+    },
+    {
+      "path": "Sky\\NPE_HousingPlot.sky",
+      "bytes": 12640
+    },
+    {
+      "path": "Sky\\NPE_HousingPlot_Evening.sky",
+      "bytes": 8624
+    },
+    {
+      "path": "Sky\\gc293_gc298_holo_sky.sky",
+      "bytes": 4224
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Fireworks_Extravagant.sky",
+      "bytes": 14672
+    },
+    {
+      "path": "Sky\\GC298_departure_bay__exile_holo_sky.sky",
+      "bytes": 4256
+    },
+    {
+      "path": "Sky\\GC289_bridge_intro_space_sky.sky",
+      "bytes": 6032
+    },
+    {
+      "path": "Sky\\GC289_Bridge_Intro_Beach.sky",
+      "bytes": 4800
+    },
+    {
+      "path": "Sky\\Cinematics_Illium_Main_Sky.sky",
+      "bytes": 22944
+    },
+    {
+      "path": "Sky\\Boss_NPE_Combat.sky",
+      "bytes": 3568
+    },
+    {
+      "path": "Sky\\Boss_NPE_IcyPeak.sky",
+      "bytes": 6416
+    },
+    {
+      "path": "Sky\\GC289_294_space_sky.sky",
+      "bytes": 7392
+    },
+    {
+      "path": "Sky\\PVP_HoldtheLine_Room1_Revamp.sky",
+      "bytes": 4192
+    },
+    {
+      "path": "Sky\\PVP_HoldtheLine_Room2_Revamp.sky",
+      "bytes": 4624
+    },
+    {
+      "path": "Sky\\PVP_HoldtheLine_Room3_Revamp.sky",
+      "bytes": 4032
+    },
+    {
+      "path": "Sky\\NPE_HousingPlot_Evening_Cinematic.sky",
+      "bytes": 8640
+    },
+    {
+      "path": "Sky\\Interior_NortherWild_Eldan.sky",
+      "bytes": 3248
+    },
+    {
+      "path": "Sky\\BattleChase_Exterior_Dominion.sky",
+      "bytes": 8688
+    },
+    {
+      "path": "Sky\\BattleChase_Exterior_Exile.sky",
+      "bytes": 8784
+    },
+    {
+      "path": "Sky\\CIN_Exterior_Intro_Space.sky",
+      "bytes": 4128
+    },
+    {
+      "path": "Sky\\Interior_LevianBay_Cave_001.sky",
+      "bytes": 2928
+    },
+    {
+      "path": "Sky\\Fortune_Spooky_Sky.sky",
+      "bytes": 6304
+    },
+    {
+      "path": "Sky\\Interior_RMT_Brig_Main.sky",
+      "bytes": 3104
+    },
+    {
+      "path": "Sky\\Interior_RMT_Shredder.sky",
+      "bytes": 3040
+    },
+    {
+      "path": "Sky\\Interior_RMT_Shredder_Boss.sky",
+      "bytes": 3056
+    },
+    {
+      "path": "Sky\\Interior_RMT_Robomination_Room.sky",
+      "bytes": 3104
+    },
+    {
+      "path": "Sky\\Interior_RMT_Engine_Start.sky",
+      "bytes": 3344
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Retro.sky",
+      "bytes": 5424
+    },
+    {
+      "path": "Sky\\Interior_RMT_Engine_Main.sky",
+      "bytes": 3344
+    },
+    {
+      "path": "Sky\\Interior_RMT_Engine_MiniBoss.sky",
+      "bytes": 3344
+    },
+    {
+      "path": "Sky\\Interior_RMT_Engine_Main_Boss.sky",
+      "bytes": 3376
+    },
+    {
+      "path": "Sky\\Interior_RMT_Airlock_PreBoss.sky",
+      "bytes": 2928
+    },
+    {
+      "path": "Sky\\Interior_RMT_Airlock_MainBoss.sky",
+      "bytes": 2928
+    },
+    {
+      "path": "Sky\\Interior_RMT_TorpedoRoom.sky",
+      "bytes": 3072
+    },
+    {
+      "path": "Sky\\Interior_RMT_Elevator.sky",
+      "bytes": 3184
+    },
+    {
+      "path": "Sky\\Housing_Exotic.sky",
+      "bytes": 8224
+    },
+    {
+      "path": "Sky\\Interior_RMT_Kino_Cove.sky",
+      "bytes": 3056
+    },
+    {
+      "path": "Sky\\Interior_RMT_Greasy_Galley.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Interior_RMT_GreenHouse.sky",
+      "bytes": 3072
+    },
+    {
+      "path": "Sky\\Interior_RMT_Swabbin_Shower.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Interior_RMT_CaptainCoffer.sky",
+      "bytes": 3232
+    },
+    {
+      "path": "Sky\\Interior_RMT_Shellark_Tank.sky",
+      "bytes": 3056
+    },
+    {
+      "path": "Sky\\Exterior_RMT_Deck.sky",
+      "bytes": 8144
+    },
+    {
+      "path": "Sky\\Exterior_RMT_Deck_Boss.sky",
+      "bytes": 8160
+    },
+    {
+      "path": "Sky\\Interior_RMT_Bridge.sky",
+      "bytes": 6624
+    },
+    {
+      "path": "Sky\\Interior_RMT_Atrium.sky",
+      "bytes": 3040
+    },
+    {
+      "path": "Sky\\Interior_RMT_UtilityCloset.sky",
+      "bytes": 3072
+    },
+    {
+      "path": "Sky\\Interior_RMT_Shaft.sky",
+      "bytes": 3040
+    },
+    {
+      "path": "Sky\\Interior_RMT_TubeRoom.sky",
+      "bytes": 3040
+    },
+    {
+      "path": "Sky\\Interior_RMT_Map_PreBoss.sky",
+      "bytes": 3056
+    },
+    {
+      "path": "Sky\\Exterior_RMT_Map_Boss.sky",
+      "bytes": 8384
+    },
+    {
+      "path": "Sky\\Interior_RMT_Medbay_Lobby.sky",
+      "bytes": 3072
+    },
+    {
+      "path": "Sky\\Interior_RMT_Medbay_Main.sky",
+      "bytes": 3072
+    },
+    {
+      "path": "Sky\\Interior_RMT_Morgue.sky",
+      "bytes": 3040
+    },
+    {
+      "path": "Sky\\Interior_RMT_Lavaka_Start.sky",
+      "bytes": 3216
+    },
+    {
+      "path": "Sky\\Interior_RMT_Lavaka_Main.sky",
+      "bytes": 3216
+    },
+    {
+      "path": "Sky\\Interior_RMT_Lavaka_CustomDeath.sky",
+      "bytes": 3488
+    },
+    {
+      "path": "Sky\\Housing_CandyLand.sky",
+      "bytes": 7216
+    },
+    {
+      "path": "Sky\\Ext_ColdBlood_Citadel.sky",
+      "bytes": 6928
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Spring.sky",
+      "bytes": 7248
+    },
+    {
+      "path": "Sky\\Housing_Volcano_Eruption.sky",
+      "bytes": 5760
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Celebration.sky",
+      "bytes": 13904
+    },
+    {
+      "path": "Sky\\Housing_Sanddune.sky",
+      "bytes": 7744
+    },
+    {
+      "path": "Sky\\Housing_Exterior_Fall.sky",
+      "bytes": 7520
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track0_000.m3",
+      "bytes": 4272
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track0_001.m3",
+      "bytes": 4272
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track0_002.m3",
+      "bytes": 4176
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track0_003.m3",
+      "bytes": 4272
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track0_004.m3",
+      "bytes": 4240
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track0_005.m3",
+      "bytes": 4320
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track0_006.m3",
+      "bytes": 4240
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track1_000.m3",
+      "bytes": 56480
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track1_001.m3",
+      "bytes": 45920
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track1_002.m3",
+      "bytes": 24896
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track1_003.m3",
+      "bytes": 23952
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track1_004.m3",
+      "bytes": 4576
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track2_000.m3",
+      "bytes": 58912
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track2_001.m3",
+      "bytes": 73984
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track2_002.m3",
+      "bytes": 24816
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track2_003.m3",
+      "bytes": 3744
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track2_004.m3",
+      "bytes": 3856
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track2_005.m3",
+      "bytes": 3920
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track4_000.m3",
+      "bytes": 60736
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track4_001.m3",
+      "bytes": 63456
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track4_002.m3",
+      "bytes": 70560
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track4_003.m3",
+      "bytes": 48784
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track4_004.m3",
+      "bytes": 69856
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track4_005.m3",
+      "bytes": 3584
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track5_000.m3",
+      "bytes": 4640
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track5_001.m3",
+      "bytes": 4496
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track5_002.m3",
+      "bytes": 4496
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track5_003.m3",
+      "bytes": 4592
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track5_004.m3",
+      "bytes": 4784
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track5_005.m3",
+      "bytes": 4592
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track5_006.m3",
+      "bytes": 4640
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Wispy\\Sky_Cloud_Wispy_Track5_007.m3",
+      "bytes": 4640
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track0_000.M3",
+      "bytes": 11936
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track0_001.M3",
+      "bytes": 7072
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track0_002.M3",
+      "bytes": 9936
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track0_003.M3",
+      "bytes": 9872
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track0_004.M3",
+      "bytes": 9760
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track0_005.M3",
+      "bytes": 7872
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track0_006.M3",
+      "bytes": 6560
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track1_000.M3",
+      "bytes": 21168
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track1_001.M3",
+      "bytes": 15824
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track1_002.M3",
+      "bytes": 25120
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track1_003.M3",
+      "bytes": 24144
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track1_004.M3",
+      "bytes": 8256
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track2_000.M3",
+      "bytes": 31280
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track2_001.M3",
+      "bytes": 23472
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track3_000.M3",
+      "bytes": 23072
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track4_000.M3",
+      "bytes": 26768
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_000.m3",
+      "bytes": 4288
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_001.m3",
+      "bytes": 4288
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_002.m3",
+      "bytes": 4192
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_003.m3",
+      "bytes": 4288
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_004.m3",
+      "bytes": 4256
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_005.m3",
+      "bytes": 4336
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_006.m3",
+      "bytes": 4256
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_007.m3",
+      "bytes": 4192
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_008.m3",
+      "bytes": 4336
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_009.m3",
+      "bytes": 5232
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track0_010.m3",
+      "bytes": 4192
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track1_000.m3",
+      "bytes": 29040
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track1_001.m3",
+      "bytes": 45936
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track1_002.m3",
+      "bytes": 24912
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track1_003.m3",
+      "bytes": 23968
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track1_004.m3",
+      "bytes": 4592
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track1_005.m3",
+      "bytes": 3760
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track2_000.m3",
+      "bytes": 58928
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track2_001.m3",
+      "bytes": 74000
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track2_002.m3",
+      "bytes": 24832
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track2_003.m3",
+      "bytes": 3760
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track2_004.m3",
+      "bytes": 3872
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track2_005.m3",
+      "bytes": 3936
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track2_006.m3",
+      "bytes": 3984
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track4_000.m3",
+      "bytes": 60752
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track4_001.m3",
+      "bytes": 63472
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track4_002.m3",
+      "bytes": 70576
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track4_003.m3",
+      "bytes": 48800
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track4_004.m3",
+      "bytes": 69872
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track4_005.m3",
+      "bytes": 3600
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_000.m3",
+      "bytes": 4656
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_001.m3",
+      "bytes": 4512
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Cirrus\\Sky_Cloud_Cirrus_Track5_003.m3",
+      "bytes": 4608
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track0_007.m3",
+      "bytes": 4304
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track5_000.m3",
+      "bytes": 5616
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track4_002.m3",
+      "bytes": 63008
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track1_006.m3",
+      "bytes": 45584
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track3_001.m3",
+      "bytes": 4416
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track2_002.m3",
+      "bytes": 4480
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track1_005.m3",
+      "bytes": 63520
+    },
+    {
+      "path": "Art\\Sky\\Clouds\\Stormy\\Sky_Cloud_Stormy_Track4_001.m3",
+      "bytes": 43184
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+    ps_3_0
+    dcl_texcoord v0.xy
+    dcl_2d s0
+    dcl_2d s1
+    dcl_2d s2
+    dcl_2d s3
+    texld_pp r0, v0, s2
+    texld_pp r1, v0, s3
+    add_pp r0, r0.x, -r1.x
+    texkill r0
+    texld_pp r0, v0, s0
+    mov_pp oC0.xyz, r0
+    texld_pp r0, v0, s1
+    mov_pp oC0.w, r0.y
+
+// approximately 8 instruction slots used (4 texture, 4 arithmetic)

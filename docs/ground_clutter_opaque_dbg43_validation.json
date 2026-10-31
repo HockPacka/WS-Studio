@@ -1,0 +1,26 @@
+[
+  {
+    "source": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\WoWClient\\ClientData\\Art\\Terrain\\Gravel\\Clutter\\Clutter_Gravel_SmoothRoundStonesMossy_GreyGreen_000_Color.tex",
+    "mips": 10,
+    "opaque": true,
+    "rgb_preserved": true
+  },
+  {
+    "source": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\build_m3test\\clutter_opaque_dbg43\\dxt13.tex",
+    "mips": 1,
+    "opaque": true,
+    "rgb_preserved": true
+  },
+  {
+    "source": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\build_m3test\\clutter_opaque_dbg43\\dxt14.tex",
+    "mips": 1,
+    "opaque": true,
+    "rgb_preserved": true
+  },
+  {
+    "source": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\build_m3test\\clutter_opaque_dbg43\\dxt15.tex",
+    "mips": 1,
+    "opaque": true,
+    "rgb_preserved": true
+  }
+]

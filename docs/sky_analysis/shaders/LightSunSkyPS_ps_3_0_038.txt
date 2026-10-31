@@ -1,0 +1,282 @@
+    ps_3_0
+    def c2, 255, 0.5, 2, -1
+    def c32, -1, 1, -0, 0.111111112
+    def c33, 0.212500006, 0.715399981, 0.0720999986, 0
+    def c34, 0.800000012, 0.200000003, 0, 0
+    def c35, 0, -1, -0.999000013, 0
+    dcl vPos.xy
+    dcl_2d s0
+    dcl_2d s1
+    dcl_2d s2
+    dcl_2d s3
+    dcl_2d s4
+    dcl_2d s5
+    dcl_2d s6
+    dcl_cube s7
+    dcl_2d s8
+    dcl_2d s9
+    mov r0.w, -c2.w
+    mov r1.w, -c2.w
+    mad r2.xy, vPos, c0, c0.zwzw
+    texld_pp r3, r2, s3
+    mov_pp r1.z, -r3.x
+    mad r1.xy, r2, c1, c1.zwzw
+    dp4 r0.z, r1, c30
+    mov r3.zw, r0
+    dp4 r4.x, r1, c28
+    dp4 r4.y, r1, c29
+    add r3.xy, r4, c31.yxzw
+    texldp r5, r3, s9
+    add r0.xy, r4, c31.x
+    texldp r0, r0, s9
+    add r0.x, r5.x, r0.x
+    add r3.xy, r4, c31.zxzw
+    texldp r5, r3, s9
+    add r0.x, r0.x, r5.x
+    add r3.xy, r4, c31
+    texldp r5, r3, s9
+    add r0.x, r0.x, r5.x
+    add r3.xy, r4, c31.y
+    texldp r5, r3, s9
+    add r0.x, r0.x, r5.x
+    add r3.xy, r4, c31.zyzw
+    texldp r5, r3, s9
+    add r0.x, r0.x, r5.x
+    add r3.xy, r4, c31.xzzw
+    texldp r5, r3, s9
+    add r0.x, r0.x, r5.x
+    add r3.xy, r4, c31.yzzw
+    add r4.xy, r4, c31.z
+    texldp r5, r3, s9
+    mov r4.zw, r3
+    texldp r3, r4, s9
+    add r0.x, r0.x, r5.x
+    add r0.x, r3.x, r0.x
+    mul r0.y, r0.x, c32.w
+    texld_pp r3, r2, s2
+    mad r0.x, r0.x, -c32.w, r3.z
+    dp3 r0.z, r1, r1
+    add r1.xyz, r1, -c27
+    mul r0.z, r0.z, c31.w
+    mul r0.w, r0.z, r0.z
+    mad r0.z, r0.z, r0.z, c2.w
+    mad_pp r0.x, r0.w, r0.x, r0.y
+    cmp_pp r0.x, r0.z, r3.z, r0.x
+    mad_pp r0.yz, r3.xxyw, c2.z, c2.w
+    add r0.w, -r0.x, -c2.w
+    mad_pp r0.x, c25.w, r0.w, r0.x
+    mov r1.w, -c2.w
+    dp4 r0.w, r1, c13
+    mad r1.xyz, c14, r0.w, r1
+    dp3_pp r3.x, r1, c10
+    dp3_pp r3.y, r1, c11
+    dp3_pp r3.z, r1, c12
+    mov r3.w, -c32.z
+    texldl_pp r1, r3, s7
+    mov r0.w, c2.w
+    mad r0.w, r1.w, -c27.w, -r0.w
+    mov r1.y, c16.x
+    cmp_pp r1.zw, r0.xyyz, c32.y, c32.x
+    mad_pp r1.zw, r1, -r0_abs.xyzy, r1
+    dp2add_pp r3.z, r0_abs.yzzw, c32.x, c32.y
+    cmp_pp r3.xy, r3.z, r0.yzzw, r1.zwzw
+    nrm_pp r4.xyz, r3
+    dp3_pp r0.y, r4, c24
+    mad_pp r3.x, r0.y, c2.y, c2.y
+    mul_pp r0.xy, r0.wyzw, r0
+    mov_pp r1.x, r3.x
+    mad_pp r0.zw, r1.xyxy, c6.xyxy, c6
+    texld_pp r1, r0.zwzw, s5
+    mul_pp r1.xyz, r1, c25
+    mul_pp r1.xyz, r0.x, r1
+    mul_pp r0.z, r4.y, r4.y
+    mad_pp r0.z, r4.x, r4.x, -r0.z
+    mov r4.w, -c2.w
+    dp4_pp r0.w, c17, r4
+    mul_pp r5, r4.yzzx, r4.xyzz
+    dp4_pp r2.z, c20, r5
+    add_pp r6.x, r0.w, r2.z
+    dp4_pp r0.w, c18, r4
+    dp4_pp r2.w, c21, r5
+    dp4_pp r5.x, c22, r5
+    add_pp r6.y, r0.w, r2.w
+    dp4_pp r0.w, c19, r4
+    mul r7, r4, c32.xxxy
+    add_pp r6.z, r5.x, r0.w
+    mad_pp r5.yzw, c23.xxyz, r0.z, r6.xxyz
+    mov r6.w, -c32.z
+    mov r8.z, c16.x
+    mov r3.w, -c32.z
+    texld_pp r9, r2, s1
+    texld_pp r10, r2, s0
+    mad_pp r2.xy, r9, c2.x, c2.y
+    frc_pp r11.xy, r2
+    add_pp r3.yz, r2.xxyw, -r11.xxyw
+    mov r8.xy, r3.wyzw
+    mad_pp r6.xyz, r8, c4.xyyw, c4.zwww
+    texldl_pp r11, r6.xzww, s4
+    texldl_pp r6, r6.xyww, s4
+    mad_pp r1.xyz, r5.yzww, r11, r1
+    lrp_pp r12.w, r9.z, r11.w, r6.w
+    dp4_pp r0.w, c17, r7
+    add_pp r2.x, r2.z, r0.w
+    dp4_pp r0.w, c18, r7
+    dp4_pp r4.w, c19, r7
+    add_pp r2.z, r5.x, r4.w
+    add_pp r2.y, r2.w, r0.w
+    mad_pp r2.xyz, c23, r0.z, r2
+    add_pp r2.xyz, r2, r5.yzww
+    mad_pp r0.yzw, r0.y, c25.xxyz, r2.xxyz
+    mad r2.x, r4.z, -r4.z, -c2.w
+    mad_pp r2.yz, r3.xwyw, c5.xxyw, c5.xzww
+    mad_pp r7.xyz, r3.wyzw, c4.xyyw, c4.zwww
+    texld_pp r11, r2.yzzw, s4
+    mul r2.y, r11.y, r11.y
+    mad r2.x, r2.y, -r2.x, -c2.w
+    cmp r2.y, r2.x, -c32.x, -c32.z
+    mul r2.x, r2.y, r2.x
+    mul r2.y, r2.y, r11.y
+    rsq r2.x, r2.x
+    rcp r2.x, r2.x
+    mad r2.x, r2.y, -r4.z, r2.x
+    mul r2.xzw, r4.xyyz, r2.x
+    mad r2.xyz, r2.y, -c32.zzyw, -r2.xzww
+    dp3_pp r6.x, r2, c10
+    dp3_pp r6.y, r2, c11
+    dp3_pp r6.z, r2, c12
+    texldl_pp r2, r6, s7
+    mul_pp r6, r10, c3.x
+    mul_pp r13.xyz, r6.w, r6
+    mad_pp r10.xyz, r10, c3.x, -r13
+    add_pp r10.xyz, r10, c3.y
+    mul r2.xyz, r2, r10
+    mov_sat_pp r14.x, r4.z
+    pow r2.w, r14.x, r11.z
+    mul r2.xyz, r2.w, r2
+    mov_pp r8.w, r9.y
+    mad_pp r8.xy, r8.wyzw, c6, c6.zwzw
+    texld_pp r8, r8, s5
+    mul_pp r11.yzw, r8.xxyz, r10.xxyz
+    mad_pp r0.yzw, r11, r0, r2.xxyz
+    mad r1.xyz, r10, r1, -r0.yzww
+    mad r0.yzw, r9.z, r1.xxyz, r0
+    mul_pp r1.xyz, r8, r13
+    lrp r2.x, r9.z, r1.w, r8.w
+    mad r2.yzw, r6.xxyz, r6.w, -r1.xxyz
+    mad_pp r1.xyz, r9.z, r2.yzww, r1
+    add_pp r0.yzw, r0, r1.xxyz
+    mad_pp r1.x, r0.x, c34.x, c34.y
+    mul_pp r1.y, r9.w, r1.x
+    mul r1.xzw, r1.x, c25.xyyz
+    mul r2.x, r2.x, r1.y
+    mov r6.z, c16.x
+    mov r2.yz, c32
+    add_pp r2.yzw, r2.xzzy, c24.xxyz
+    nrm_pp r8.xyz, r2.yzww
+    dp3_sat_pp r2.y, r4, r8
+    mul r2.y, r2.y, r2.y
+    mul_pp r14.y, r2.y, r2.y
+    mov_pp r14.zw, r3.xyyz
+    mad_pp r2.yzw, r3.xxyz, c6.xxyy, c6.xzww
+    mov_pp r6.xy, r14.yzzw
+    mad_pp r3.xyz, r14.yzww, c7.xyyw, c7.zwww
+    mad_pp r6.xyz, r6, c7.xyyw, c7.zwww
+    texld_pp r8, r6, s5
+    texld r6, r6.xzzw, s5
+    lrp_pp r15, r9.z, r6, r8
+    add r6.xyz, r10, c2.w
+    lrp_pp r8.xyz, r15.w, r10, -c2.w
+    mul_pp r11.yzw, r8.xxyz, c26.xxyz
+    mul_pp r11.yzw, r15.xxyz, r11
+    mad_pp r0.yzw, r11, r2.x, r0
+    mov_pp r15.xy, r14.xzzw
+    mov r15.z, c16.x
+    mad_pp r11.yzw, r15.xxyz, c8.xxyy, c8.xzww
+    mad_pp r15.xyz, r15, c9.xyyw, c9.zwww
+    texld_pp r16, r11.yzzw, s6
+    texld_pp r17, r11.ywzw, s6
+    cmp r11.yzw, r16.w, r1.xxzw, -c2.w
+    lrp r18.xyz, r6, r16_abs.w, -c2.w
+    mul r11.yzw, r11, r18.xxyz
+    mul_pp r11.yzw, r11, r16.xxyz
+    cmp r16.xyz, r17.w, r1.xzww, -c2.w
+    lrp r18.xyz, r6, r17_abs.w, -c2.w
+    mul r16.xyz, r16, r18
+    mad r16.xyz, r17, r16, -r11.yzww
+    mad r11.yzw, r9.z, r16.xxyz, r11
+    add_pp r0.yzw, r0, r11
+    mul_pp r2.x, r4.z, -c2.z
+    mad r4, r4.xyzz, -r2.x, c35.xxyz
+    rcp r2.x, r4.z
+    mul_pp r9.xy, r2.x, r4
+    mad_sat_pp r9.xy, r9, c15, c15.zwzw
+    texld_pp r16, r9, s8
+    mad_pp r2.x, r9.y, c2.z, c2.w
+    dp3_pp r17.x, r4, c10
+    dp3_pp r17.y, r4, c11
+    dp3_pp r17.z, r4, c12
+    mov_pp r12.xyz, r17
+    texldl_pp r12, r12, s7
+    lrp_pp r4.xyz, r2_abs.x, r12, r16
+    cmp_pp r4.xyz, r4.w, r12, r4
+    dp3_pp r3.w, r4, c33
+    texld_pp r12, r15, s6
+    texld r15, r15.xzzw, s6
+    lrp_pp r18, r9.z, r15, r12
+    lrp_pp r11.yzw, r18.w, r3.w, r4.xxyz
+    mul_pp r4.xyz, r8, r11.yzww
+    mul_pp r4.xyz, r18, r4
+    mad_pp r0.yzw, r4.xxyz, r9.w, r0
+    frc r3.w, r11_abs.x
+    add r3.w, r11_abs.x, -r3.w
+    add r4.x, r3.w, c2.w
+    cmp_pp r0.yzw, -r4_abs.x, r0, -c32.xxzz
+    texld_pp r8, r2.yzzw, s5
+    texld r11, r2.ywzw, s5
+    lrp_pp r12, r9.z, r11, r8
+    mul_pp r2.yzw, r12.xxyz, c25.xxyz
+    mul_pp r1.y, r1.y, r12.w
+    mul_pp r2.yzw, r0.x, r2
+    mov r7.w, -c32.z
+    texldl_pp r8, r7.xyww, s4
+    texldl r7, r7.xzww, s4
+    lrp_pp r11, r9.z, r7, r8
+    mad_pp r2.yzw, r5, r11.xxyz, r2
+    mov_pp r17.w, r11.w
+    texldl_pp r5, r17, s7
+    mad_pp r2.yzw, r10.xxyz, r2, r13.xxyz
+    texld_pp r7, r3, s5
+    texld r8, r3.xzzw, s5
+    lrp_pp r11, r9.z, r8, r7
+    lrp_pp r3.xyz, r11.w, r10, -c2.w
+    mul_pp r4.xyz, r3, c26
+    mul_pp r4.xyz, r11, r4
+    mad_pp r2.yzw, r4.xxyz, r1.y, r2
+    mad_pp r4.xyz, r14.xzww, c8.xyyw, c8.zwww
+    mad_pp r7.xyz, r14.xzww, c9.xyyw, c9.zwww
+    texld_pp r8, r4, s6
+    texld_pp r10, r4.xzzw, s6
+    cmp r4.xyz, r8.w, r1.xzww, -c2.w
+    cmp r1.xyz, r10.w, r1.xzww, -c2.w
+    lrp r11.xyz, r6, r8_abs.w, -c2.w
+    mul r4.xyz, r4, r11
+    mul_pp r4.xyz, r4, r8
+    lrp r8.xyz, r6, r10_abs.w, -c2.w
+    mul r1.xyz, r1, r8
+    mad r1.xyz, r10, r1, -r4
+    mad r1.xyz, r9.z, r1, r4
+    add_pp r1.xyz, r1, r2.yzww
+    lrp_pp r4.xyz, r2_abs.x, r5, r16
+    cmp_pp r2.xyz, r4.w, r5, r4
+    dp3_pp r0.x, r2, c33
+    texld_pp r4, r7, s6
+    texld r5, r7.xzzw, s6
+    lrp_pp r6, r9.z, r5, r4
+    lrp_pp r4.xyz, r6.w, r0.x, r2
+    mul_pp r2.xyz, r3, r4
+    mul_pp r2.xyz, r6, r2
+    mad_pp r1.xyz, r2, r9.w, r1
+    cmp_pp oC0.xyz, -r3.w, r1, r0.yzww
+    mov oC0.w, -c2.w
+
+// approximately 278 instruction slots used (47 texture, 231 arithmetic)

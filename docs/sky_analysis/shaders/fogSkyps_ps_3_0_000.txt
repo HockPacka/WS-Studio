@@ -1,0 +1,9 @@
+    ps_3_0
+    dcl_color v0
+    dcl_texcoord v1.xy
+    dcl_2d s0
+    mul r0, c0, v0
+    texld r1, v1, s0
+    mul oC0, r0, r1
+
+// approximately 3 instruction slots used (1 texture, 2 arithmetic)

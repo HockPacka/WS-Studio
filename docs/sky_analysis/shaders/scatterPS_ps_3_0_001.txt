@@ -1,0 +1,48 @@
+    ps_3_0
+    def c3, 0, 1, 0, 3
+    def c4, 4, 0.333333343, 0, 0
+    defi i0, 255, 0, 0, 0
+    dcl_texcoord v0.xy
+    dcl_2d s0
+    add_pp r0.xy, c0, -v0
+    dp2add_pp r0.z, r0, r0, c3.x
+    rsq_pp r0.z, r0.z
+    mul_pp r0.xy, r0.z, r0
+    rcp r0.z, r0.z
+    min r1.x, c1.y, r0.z
+    mul_pp r0.w, r1.x, c1.z
+    rcp r1.x, r0.w
+    mul_pp r0.z, r0.z, r1.x
+    max_pp r1.x, c3.y, r0.z
+    frc r0.z, r1.x
+    add r0.z, r1.x, -r0.z
+    mov r2.xy, v0
+    mov r1, c3.xxxy
+    mov r2.z, c3.x
+    rep i0
+      mov r2.w, r0.z
+      break_ge r2.z, r2.w
+      mad_pp r3.xy, r0, r0.w, r2
+      mul r4, r2.xyxx, c3.yyxx
+      texldl_pp r4, r4, s0
+      mad_pp r2.w, r4.w, c3.w, c3.y
+      mul_pp r4.xyz, r2.w, r4
+      mul r4.xyz, r4, c2.x
+      mad_pp r1.xyz, r4, r1.w, r1
+      mul_pp r1.w, r1.w, c1.x
+      add r2.z, r2.z, c3.y
+      mov_pp r2.xy, r3
+    endrep
+    rcp r0.x, r0.z
+    mul_pp r0.xyz, r0.x, r1
+    mul_pp r0.xyz, r0, c1.w
+    max_pp r2.x, c3.y, r0.x
+    max_pp r2.y, r0.y, r0.z
+    max_pp r0.w, r2.x, r2.y
+    min_pp r2.x, r0.w, c4.x
+    rcp r0.w, r2.x
+    mul_sat_pp oC0.xyz, r0.w, r0
+    add_pp r0.x, r2.x, -c3.y
+    mul_sat_pp oC0.w, r0.x, c4.y
+
+// approximately 47 instruction slots used (2 texture, 45 arithmetic)

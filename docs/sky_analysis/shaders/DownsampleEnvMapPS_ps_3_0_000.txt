@@ -1,0 +1,8 @@
+    ps_3_0
+    dcl_normal v0
+    dcl_binormal v1.w
+    dcl_cube s0
+    texldl r0, v0, s0
+    mul oC0, r0, v1.w
+
+// approximately 3 instruction slots used (2 texture, 1 arithmetic)

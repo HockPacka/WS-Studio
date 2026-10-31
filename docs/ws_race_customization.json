@@ -1,0 +1,1371 @@
+{
+ "creation": {
+  "Human": {
+   "factions": [
+    "Dominion",
+    "Exile"
+   ],
+   "classes": [
+    "Engineer",
+    "Esper",
+    "Medic",
+    "Spellslinger",
+    "Stalker",
+    "Warrior"
+   ]
+  },
+  "Aurin": {
+   "factions": [
+    "Exile"
+   ],
+   "classes": [
+    "Engineer",
+    "Esper",
+    "Spellslinger",
+    "Stalker"
+   ]
+  },
+  "Granok": {
+   "factions": [
+    "Exile"
+   ],
+   "classes": [
+    "Engineer",
+    "Medic",
+    "Warrior"
+   ]
+  },
+  "Draken": {
+   "factions": [
+    "Dominion"
+   ],
+   "classes": [
+    "Spellslinger",
+    "Stalker",
+    "Warrior"
+   ]
+  },
+  "Chua": {
+   "factions": [
+    "Dominion"
+   ],
+   "classes": [
+    "Engineer",
+    "Esper",
+    "Medic",
+    "Spellslinger",
+    "Warrior"
+   ]
+  },
+  "Mechari": {
+   "factions": [
+    "Dominion"
+   ],
+   "classes": [
+    "Engineer",
+    "Medic",
+    "Stalker",
+    "Warrior"
+   ]
+  },
+  "Mordesh": {
+   "factions": [
+    "Exile"
+   ],
+   "classes": [
+    "Engineer",
+    "Medic",
+    "Spellslinger",
+    "Stalker",
+    "Warrior"
+   ]
+  }
+ },
+ "customization": {
+  "Human": {
+   "raceId": 1,
+   "sexes": {
+    "male": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 10,
+      "min": 1,
+      "max": 102
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 2,
+      "min": 2,
+      "max": 3
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 9,
+      "min": 1,
+      "max": 102
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 21,
+      "label": "Face Style",
+      "values": 10,
+      "min": 1,
+      "max": 13
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 22,
+      "label": "Face Style",
+      "values": 11,
+      "min": 1,
+      "max": 15
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 1,
+      "min": 36,
+      "max": 36
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 7,
+      "min": 1,
+      "max": 7
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 23,
+      "label": "Hair Style",
+      "values": 16,
+      "min": 1,
+      "max": 36
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 24,
+      "label": "Hair Style",
+      "values": 19,
+      "min": 1,
+      "max": 36
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 7,
+      "min": 1,
+      "max": 7
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 19,
+      "label": "Facial Hair Style",
+      "values": 7,
+      "min": 1,
+      "max": 7
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 20,
+      "label": "Facial Hair Style",
+      "values": 7,
+      "min": 1,
+      "max": 7
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 13,
+      "min": 1,
+      "max": 13
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     },
+     {
+      "slot": "slot0",
+      "labelId": 26,
+      "label": "Race",
+      "values": 1,
+      "min": 1,
+      "max": 1
+     },
+     {
+      "slot": "slot0",
+      "labelId": 27,
+      "label": "Race",
+      "values": 1,
+      "min": 1,
+      "max": 1
+     }
+    ],
+    "female": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 11,
+      "min": 1,
+      "max": 13
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 7,
+      "min": 1,
+      "max": 7
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 23,
+      "label": "Hair Style",
+      "values": 14,
+      "min": 1,
+      "max": 101
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 24,
+      "label": "Hair Style",
+      "values": 12,
+      "min": 1,
+      "max": 23
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 12,
+      "min": 1,
+      "max": 12
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 3,
+      "min": 1,
+      "max": 12
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 11,
+      "min": 1,
+      "max": 13
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 21,
+      "label": "Face Style",
+      "values": 10,
+      "min": 1,
+      "max": 13
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 22,
+      "label": "Face Style",
+      "values": 10,
+      "min": 1,
+      "max": 12
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 15,
+      "label": "Jewelry",
+      "values": 12,
+      "min": 1,
+      "max": 12
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 16,
+      "label": "Jewelry",
+      "values": 12,
+      "min": 1,
+      "max": 12
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     }
+    ]
+   }
+  },
+  "Granok": {
+   "raceId": 3,
+   "sexes": {
+    "male": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 5,
+      "label": "Facial Hair Style",
+      "values": 7,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 13,
+      "label": "Leaf Color",
+      "values": 5,
+      "min": 1,
+      "max": 5
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 14,
+      "label": "Crystal Color",
+      "values": 8,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     },
+     {
+      "slot": "slot0",
+      "labelId": 27,
+      "label": "Race",
+      "values": 1,
+      "min": 3,
+      "max": 3
+     }
+    ],
+    "female": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 14,
+      "min": 1,
+      "max": 14
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 13,
+      "label": "Leaf Color",
+      "values": 5,
+      "min": 1,
+      "max": 5
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 16,
+      "label": "Jewelry",
+      "values": 15,
+      "min": 1,
+      "max": 15
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     }
+    ]
+   }
+  },
+  "Aurin": {
+   "raceId": 4,
+   "sexes": {
+    "male": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 16,
+      "min": 1,
+      "max": 16
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 12,
+      "min": 1,
+      "max": 12
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 8,
+      "min": 2,
+      "max": 9
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 10,
+      "label": "Ear Style",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     },
+     {
+      "slot": "slot0",
+      "labelId": 27,
+      "label": "Race",
+      "values": 1,
+      "min": 4,
+      "max": 4
+     }
+    ],
+    "female": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 7,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 12,
+      "min": 1,
+      "max": 12
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 10,
+      "label": "Ear Style",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 10,
+      "label": "Ear Style",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 16,
+      "label": "Jewelry",
+      "values": 12,
+      "min": 1,
+      "max": 12
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     }
+    ]
+   }
+  },
+  "Draken": {
+   "raceId": 5,
+   "sexes": {
+    "male": [
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 12,
+      "label": "Horn Style",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 5,
+      "label": "Facial Hair Style",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 12,
+      "min": 1,
+      "max": 12
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     },
+     {
+      "slot": "slot0",
+      "labelId": 26,
+      "label": "Race",
+      "values": 1,
+      "min": 5,
+      "max": 5
+     }
+    ],
+    "female": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 12,
+      "label": "Horn Style",
+      "values": 7,
+      "min": 1,
+      "max": 7
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 8,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 10,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 7,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 6,
+      "min": 1,
+      "max": 6
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 15,
+      "label": "Jewelry",
+      "values": 12,
+      "min": 1,
+      "max": 12
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     }
+    ]
+   }
+  },
+  "Mechari": {
+   "raceId": 12,
+   "sexes": {
+    "male": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 15,
+      "min": 1,
+      "max": 15
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 14,
+      "label": "Crystal Color",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 17,
+      "label": "Facial Accessories",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 14,
+      "label": "Crystal Color",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     },
+     {
+      "slot": "slot0",
+      "labelId": 26,
+      "label": "Race",
+      "values": 1,
+      "min": 12,
+      "max": 12
+     }
+    ],
+    "female": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 13,
+      "min": 1,
+      "max": 13
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 14,
+      "label": "Crystal Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 8,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 14,
+      "label": "Crystal Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 17,
+      "label": "Facial Accessories",
+      "values": 6,
+      "min": 1,
+      "max": 6
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     }
+    ]
+   }
+  },
+  "Chua": {
+   "raceId": 13,
+   "sexes": {
+    "male": [
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 18,
+      "label": "Fur Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodySkin",
+      "labelId": 18,
+      "label": "Fur Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 10,
+      "label": "Ear Style",
+      "values": 10,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyEar",
+      "labelId": 18,
+      "label": "Fur Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 5,
+      "label": "Facial Hair Style",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 18,
+      "label": "Fur Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 14,
+      "min": 1,
+      "max": 14
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 18,
+      "label": "Fur Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 10,
+      "min": 1,
+      "max": 100
+     },
+     {
+      "slot": "slot0",
+      "labelId": 26,
+      "label": "Race",
+      "values": 1,
+      "min": 13,
+      "max": 13
+     }
+    ]
+   }
+  },
+  "Mordesh": {
+   "raceId": 16,
+   "sexes": {
+    "male": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 14,
+      "min": 1,
+      "max": 14
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 9,
+      "min": 1,
+      "max": 10
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 17,
+      "label": "Facial Accessories",
+      "values": 7,
+      "min": 1,
+      "max": 7
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     },
+     {
+      "slot": "slot0",
+      "labelId": 27,
+      "label": "Race",
+      "values": 1,
+      "min": 16,
+      "max": 16
+     }
+    ],
+    "female": [
+     {
+      "slot": "BodySkin",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 9,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyFace",
+      "labelId": 2,
+      "label": "Skin Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 3,
+      "label": "Hair Style",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 4,
+      "label": "Hair Color",
+      "values": 11,
+      "min": 1,
+      "max": 11
+     },
+     {
+      "slot": "BodyHair",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 1,
+      "label": "Face Style",
+      "values": 8,
+      "min": 1,
+      "max": 9
+     },
+     {
+      "slot": "BodyEye",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 7,
+      "label": "Eye Color",
+      "values": 8,
+      "min": 1,
+      "max": 8
+     },
+     {
+      "slot": "BodyFacialHair",
+      "labelId": 17,
+      "label": "Facial Accessories",
+      "values": 7,
+      "min": 1,
+      "max": 7
+     },
+     {
+      "slot": "BodyType",
+      "labelId": 25,
+      "label": "Body Type",
+      "values": 9,
+      "min": 1,
+      "max": 90
+     }
+    ]
+   }
+  }
+ }
+}

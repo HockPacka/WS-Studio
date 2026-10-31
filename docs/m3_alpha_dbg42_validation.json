@@ -1,0 +1,515 @@
+{
+  "textures": 8,
+  "mips": 78,
+  "results": [
+    {
+      "path": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\WoWClient\\ClientData\\Art\\Dev\\BLANK_Grey.tex",
+      "mips": [
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\WoWClient\\ClientData\\Art\\Prop\\Natural\\Bush\\WeepingUmbrella\\PRP_Bush_WeepingUmbrella_000_color.tex",
+      "mips": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "max_error": 1,
+          "mean_error": 1.9073486328125e-05
+        },
+        {
+          "width": 512,
+          "height": 512,
+          "max_error": 1,
+          "mean_error": 3.4332275390625e-05
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 128,
+          "height": 128,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 16,
+          "height": 16,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 8,
+          "height": 8,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\WoWClient\\ClientData\\Art\\Prop\\Natural\\Flowers\\StarFlower\\PRP_Flower_PurpleStarFlower_000_color.tex",
+      "mips": [
+        {
+          "width": 256,
+          "height": 256,
+          "max_error": 1,
+          "mean_error": 1.1444091796875e-05
+        },
+        {
+          "width": 128,
+          "height": 128,
+          "max_error": 1,
+          "mean_error": 6.103515625e-05
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "max_error": 1,
+          "mean_error": 0.0009765625
+        },
+        {
+          "width": 16,
+          "height": 16,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 8,
+          "height": 8,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\WoWClient\\ClientData\\Art\\Prop\\Natural\\Tree\\PointyPine\\PRP_Tree_PointyPine_000_Color.tex",
+      "mips": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "max_error": 1,
+          "mean_error": 0.0001900196075439453
+        },
+        {
+          "width": 512,
+          "height": 512,
+          "max_error": 1,
+          "mean_error": 0.00020599365234375
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "max_error": 1,
+          "mean_error": 6.4849853515625e-05
+        },
+        {
+          "width": 128,
+          "height": 128,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 16,
+          "height": 16,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 8,
+          "height": 8,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\WoWClient\\ClientData\\Art\\Prop\\Natural\\Tree\\PointyPine\\PRP_Tree_PointyPine_CanopyGray_000_Color.tex",
+      "format": "DXT5",
+      "mips": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 512,
+          "height": 512,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 128,
+          "height": 128,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 16,
+          "height": 16,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 8,
+          "height": 8,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\WoWClient\\ClientData\\Art\\Prop\\Natural\\Tree\\Withered_Pointy_Pine\\PRP_Tree_WitheredPointyPine_000_Canopy_Color.tex",
+      "mips": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "max_error": 1,
+          "mean_error": 7.510185241699219e-05
+        },
+        {
+          "width": 512,
+          "height": 512,
+          "max_error": 1,
+          "mean_error": 6.198883056640625e-05
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "max_error": 1,
+          "mean_error": 0.0001678466796875
+        },
+        {
+          "width": 128,
+          "height": 128,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 16,
+          "height": 16,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 8,
+          "height": 8,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\WoWClient\\ClientData\\Art\\Prop\\Natural\\Tree\\Withered_Pointy_Pine\\PRP_Tree_WitheredPointyPine_000_Color.tex",
+      "mips": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "max_error": 1,
+          "mean_error": 7.152557373046875e-07
+        },
+        {
+          "width": 512,
+          "height": 512,
+          "max_error": 1,
+          "mean_error": 2.86102294921875e-06
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 128,
+          "height": 128,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 16,
+          "height": 16,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 8,
+          "height": 8,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    },
+    {
+      "path": "D:\\GODOT\\Projects\\WILDSTAR-Decomp\\WoWClient\\ClientData\\Art\\Terrain\\Rock\\Terrain_Rock_EllevarMicroSmooth_Grey_Color.tex",
+      "mips": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "max_error": 1,
+          "mean_error": 4.291534423828125e-06
+        },
+        {
+          "width": 512,
+          "height": 512,
+          "max_error": 1,
+          "mean_error": 7.62939453125e-06
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 128,
+          "height": 128,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 32,
+          "height": 32,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 16,
+          "height": 16,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 8,
+          "height": 8,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 4,
+          "height": 4,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 2,
+          "height": 2,
+          "max_error": 0,
+          "mean_error": 0.0
+        },
+        {
+          "width": 1,
+          "height": 1,
+          "max_error": 0,
+          "mean_error": 0.0
+        }
+      ]
+    }
+  ]
+}

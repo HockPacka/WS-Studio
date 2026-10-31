@@ -1,0 +1,13 @@
+{
+ "models": 5023,
+ "emitters": 41036,
+ "type0": 38465,
+ "bone_in_range": 41036,
+ "tex_ok": 81014,
+ "struct_ok": 41013,
+ "const_props": 5423425,
+ "props": 5435509,
+ "type1": 2571,
+ "struct_bad": 23,
+ "tex_bad": 2
+}

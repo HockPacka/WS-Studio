@@ -11,6 +11,7 @@ mod splat_demo;
 mod streaming;
 mod terrain;
 mod terrain_edit;
+mod terrain_paint;
 mod terrain_material;
 mod water;
 mod sky;
@@ -259,6 +260,7 @@ fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>,
 fn load_raw_area(
     mut state: ResMut<GenesisState>,
     mut edit: ResMut<terrain_edit::TerrainEdit>,
+    mut paint: ResMut<terrain_paint::TerrainPaint>,
     mut viewer: ResMut<prop_viewer::PropViewer>,
     client: Res<client_data::ClientFiles>,
     mut loaded: ResMut<LoadedArea>,
@@ -301,6 +303,7 @@ fn load_raw_area(
 
     match area::RawArea::from_path(Path::new(&path)) {
         Ok(tile)=>{
+            paint.reset();
             loaded.preview_model=None;
             viewer.clear_preview();
             if !is_streaming {
@@ -382,6 +385,12 @@ fn load_raw_area(
                         });
                         if let Some(mut atlas)=atlas{
                             if let Some(data)=atlas.splat.take(){
+                                if let Some(bytes)=data.weights.data.as_deref(){
+                                    if let Err(error)=paint.load(&tile,bytes,
+                                            Vec2::new(world_center[0],world_center[2])) {
+                                        state.status=format!("Texture paint initialization: {error}");
+                                    }
+                                }
                                 splat_ext=data.into_extension(&mut images,state.terrain_view==5);
                                 loaded.terrain_splat=true;
                             }
@@ -454,6 +463,7 @@ fn load_raw_area(
 fn load_model_preview(
     mut state: ResMut<GenesisState>,
     mut edit: ResMut<terrain_edit::TerrainEdit>,
+    mut paint: ResMut<terrain_paint::TerrainPaint>,
     mut viewer: ResMut<prop_viewer::PropViewer>,
     client: Res<client_data::ClientFiles>,
     mut loaded: ResMut<LoadedArea>,
@@ -508,6 +518,7 @@ fn load_model_preview(
             }
             loaded.prop_entities = scene.entities.clone();
             edit.reset();
+            paint.reset();
             viewer.set_preview(virtual_path.clone(), &scene);
             loaded.tile = None;
             loaded.props.clear();
@@ -550,6 +561,47 @@ fn refresh_edited_terrain(
         if let Some(mut asset)=meshes.get_mut(&mesh_handle.0){
             *asset = mesh;
             edit.mesh_revision = edit.revision;
+        }
+    }
+}
+/// Upload changed 1024² RGBA8 splat pixels to the standalone terrain material.
+fn refresh_painted_splat(
+    state: Res<GenesisState>,
+    loaded: Res<LoadedArea>,
+    client: Res<client_data::ClientFiles>,
+    mut paint: ResMut<terrain_paint::TerrainPaint>,
+    mut images: ResMut<Assets<Image>>,
+    mut materials: ResMut<Assets<terrain_splat::TerrainMaterial>>,
+    mesh_materials: Query<&MeshMaterial3d<terrain_splat::TerrainMaterial>>,
+) {
+    if !paint.ready() || !loaded.terrain_splat ||
+        (paint.revision == paint.gpu_revision && !paint.rebuild_pending) {return;}
+    let (Some(source),Some(entity))=(loaded.tile.as_ref(),loaded.mesh_entity) else{return;};
+    let Ok(component)=mesh_materials.get(entity) else{return;};
+    let Some(material)=materials.get_mut(&component.0) else{return;};
+    if paint.rebuild_pending {
+        let Some(index)=client.index.as_ref() else{return;};
+        let preview=paint.preview_area(source);
+        match terrain_material::bake(&preview,index) {
+            Ok(mut atlas)=>{
+                let Some(mut data)=atlas.splat.take() else{
+                    paint.error="Rebake failed: no runtime splat available".into();
+                    return;
+                };
+                data.weights.data=Some(paint.weights.clone());
+                material.extension=data.into_extension(&mut images,state.terrain_view==5);
+                material.extension.params.tint_strength=state.tint.strength;
+                material.extension.params.tint_gamma=state.tint.gamma_space as u32;
+                paint.rebuild_pending=false;
+                paint.gpu_revision=paint.revision;
+                paint.error.clear();
+            }
+            Err(err)=>{paint.error=format!("WorldLayer preview rebuild failed: {err}");}
+        }
+    }else if let Some(handle)=material.extension.weights.as_ref(){
+        if let Some(image)=images.get_mut(handle){
+            image.data=Some(paint.weights.clone());
+            paint.gpu_revision=paint.revision;
         }
     }
 }
@@ -657,6 +709,7 @@ fn main() {
         .insert_resource(GenesisState::default())
         .insert_resource(LoadedArea::default())
         .insert_resource(terrain_edit::TerrainEdit::default())
+        .insert_resource(terrain_paint::TerrainPaint::default())
         .insert_resource(OrbitCamera::default())
         .insert_resource(client_data::ClientFiles::default())
         .insert_resource(prop_viewer::PropViewer::default())
@@ -683,7 +736,7 @@ fn main() {
         .add_systems(Update, (client_data::poll_system, load_raw_area, load_model_preview,
             prop_viewer::update,
             streaming::update_world_streaming,
-            update_camera, refresh_edited_terrain,
+            update_camera, refresh_edited_terrain, refresh_painted_splat,
             refresh_terrain_view, apply_tint_settings, sky::update_sky_lighting, sky::update_skybox_position, sky::update_skybox_celestials, sky::update_camera_fog, water::update_water_color).chain())
         .add_systems(EguiPrimaryContextPass, editor_ui)
         .run();
@@ -741,6 +794,7 @@ fn load_scenes(ctx: &egui::Context, previews: &mut Viewports) {
 }
 fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
              mut edit: ResMut<terrain_edit::TerrainEdit>,
+             mut paint: ResMut<terrain_paint::TerrainPaint>,
              camera_query: Query<(&Camera,&GlobalTransform),With<GenesisCamera>>,
              mut previews: Local<Viewports>, mut initialized: Local<bool>,
              mut orbit: ResMut<OrbitCamera>, mut loaded: ResMut<LoadedArea>,
@@ -771,10 +825,10 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 menu_and_toolbars(ui, &mut state);
                 bottom_strip(ui, &mut state, &loaded, orbit.as_mut(), streaming.as_ref());
                 if state.dock_visible && !state.floating_mode {
-                    dock_panels(ui, &mut state, &loaded, &client, viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &mut commands);
+                    dock_panels(ui, &mut state, &loaded, &client, paint.as_mut(), viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &mut commands);
                 }
                 viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref(), &sky_mgr,
-                    edit.as_mut(), &camera_query);
+                    edit.as_mut(), paint.as_mut(), &camera_query);
             });
         });
     // Keyboard undo/redo when no text editor is focused.
@@ -789,15 +843,21 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
     }
     if state.terrain_undo_request {
         state.terrain_undo_request=false;
-        state.status=if edit.undo(){ "Height Undo".into() }else{"Nothing to undo".into()};
+        state.status=if state.dock_tab==1 && state.paint_tool=="Texture Brush" {
+            if paint.undo(){"Texture Undo".into()}else{"Nothing to undo".into()}
+        }else if edit.undo(){"Height Undo".into()}else{"Nothing to undo".into()};
     }
     if state.terrain_redo_request {
         state.terrain_redo_request=false;
-        state.status=if edit.redo(){ "Height Redo".into() }else{"Nothing to redo".into()};
+        state.status=if state.dock_tab==1 && state.paint_tool=="Texture Brush" {
+            if paint.redo(){"Texture Redo".into()}else{"Nothing to redo".into()}
+        }else if edit.redo(){"Height Redo".into()}else{"Nothing to redo".into()};
     }
     if state.terrain_save_dialog {
         state.terrain_save_dialog = false;
-        if let (Some(area),Some(source))=(loaded.tile.as_ref(),edit.source.as_ref()) {
+        if paint.dirty() {
+            state.status="Texture painting is preview-only; please Undo texture changes before height-only Save As.".into();
+        }else if let (Some(area),Some(source))=(loaded.tile.as_ref(),edit.source.as_ref()) {
             let suggested=source.file_stem().and_then(|s|s.to_str()).unwrap_or("terrain");
             let mut picker=rfd::FileDialog::new()
                 .set_title("Export edited WildStar AREA (never overwrites originals)")
@@ -869,7 +929,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
         if !open{state.open_area_path_dialog=false;}
     }
     zone_browser_dialog(ctx, &mut state, streaming.as_mut(), &client, orbit.as_mut(), &mut commands,
-        loaded.as_mut(), viewer.as_mut(), edit.as_mut());
+        loaded.as_mut(), viewer.as_mut(), edit.as_mut(), paint.as_mut());
     client_data::startup_prompt(ctx,&mut client);
     Ok(())
 }
@@ -1184,6 +1244,7 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             streaming:&streaming::WorldStreaming,
             sky_mgr:&sky::SkyManager,
             edit:&mut terrain_edit::TerrainEdit,
+            paint:&mut terrain_paint::TerrainPaint,
             camera_query:&Query<(&Camera,&GlobalTransform),With<GenesisCamera>>) {
     egui::CentralPanel::default()
         .frame(egui::Frame::default().fill(if state.raw_view {
@@ -1194,7 +1255,10 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             if state.raw_view {
                 orbit.rect=Some([rect.left(),rect.top(),rect.right(),rect.bottom()]);
                 let response=ui.allocate_rect(rect,egui::Sense::click_and_drag());
-                if !ui.input(|i| i.pointer.primary_down()) { edit.end_stroke(); }
+                if !ui.input(|i| i.pointer.primary_down()) {
+                    edit.end_stroke();
+                    paint.end();
+                }
                 if edit.is_ready() && streaming.active_map.is_none() &&
                     state.dock_tab==0 && state.mode<=3 && response.hovered() {
                     if let Some(pointer)=ui.input(|i|i.pointer.interact_pos()) {
@@ -1224,6 +1288,41 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                         rect.height()*1.20).clamp(4.0,160.0);
                                     ui.painter().circle_stroke(pointer,pixel_radius,
                                         egui::Stroke::new(1.3,egui::Color32::from_rgb(250,209,99)));
+                                }
+                            }
+                        }
+                    }
+                }
+                if paint.ready() && edit.is_ready() && streaming.active_map.is_none() &&
+                    state.dock_tab==1 && state.paint_tool=="Texture Brush" && response.hovered() {
+                    if let Some(pointer)=ui.input(|i|i.pointer.interact_pos()) {
+                        let physical=(pointer-rect.min)*orbit.ui_pixels_per_point;
+                        if let Ok((camera,transform))=camera_query.single() {
+                            if let Ok(ray)=camera.viewport_to_world(transform,Vec2::new(physical.x,physical.y)) {
+                                if let Some(hit)=edit.raycast(ray){
+                                    let world=Vec2::new(hit.x,hit.z);
+                                    let (primary,dt)=ui.input(|i|(i.pointer.primary_down(),i.stable_dt));
+                                    let selected_before=state.selected_cell.min(255);
+                                    if !primary{
+                                        if let Some(cell)=paint.cell_at(world) {
+                                            state.selected_cell=cell;
+                                        }
+                                    }
+                                    let radius=(state.brush_size*10.0).clamp(1.0,50.0);
+                                    if primary {
+                                        if let Some(id)=paint.selected_id{
+                                            paint.begin();
+                                            let restricted=if state.restricted{
+                                                Some(selected_before)
+                                            }else{None};
+                                            paint.brush(world,id,radius,state.power.abs(),
+                                                state.falloff,dt,restricted);
+                                        }
+                                    }
+                                    let visual_radius=(radius/(orbit.origin()-hit).length().max(1.0)
+                                        *rect.height()*1.20).clamp(4.0,160.0);
+                                    ui.painter().circle_stroke(pointer,visual_radius,
+                                        egui::Stroke::new(1.3,egui::Color32::from_rgb(110,224,151)));
                                 }
                             }
                         }
@@ -1437,6 +1536,7 @@ fn dock_panels(
     state: &mut GenesisState,
     loaded: &LoadedArea,
     client: &client_data::ClientFiles,
+    paint: &mut terrain_paint::TerrainPaint,
     viewer: &mut prop_viewer::PropViewer,
     streaming: &mut streaming::WorldStreaming,
     orbit: &mut OrbitCamera,
@@ -1478,7 +1578,7 @@ fn dock_panels(
                 .show(ui, |ui| {
                     match state.dock_tab {
                         0 => dock_sculpt(ui, state),
-                        1 => dock_paint(ui, state, loaded),
+                        1 => dock_paint(ui, state, loaded, client, paint),
                         2 => dock_clutter(ui, state),
                         3 => dock_objects(ui, state, loaded, client),
                         4 => dock_water(ui, state, loaded),
@@ -1560,7 +1660,8 @@ fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState) {
     });
 }
 
-fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea) {
+fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea,
+    client: &client_data::ClientFiles, paint: &mut terrain_paint::TerrainPaint) {
     ui.label(egui::RichText::new("Terrain Paint Properties").strong().size(10.5));
     ui.separator();
     ui.label(egui::RichText::new("Paint Tools").strong().size(9.0));
@@ -1581,10 +1682,13 @@ fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea) 
             row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
             row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
             ui.separator();
-            ui.label(egui::RichText::new("Land Texture Layers").strong().size(9.0));
-            ui.horizontal_wrapped(|ui| {
-                for i in 0..4 {
-                    ui.radio_value(&mut state.texture_index, i, format!("Slot {i}"));
+            paint.browser(ui,client,state.selected_cell,&mut state.texture_index);
+            ui.horizontal(|ui|{
+                if ui.button("Undo Paint").clicked() {
+                    state.status=if paint.undo(){"Texture Undo".into()}else{"Nothing to undo".into()};
+                }
+                if ui.button("Redo Paint").clicked() {
+                    state.status=if paint.redo(){"Texture Redo".into()}else{"Nothing to redo".into()};
                 }
             });
             ui.checkbox(&mut state.restricted, "Restrict to Selection");
@@ -2007,6 +2111,7 @@ fn zone_browser_dialog(
     loaded: &mut LoadedArea,
     viewer: &mut prop_viewer::PropViewer,
     edit: &mut terrain_edit::TerrainEdit,
+    paint: &mut terrain_paint::TerrainPaint,
 ) {
     if !state.open_zone_dialog {
         return;
@@ -2072,6 +2177,7 @@ fn zone_browser_dialog(
                                     loaded.preview_model = None;
                                     viewer.clear_preview();
                                     edit.reset();
+                                    paint.reset();
                                     state.status = format!("Loaded zone {map_name}");
                                     state.dock_tab = 6;
                                     state.open_zone_dialog = false;

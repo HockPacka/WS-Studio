@@ -578,7 +578,7 @@ fn refresh_painted_splat(
         (paint.revision == paint.gpu_revision && !paint.rebuild_pending) {return;}
     let (Some(source),Some(entity))=(loaded.tile.as_ref(),loaded.mesh_entity) else{return;};
     let Ok(component)=mesh_materials.get(entity) else{return;};
-    let Some(material)=materials.get_mut(&component.0) else{return;};
+    let Some(mut material)=materials.get_mut(&component.0) else{return;};
     if paint.rebuild_pending {
         let Some(index)=client.index.as_ref() else{return;};
         let preview=paint.preview_area(source);
@@ -599,7 +599,7 @@ fn refresh_painted_splat(
             Err(err)=>{paint.error=format!("WorldLayer preview rebuild failed: {err}");}
         }
     }else if let Some(handle)=material.extension.weights.as_ref(){
-        if let Some(image)=images.get_mut(handle){
+        if let Some(mut image)=images.get_mut(handle){
             image.data=Some(paint.weights.clone());
             paint.gpu_revision=paint.revision;
         }

@@ -692,6 +692,71 @@ mod tests {
         edit.index=1;
         assert!(plan_texture_edits(&area,&[edit]).unwrap_err().contains("19/20"));
     }
+    fn bc1_error(rgb:&[[u8;3];16],encoded:[u8;8])->f64 {
+        let a=u16::from_le_bytes([encoded[0],encoded[1]]);
+        let b=u16::from_le_bytes([encoded[2],encoded[3]]);
+        assert!(a>b,"BC1 must use opaque four-color mode");
+        let (error,indices)=bc1_evaluate(rgb,a,b);
+        assert_eq!(indices,u32::from_le_bytes(encoded[4..8].try_into().unwrap()),
+            "BC1 palette selectors must minimize endpoint reconstruction error");
+        error
+    }
+    fn farthest_pixel_baseline(rgb:&[[u8;3];16])->[u8;8] {
+        let mut pair=(0usize,0usize);
+        let mut maximum=0u32;
+        for i in 0..16 {
+            for j in (i+1)..16 {
+                let dist=(0..3).map(|c|{
+                    let d=rgb[i][c] as i32-rgb[j][c] as i32;
+                    (d*d) as u32
+                }).sum::<u32>();
+                if dist>maximum {maximum=dist;pair=(i,j);}
+            }
+        }
+        let (a,b)=bc1_ordered(rgb565(rgb[pair.0]),rgb565(rgb[pair.1]));
+        let (_,selectors)=bc1_evaluate(rgb,a,b);
+        let mut result=[0u8;8];
+        result[..2].copy_from_slice(&a.to_le_bytes());
+        result[2..4].copy_from_slice(&b.to_le_bytes());
+        result[4..].copy_from_slice(&selectors.to_le_bytes());
+        result
+    }
+    #[test]
+    fn optimized_bc1_never_exceeds_original_endpoint_error(){
+        let grayscale=std::array::from_fn(|i| {
+            let value=(i*16) as u8;
+            [value,value,value]
+        });
+        let four_color=std::array::from_fn(|i|
+            [[255,0,0],[0,255,0],[0,0,255],[220,190,40]][i%4]);
+        let subtle_tint=std::array::from_fn(|i| [
+            90+(i%4) as u8*11,
+            130+(i/4) as u8*13,
+            170+(i%3) as u8*9,
+        ]);
+        let solid=[[128u8,96u8,64u8];16];
+        let mut seed=0x1234_5678u32;
+        let random=std::array::from_fn(|_|{
+            std::array::from_fn(|_|{
+                seed^=seed<<13;
+                seed^=seed>>17;
+                seed^=seed<<5;
+                (seed>>24) as u8
+            })
+        });
+        let patterns=[grayscale,four_color,subtle_tint,solid,random];
+        let mut improvements=0usize;
+        for target in &patterns {
+            let legacy=bc1_error(target,farthest_pixel_baseline(target));
+            let encoded=bc1_encode(*target);
+            let current=bc1_error(target,encoded);
+            assert!(current<=legacy+1e-10,
+                "optimized BC1 error {current} > previous {legacy}");
+            if current+1e-9<legacy{improvements+=1;}
+            assert_eq!(encoded,bc1_encode(*target),"BC1 must be deterministic");
+        }
+        assert!(improvements>0,"at least one representative block must improve");
+    }
     #[test]
     fn bc1_encoder_has_four_color_endpoint_order(){
         let enc=bc1_encode([[96,80,40];16]);

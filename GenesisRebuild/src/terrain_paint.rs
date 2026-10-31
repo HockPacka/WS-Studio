@@ -763,7 +763,7 @@ mod tests{
         painter.load(&source,&weights,Vec2::ZERO).unwrap();
         let mut colors=vec![128u8;MAP_SIDE*MAP_SIDE*4];
         for pixel in colors.chunks_exact_mut(4){pixel[3]=255;}
-        painter.load_colors(&colors).unwrap();
+        painter.load_colors(&colors,&source).unwrap();
         painter.color=[200,30,120];
         painter.begin();
         assert!(painter.color_brush(Vec2::new(-248.0,-248.0),4.0,
@@ -780,6 +780,40 @@ mod tests{
         assert_eq!(painter.colors,colors);
         assert!(painter.redo());
         assert!(painter.dirty());
+    }
+    #[test]
+    fn render_source_switches_bit3_and_bit13_without_touching_native_data(){
+        let mut area=sample_area();
+        let cell=area.cells[0].as_mut().unwrap();
+        let mut rgb565=vec![0u8;8450];
+        rgb565[..2].copy_from_slice(&0xF800u16.to_le_bytes());
+        cell.blocks[3]=Some(rgb565);
+        cell.flags|=1<<3;
+        let mut bc2=vec![0u8;4624];
+        bc2[0]=0xF2; // first alpha=2/15, second alpha=15/15
+        bc2[8..10].copy_from_slice(&0x07E0u16.to_le_bytes()); // green
+        cell.blocks[13]=Some(bc2);
+        cell.flags|=1<<13;
+        let mut paint=TerrainPaint::default();
+        let mut weights=vec![0u8;MAP_SIDE*MAP_SIDE*4];
+        for px in weights.chunks_exact_mut(4){px[0]=255;}
+        paint.load(&area,&weights,Vec2::ZERO).unwrap();
+        let mut pixels=vec![128u8;MAP_SIDE*MAP_SIDE*4];
+        pixels[0..3].copy_from_slice(&[255,0,0]); // Auto uses bit3
+        paint.load_colors(&pixels,&area).unwrap();
+        assert_eq!(&paint.render_tint(0)[..4],&[255,0,0,34]);
+        assert_eq!(&paint.render_tint(1)[..4],&[255,0,0,34]);
+        assert_eq!(&paint.render_tint(2)[..4],&[0,255,0,34]);
+        assert_eq!(paint.render_tint(2)[7],255);
+        assert!(!paint.dirty(),"Preview selection must not change native data");
+        paint.color=[42,61,103];
+        paint.begin();
+        assert!(paint.color_brush(Vec2::new(-255.5,-255.5),2.0,2.0,0.4,0.1,None));
+        paint.end();
+        let edited=paint.render_tint(2);
+        assert_eq!(&edited[0..3],&paint.colors[0..3]);
+        assert_eq!(edited[3],34);
+        assert!(paint.dirty());
     }
     #[test]
     fn editing_requires_a_valid_tile(){

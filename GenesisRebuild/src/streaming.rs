@@ -430,8 +430,13 @@ pub fn update_world_streaming(
             None => break,
         };
 
-        streaming.in_flight.remove(&resp.coords);
+        // Dropped/old requests may still finish after switching maps or opening
+        // a standalone M3/I3 preview. Never let those replies re-spawn old tiles.
+        let expected = streaming.in_flight.remove(&resp.coords);
         processed_this_frame += 1;
+        if !expected || streaming.active_map.is_none() {
+            continue;
+        }
 
         match resp.result {
             Ok(mut baked) => {

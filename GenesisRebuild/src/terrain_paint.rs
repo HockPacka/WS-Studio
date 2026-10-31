@@ -199,6 +199,98 @@ impl TerrainPaint {
         changed
     }
 
+    /// Build changes from just the modified cells; untouched cells and texels
+    /// are left exactly as they appeared in the source AREA.
+    pub fn native_texture_edits(&mut self,source:&RawArea)
+        ->Result<(Vec<(usize,usize,Vec<u8>)>,usize),String>
+    {
+        use wildstar_formats::area::texture_write::{
+            plan_texture_edits, TextureCellEdit, CELL_RGBA_BYTES,
+        };
+        self.end();
+        if !self.ready(){return Err("No editable terrain splat loaded".into());}
+        let mut edits=Vec::new();
+        for cell in 0..256 {
+            if !self.present[cell]{continue;}
+            let changed_slots=self.slots[cell]!=self.baseline_slots[cell];
+            let mut before=Vec::with_capacity(CELL_RGBA_BYTES);
+            let mut after=Vec::with_capacity(CELL_RGBA_BYTES);
+            let cx=(cell%16)*64;
+            let cz=(cell/16)*64;
+            for z in 0..64 {
+                for x in 0..64 {
+                    let off=((cz+z)*MAP_SIDE+cx+x)*4;
+                    before.extend_from_slice(&self.baseline[off..off+4]);
+                    after.extend_from_slice(&self.weights[off..off+4]);
+                }
+            }
+            if changed_slots || before!=after {
+                edits.push(TextureCellEdit{
+                    index:cell,layer_ids:self.slots[cell],
+                    weights:after,before,
+                });
+            }
+        }
+        let total=edits.len();
+        Ok((plan_texture_edits(source,&edits)?,total))
+    }
+
+    /// Export a combined height+texture AREA into a NEW file. Supports only
+    /// recognized native texture weight layouts. Unknown compressed companion
+    /// formats (e.g. bit 19/20) fail closed BEFORE any file is created.
+    pub fn save_native_as(&mut self,source:&RawArea,
+        height_edits:&[(usize,usize,f32)],destination:&std::path::Path)
+        ->Result<(usize,usize),String>
+    {
+        use std::io::Write;
+        if destination.extension().and_then(|x|x.to_str())
+            .is_none_or(|x|!x.eq_ignore_ascii_case("area")) {
+            return Err("Choose an .area destination".into());
+        }
+        if destination.exists(){
+            return Err("Save As refuses to overwrite existing files".into());
+        }
+        let (patches,changed_cells)=self.native_texture_edits(source)?;
+        if height_edits.is_empty() && patches.is_empty(){
+            return Err("No height or texture changes to export".into());
+        }
+        let stage=if height_edits.is_empty(){
+            source.clone()
+        }else{
+            RawArea::from_bytes(source.with_height_changes(height_edits)?)?
+        };
+        let bytes=stage.with_cell_block_changes(&patches)?;
+        let reread=RawArea::from_bytes(bytes.clone())?;
+        if reread.cell_count()!=source.cell_count()||
+            reread.prop_count()!=source.prop_count() {
+            return Err("AREA validation failed: terrain cell or prop count changed".into());
+        }
+        for &(x,z,target) in height_edits {
+            let raw=((target+2048.0)*8.0).round().clamp(0.0,65535.0) as u16;
+            let cell=(z.min(255)/16)*16+(x.min(255)/16);
+            let lx=x-cell%16*16;
+            let lz=z-cell/16*16;
+            if lx>16||lz>16{
+                return Err("AREA height sample validation coordinates invalid".into());
+            }
+            let after=reread.cells[cell].as_ref()
+                .and_then(|c|c.height(lx,lz))
+                .ok_or("AREA height sample disappeared during texture export")?;
+            if (after-(raw as f32*0.125-2048.0)).abs()>0.0001{
+                return Err("AREA texture export altered a height sample".into());
+            }
+        }
+        // All blocks/unknown payloads are validated inside with_cell_block_changes.
+        let mut file=std::fs::OpenOptions::new().write(true).create_new(true)
+            .open(destination).map_err(|e|format!("Cannot create {}: {e}",destination.display()))?;
+        if let Err(error)=file.write_all(&bytes).and_then(|_|file.sync_all()){
+            drop(file);
+            let _=std::fs::remove_file(destination);
+            return Err(format!("Cannot write AREA: {error}"));
+        }
+        Ok((height_edits.len(),changed_cells))
+    }
+
     /// Original AREA remains byte-for-byte unchanged: build only a transient
     /// source clone when the user changes slot IDs, for rebaking GPU textures.
     pub fn preview_area(&self,source:&RawArea)->RawArea{

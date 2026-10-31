@@ -1216,7 +1216,7 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                         let point=Vec2::new(hit.x,hit.z);
                                         edit.begin_stroke(point);
                                         let signed_power=if shift {-state.power}else{state.power};
-                                        edit.brush(point,radius,signed_power,dt,mode);
+                                        edit.brush(point,radius,signed_power,state.falloff,dt,mode);
                                     }
                                     // Screen-space guide; actual brush influence uses metres.
                                     let pixel_radius=(radius /

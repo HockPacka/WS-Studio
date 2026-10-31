@@ -30,6 +30,7 @@ pub struct TerrainEdit {
 impl TerrainEdit {
     pub fn reset(&mut self) { *self = Self::default(); }
     pub fn is_ready(&self) -> bool { self.source.is_some() && self.heights.len() == GRID * GRID }
+    pub fn stroking(&self)->bool{self.before_stroke.is_some()}
     pub fn load(&mut self, source: &Path, area: &RawArea, origin: Vec2) {
         let grid = tile_heights(area);
         *self = Self {

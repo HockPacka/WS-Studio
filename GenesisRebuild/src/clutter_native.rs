@@ -112,15 +112,42 @@ pub fn generate(
         instance_limit,None)
 }
 /// Identical native selection, but samples live editable WorldLayer weights.
+/// Assemble exactly the same per-cell placements in native cell order.
+/// Global cap is applied only when collecting outputs. Individual cell RNG
+/// streams are independent and can be cached/recomputed without affecting
+/// placements in other cells.
 pub fn generate_with_paint(
     area:&RawArea,grid:&HeightGrid,catalog:&Catalog,source:&Path,
     trials_per_cell:usize,instance_limit:usize,paint:Option<&TerrainPaint>,
 )->NativeGenerated{
     let mut out=NativeGenerated::default();
     if trials_per_cell==0||instance_limit==0{return out;}
-    let seed=tile_seed(source);
-    for index in 0..256{
+    for index in 0..256 {
         if out.placements.len()>=instance_limit{break;}
+        let cell=generate_cell_with_paint(area,grid,catalog,source,index,
+            trials_per_cell,paint);
+        out.populated_cells+=cell.populated_cells;
+        out.suppressed+=cell.suppressed;
+        out.rejected_weights+=cell.rejected_weights;
+        out.rejected_density+=cell.rejected_density;
+        out.rejected_preset+=cell.rejected_preset;
+        out.rejected_asset+=cell.rejected_asset;
+        out.rejected_slope+=cell.rejected_slope;
+        let remaining=instance_limit-out.placements.len();
+        out.placements.extend(cell.placements.into_iter().take(remaining));
+    }
+    out
+}
+
+/// Generate one standalone 32 m native AREA cell with its independent RNG.
+/// No global instance cap is applied here; callers may cache the candidates.
+pub fn generate_cell_with_paint(
+    area:&RawArea,grid:&HeightGrid,catalog:&Catalog,source:&Path,
+    index:usize,trials_per_cell:usize,paint:Option<&TerrainPaint>,
+)->NativeGenerated{
+    let mut out=NativeGenerated::default();
+    if index>=256||trials_per_cell==0{return out;}
+    let seed=tile_seed(source);
         let Some(cell)=area.cells[index].as_ref() else{continue;};
         let Some(ids)=cell.layers() else{continue;};
         let mut mapping:[[Option<&WorldClutter>;4];4]=[[None;4];4];
@@ -147,7 +174,6 @@ pub fn generate_with_paint(
         let mut attempts=ideal.floor() as usize;
         if next(&mut rng)<ideal.fract(){attempts+=1;}
         for _ in 0..attempts{
-            if out.placements.len()>=instance_limit{break;}
             let x=next(&mut rng)*32.0;
             let z=next(&mut rng)*32.0;
             let layer_roll=next(&mut rng);
@@ -209,7 +235,6 @@ pub fn generate_with_paint(
                 model:asset.path.replace('\\',"/"),
             });
         }
-    }
     out
 }
 
@@ -280,6 +305,20 @@ mod tests {
         let unmatched=generate(&area,&grid,&catalog,source,32,100);
         assert!(unmatched.placements.is_empty());
         assert_eq!(unmatched.rejected_preset,32);
+    }
+    #[test]
+    fn cached_per_cell_generation_matches_full_generation_and_global_cap(){
+        let (area,grid,catalog)=fixture();
+        let source=Path::new("Western.393b.area");
+        let cell=generate_cell_with_paint(&area,&grid,&catalog,source,0,64,None);
+        let full=generate_with_paint(&area,&grid,&catalog,source,64,500,None);
+        assert_eq!(cell.placements,full.placements);
+        let bounded=generate_with_paint(&area,&grid,&catalog,source,64,5,None);
+        assert_eq!(bounded.placements,cell.placements[..5].to_vec());
+        let absent=generate_cell_with_paint(&area,&grid,&catalog,source,1,64,None);
+        assert!(absent.placements.is_empty());
+        assert!(generate_cell_with_paint(&area,&grid,&catalog,source,256,64,None)
+            .placements.is_empty());
     }
     #[test]
     fn missing_database_and_zero_density_do_not_invent_vegetation(){

@@ -15,6 +15,7 @@ mod terrain_paint;
 mod terrain_bundle;
 mod clutter;
 mod clutter_native;
+mod clutter_paint;
 mod terrain_material;
 mod water;
 mod sky;
@@ -45,6 +46,9 @@ struct GenesisState {
     clutter_panel: bool, prop_panel: bool, object_list: bool,
     clutter_preview_enabled: bool,
     clutter_native_mode: bool,
+    clutter_brush_enabled: bool,
+    clutter_brush_action: u8,
+    clutter_auto_refresh: bool,
     clutter_preview_request: u64,
     clutter_model_path: String,
     clutter_layer: usize,
@@ -96,6 +100,9 @@ impl Default for GenesisState {
             clutter_panel: false, prop_panel: false, object_list: false,
             clutter_preview_enabled: false,
             clutter_native_mode: true,
+            clutter_brush_enabled: false,
+            clutter_brush_action: 0,
+            clutter_auto_refresh: true,
             clutter_preview_request: 0,
             clutter_model_path: String::new(),
             clutter_layer: 0,
@@ -286,6 +293,7 @@ fn load_raw_area(
     mut state: ResMut<GenesisState>,
     mut edit: ResMut<terrain_edit::TerrainEdit>,
     mut paint: ResMut<terrain_paint::TerrainPaint>,
+    mut clutter_paint: ResMut<clutter_paint::ClutterPaint>,
     mut viewer: ResMut<prop_viewer::PropViewer>,
     client: Res<client_data::ClientFiles>,
     mut loaded: ResMut<LoadedArea>,
@@ -329,6 +337,7 @@ fn load_raw_area(
     match area::RawArea::from_path(Path::new(&path)) {
         Ok(tile)=>{
             paint.reset();
+            clutter_paint.reset();
             state.weight_research_report=None;
             loaded.preview_model=None;
             viewer.clear_preview();
@@ -358,9 +367,10 @@ fn load_raw_area(
                 .map(|c| c.world_center())
                 .unwrap_or([0.0, 0.0, 0.0]);
 
-            if is_streaming { edit.reset(); } else {
-                edit.load(Path::new(&path), &tile,
-                    Vec2::new(world_center[0], world_center[2]));
+            if is_streaming { edit.reset();clutter_paint.reset(); } else {
+                let origin=Vec2::new(world_center[0], world_center[2]);
+                edit.load(Path::new(&path), &tile, origin);
+                clutter_paint.load(Path::new(&path),&tile,origin);
             }
             let preview=if state.terrain_view==5 && loaded.terrain_albedo.is_none(){
                 1
@@ -763,6 +773,7 @@ fn main() {
         .insert_resource(GenesisState::default())
         .insert_resource(LoadedArea::default())
         .insert_resource(clutter::ClutterPreview::default())
+        .insert_resource(clutter_paint::ClutterPaint::default())
         .insert_resource(terrain_edit::TerrainEdit::default())
         .insert_resource(terrain_paint::TerrainPaint::default())
         .insert_resource(OrbitCamera::default())

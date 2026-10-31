@@ -20,7 +20,7 @@ pub struct TextureCellEdit {
     pub before:Vec<u8>,
 }
 
-fn nibbles_for_rgba(px:[u8;4])->u16 {
+pub(super) fn nibbles_for_rgba(px:[u8;4])->u16 {
     // Largest remainder apportionment, so the 4 nibbles sum exactly 15.
     let mut counts=[0u16;4];
     let mut tails=[0u16;4];

@@ -1,46 +1,49 @@
-# Genesis WorldLayer Texture Painter — Phase 1
+# Genesis WorldLayer Texture Painter — native AREA format support
 
-This feature adds **interactive, preview-only** terrain texture painting in the existing Genesis Bevy editor, without changing the original WildStar client files.
+The Genesis editor now has an experimental **native texture Save As path for known WildStar AREA layouts**. Unsupported compressed companion formats are rejected before any destination file is created. The original ClientData files remain read-only.
 
-## Current functionality
+## Texture editor
 
-- **WorldLayer Browser** searches real `DB/WorldLayer.tbl` entries by ID or texture path, shows the associated diffuse `.tex` thumbnail, meters-per-tile and normal-map presence (12 entries per page).
-- **Four slots per 32 m terrain cell** are displayed with their actual `WorldLayer` IDs. Select a slot, choose a WorldLayer in the browser, and click **Assign ... to Slot**. Assignment changes only the editable preview and may trigger a one-time rebuild of the runtime splat arrays.
-- **Paint / Erase / Smooth** blend weight channels on the visible terrain. The current splat map uses **1024×1024 RGBA8 pixels** (64×64 per cell); the paint brush edits this GPU-backed map in memory and uploads it to the existing Bevy material.
-- Adjustable **Size, Power and Falloff**, plus per-stroke **Undo/Redo** (16 strokes). `Ctrl+Z` / `Ctrl+Y` operate on the active Paint dock's history.
-- The selected **WorldLayer ID** is carried across cell boundaries: a brush paints only cells that already contain that same ID, preventing accidental overwriting of another slot. Assign the WorldLayer to additional cells before painting across them.
-- **Restrict to Selection** confines strokes to the previously selected cell; hover over a cell without pressing the mouse button to select it.
-- **The input source AREA is never modified** while editing textures. Texture changes are intentionally **not** exported yet.
+- **WorldLayer Browser:** reads `WorldLayer.tbl`, previews original TEX textures and displays material IDs / paths / normal-map availability / tiling.
+- **Per-cell four material slots:** assign WorldLayer IDs to the four slots of an editable 32m AREA cell.
+- **Paint / Erase / Smooth:** edits a 1024x1024 RGBA8 weight atlas in CPU memory and updates the shader's splat image. Uses brush strength/radius/falloff and whole-stroke Undo/Redo (16 levels).
+- Painting by WorldLayer ID will affect only cells that have already assigned that same ID. The optional **Restrict to Selection** isolates a cell.
 
-## Usage
+## Native AREA export: supported vs blocked
 
-1. Configure ClientData and open a **standalone** `.area` file with decoded terrain splats.
-2. Open the **Paint** dock and select **Texture Brush**. The editor should show the textured terrain view, not a debug layer.
-3. Move over a cell to select it. Select one of four slots and/or choose a WorldLayer from the library. Click **Assign WorldLayer to Slot** to change the material used by that slot in that cell.
-4. Choose **Paint**, **Erase**, or **Smooth** and left-drag directly on terrain. Right mouse rotates the camera; middle mouse pans.
-5. Use **Undo Paint** and **Redo Paint** from the dock, or the standard edit shortcuts. The green circle indicates approximate brush radius.
+Supported (native, data-preserving where possible):
+- **Bit 1**: four WorldLayer u32 IDs, written only when a cell's slot assignment changes.
+- **Bit 2 and bit 29**: 65×65 four-nibble maps. Changed texels are quantized with a largest-remainder method so all four nibbles sum to 15; untouched source texels remain byte-identical.
+- **Bit 17 and bit 18 (BC1/DXT1)**: changed 4×4 BC1 regions are recompressed from the edited weights. The signed correction block is set to a neutral value **in changed regions only**. All untouched BC1 blocks remain byte-identical.
+- Supports both uncompressed `aera/area` and zlib-compressed `AERA` containers via the shared `RawArea::with_cell_block_changes` writer. All unrelated top-level chunks, unknown per-cell blocks and subchunks, and unmodified zlib cell streams are retained.
+- **Combined height + texture Save As:** builds and validates a new standalone `.area` using the existing height writer and the new texture block writer. The destination is created with `create_new`, so existing files, including source game assets, cannot be overwritten.
 
-## Important limitations
+**Explicitly blocked**:
+- Editing weights in cells containing **bits 19/20**; their relationship to bit 29 needs further disassembly and native roundtrip validation.
+- Source cells without a known writable weight representation, duplicate cell edits, missing cells and changes that would alter block sizes.
+- Storing edited texture weights as a replacement for `.tex` assets or changing the original client tables. Only `.area` layer mappings and blend weights are in scope.
 
-- **Save AREA As... only saves height sculpt changes.** To avoid misleading exports or accidental loss, Save As is blocked while any texture preview edits are pending; Undo them to return to the source texture state if you need to export height edits.
-- Native write support for source bits **1, 2, 17/18, 19/20, 29**, loss-aware BC1 encoding and cross-tile propagation belongs to **Phase 2**, after representative WildStar files have been validated.
-- Texture slots are per **cell**, not global. The current first phase does not automatically assign a new WorldLayer to every cell under the brush.
-- Missing/undecodable WorldLayer TEX files cannot be displayed. WorldLayer preview rebakes may be expensive for large source tiles and are performed only when slot assignments change; normal brush strokes only update the weight image.
-- Colour painting (RGB565 / BC2), new texture import, rotation/projection settings and full original LandPS parity are later stages.
+**Known fidelity limits**:
+- The BC1 encoder is **lossy**. Its output is an approximation of 4×4 target weights. Neighbor pixels inside a re-encoded 4×4 region can change slightly even if they were not painted.
+- Changes to the 64×64 interior weight atlas do not yet regenerate every 65th edge texel/outer AREA border. This can produce seams along some cell/AREA boundaries. Cross-AREA writes are not implemented.
+- WildStar's material permutations and any unverified functions of the BC1 companion bits are not yet reproduced. If a cell uses unknown combinations, editing must fail closed.
+- Visual GPU verification with real game data is still required. Synthetically validated bytes are not a guarantee of exact retail WildStar rendering.
 
-## Code
+## Steps to test
 
-- `GenesisRebuild/src/terrain_paint.rs`: editable CPU weight atlas, WorldLayer browser/thumbnail cache, per-cell slot IDs, paint operations, snapshots, tests.
-- `GenesisRebuild/src/main.rs`: picking, brush, active dock, material rebuild, GPU uploads and safe Save As guard.
-- `GenesisRebuild/src/terrain_material.rs` and `src/terrain_splat.wesl` remain the runtime splat renderer.
+1. Open an original `.area` in **standalone editable mode**.
+2. Select the **Paint** tab → **Texture Brush**, select one of the four cell slots, and choose/assign a WorldLayer from the browser.
+3. Paint, erase, smooth, undo and redo until satisfied.
+4. Use **Save AREA As...**. Choose a **new, unused** output path.
+5. If the source contains unsupported bits 19/20, the editor will **refuse** that texture export. This is expected and protects the original.
+6. Re-open the exported AREA and inspect texture weights, slopes and previously unchanged props/water. Compare results against the original.
 
-## Checks
+## Validation
 
-```powershell
-cd GenesisRebuild
-cargo test -p wildstar_formats
-cargo check -p genesis
-cargo test -p genesis --bin genesis
-```
+- `cargo test -p wildstar_formats`: raw/zlib block-writer roundtrips, original chunk preservation, native texture packer tests and unsupported-companion rejection.
+- `cargo check -p genesis`: Bevy editor integration.
+- `cargo check -p genesis --tests`: compile the editor test targets.
 
-A Windows `cargo check` validates compilation; visual GPU operation still needs a real ClientData test with the editor. The new Genesis unit tests cover normalization, undo/redo, missing cells and slot assignment.
+The format writer lives under `crates/wildstar_formats/src/area/texture_write.rs`. The shared byte-preserving block writer is in `area.rs`; the editor's combined export is in `src/terrain_paint.rs`.
+
+**Next step**: verify bit 29's compressed companion pair **19/20**, implement its native encoder, improve BC1 error quality and border propagation, then validate with real retail maps before considering the system fully production-safe.

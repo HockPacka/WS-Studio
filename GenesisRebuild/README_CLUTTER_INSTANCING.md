@@ -2,9 +2,69 @@
 
 ## Current status
 
-The **Clutter** dock has a new **diagnostic, manual M3 instancing preview**.
-It is a foundation for the eventual native WildStar clutter generator, **not
-yet a native WorldClutter.tbl reconstruction or a clutter painter**.
+**Native table-driven instanced preview is implemented.** Genesis loads
+\`ClientData/DB/WorldLayer.tbl\` and \`ClientData/DB/WorldClutter.tbl\` using the
+existing LBTD decoder, resolves the original four
+\`worldClutterId00..03\` entries per WorldLayer and selects one of each
+WorldClutter preset's six weighted \`assetPath0..05\` M3 models. Model part
+meshes and materials are loaded into the existing model cache and shared
+unchanged across thousands of compatible visible instances.
+
+Both **Build Native Instanced Clutter** and the original manual diagnostic
+preview remain available in the Clutter dock. Native mode is the default;
+uncheck "Native TBL-driven placement" to use a manually selected model.
+
+To use it: index the original WildStar ClientData, open a standalone AREA,
+select the **Clutter** tab, leave native mode enabled and click **Build Native
+Instanced Clutter**. Use the candidates-per-cell, max-instance and group
+view-distance controls to limit editor load. Click **Clear** to remove all
+instanced objects. If an indexed asset is absent or decoding fails, the
+preview skips that model and reports it; it does not spawn an ErrorCube.
+
+**Bevy automatically instantiates compatible opaque or alpha-masked mesh
+entities using matching Mesh/Material handles.** This does not guarantee a
+specific measured draw-call count or native WildStar density parity. Dynamic
+alpha blending and additive material parts remain excluded from this fast path.
+
+## Native lookup and generator
+
+The lookup chain is \`AREA bit1 WorldLayer IDs\` → WorldLayer.tbl
+\`worldClutterId0[0..3]\` selected by the four packed 2-bit fields in
+\`AREA bit27\` → WorldClutter.tbl \`density\` and six weighted assets →
+cached original M3 parts. \`AREA bit16\` flag \`0x20\` suppresses instances.
+The generator samples the native 65×65 weight grid with bilinear blending,
+squares the normalized layer weights, rejects a selected contribution below
+0.25, samples the editable height grid and ignores steep/hole positions.
+It uses per-cell stable seeds and a deliberate 1/8 source-trial budget,
+bounded by the user-configured candidate and instance limits.
+
+The original WildStar GPU worker's exact RNG sequence, material flag
+interpretation, wind, scatter distribution and instance orientation are not
+fully verified. **This is an editor preview implementing native table
+relationships, not a bit-identical reproduction of WildStar's placement.**
+
+## Implementation and testing
+
+- \`wildstar_formats/src/tbl.rs\`: extracts four WorldLayer clutter IDs and
+  the WorldClutter ID/flags/density and six model paths, weights, scales,
+  rotation ranges, flags and emissive fields; no unsupported fields are
+  silently treated as guaranteed native behavior.
+- \`GenesisRebuild/src/clutter_native.rs\`: read-only catalog loader,
+  deterministic weighted preset selection and bounded per-cell generation.
+- \`GenesisRebuild/src/clutter.rs\`: cached shared M3 mesh/material handles,
+  grouped instance entities, transparency exclusion, cell distance culling,
+  per-build asset load budget and summary statistics.
+- \`GenesisRebuild/src/main.rs\`: native/manual toggle and rebuild controls.
+- Format-crate tests exercise table schema; editor unit tests cover model
+  selection, masks, absent presets, bounded instance creation and determinism.
+  A Windows compile check is not a replacement for GPU measurement.
+
+---
+
+## Current status
+
+The **Clutter** dock also retains a **diagnostic, manual M3 instancing preview**.
+It is retained for single-model debugging. Native table-driven instancing is now present, but **native painting, full shader parity and original distribution still need research**.
 
 The preview:
 - Reuses the exact `Handle<Mesh>` and `Handle<StandardMaterial>` from
@@ -59,11 +119,9 @@ and successful compilation alone do not prove one draw call per asset.
 
 ## Limits before a real WildStar clutter editor
 
-- Parse all four actual `worldClutterId00..03` fields per WorldLayer.tbl row.
-- Read `WorldClutter.tbl` weighted M3 assets, density, min scale and rotation.
-- Replace manually selected M3 with exact preset-driven asset choice. Source
-  `WS-Tools/docs/ground_clutter_dbg43.md` documents a tested partial
-  conversion, including 6 weighted assets and native no-clutter suppression.
+- Verify exact model paths, weighted asset choice and density against several
+  original client maps. The six weighted assets and four layer presets now
+  load from TBL; world-client RNG/orientation remain approximations.
 - Compare placements and coverage with actual WildStar client output.
 - Rebuild affected cells on terrain paint/sculpt events, add quality LOD,
   vegetation wind and true native Bit27 editing and save/undo semantics.

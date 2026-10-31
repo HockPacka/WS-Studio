@@ -28,6 +28,20 @@ jobs:
           workspaces: GenesisRebuild
       - name: Test AREA format crate (does not require Bevy)
         run: cargo test -p wildstar_formats
+      - name: Probe bundled AREA through the read-only Bit19/20 batch CLI
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP "genesis_bit19_20_probe"
+          New-Item -ItemType Directory -Path $out -Force | Out-Null
+          cargo run -p wildstar_formats --bin area_weight_probe -- --file "../WildStarModelStudio/demo/Hills.area" --out $out --max-files 1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $records = @(Import-Csv (Join-Path $out "Genesis_Bit19_20_Areas.csv"))
+          if ($records.Count -ne 1 -or $records[0].status -ne "ok") {
+            throw "AREA research probe did not successfully read the bundled demo AREA"
+          }
+          if (-not (Test-Path (Join-Path $out "Genesis_Bit19_20_Cells.csv"))) {
+            throw "Missing per-cell Bit19/20 research CSV"
+          }
       - name: Cargo check Genesis (no graphics runtime)
         run: cargo check -p genesis
       - name: Check Genesis editor unit-test targets

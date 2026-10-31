@@ -40,13 +40,13 @@ pub struct ClutterPreview {
     last_camera:Option<Vec3>,
     last_cutoff:f32,
 }
-fn next(random:&mut u32)->f32{
+pub(crate) fn next(random:&mut u32)->f32{
     *random^=*random<<13;
     *random^=*random>>17;
     *random^=*random<<5;
     (*random as f32)/(u32::MAX as f32)
 }
-fn sample_height(grid:&HeightGrid,x:f32,z:f32)->Option<(f32,f32)>{
+pub(crate) fn sample_height(grid:&HeightGrid,x:f32,z:f32)->Option<(f32,f32)>{
     if !(0.0..=256.0).contains(&x)||!(0.0..=256.0).contains(&z){
         return None;
     }
@@ -70,7 +70,7 @@ fn sample_height(grid:&HeightGrid,x:f32,z:f32)->Option<(f32,f32)>{
         .max((heights[3]-heights[1]).abs()))*0.5;
     Some((top+(bottom-top)*tz,slope))
 }
-fn weight(cell:&wildstar_formats::area::AreaCell,x:usize,z:usize,layer:usize)
+pub(crate) fn weight(cell:&wildstar_formats::area::AreaCell,x:usize,z:usize,layer:usize)
     ->Option<f32>
 {
     // Bits 29/2 store 0..15 nibbles. Normalize the actual sum so sparse
@@ -186,6 +186,107 @@ pub fn update_preview(
         }else if let (Some(area),Some(grid),Some(index))=
             (loaded.tile.as_ref(),edit.grid(),client.index.as_ref())
         {
+            if state.clutter_native_mode {
+                let source=edit.source.as_deref().unwrap_or(std::path::Path::new(""));
+                match crate::clutter_native::load_catalog(index) {
+                    Ok(catalog)=>{
+                        let native=crate::clutter_native::generate(
+                            area,&grid,&catalog,source,
+                            state.clutter_density as usize,
+                            state.clutter_instance_limit as usize
+                        );
+                        preview.rejected_by_mask=native.suppressed;
+                        preview.rejected_by_weight=native.rejected_weights;
+                        preview.rejected_by_selector=native.rejected_preset+
+                            native.rejected_density+native.rejected_asset;
+                        preview.rejected_by_slope=native.rejected_slope;
+                        let count=native.placements.len();
+                        let mut groups=std::collections::BTreeMap::<String,Vec<
+                            crate::clutter_native::NativePlacement>>::new();
+                        for placement in native.placements {
+                            groups.entry(placement.model.clone()).or_default()
+                                .push(placement);
+                        }
+                        // Asset load budget is distinct models, not instances.
+                        // Every subsequent instance reuses cached mesh and
+                        // material handles; no per-plant asset allocation.
+                        let mut model_budget=24usize;
+                        let mut missing_models=0usize;
+                        let mut loaded_models=0usize;
+                        let mut skipped_transparent=0usize;
+                        let origin=edit.origin;
+                        for (path,items) in groups {
+                            if index.resolve(&path).is_none(){
+                                missing_models+=1;
+                                continue;
+                            }
+                            let Some(model)=client.prop_models.load(
+                                index,&mut meshes,&mut materials,&mut images,
+                                &path,&mut model_budget
+                            ) else {
+                                missing_models+=1;
+                                continue;
+                            };
+                            let mut eligible=Vec::new();
+                            for part in &model.parts{
+                                let Some(mat)=materials.get(&part.material) else {continue;};
+                                if matches!(mat.alpha_mode,AlphaMode::Opaque|AlphaMode::Mask(_)){
+                                    eligible.push(part.clone());
+                                }else{
+                                    skipped_transparent+=1;
+                                }
+                            }
+                            if eligible.is_empty(){missing_models+=1;continue;}
+                            loaded_models+=1;
+                            preview.opaque_parts+=eligible.len();
+                            preview.parts_per_instance=preview.parts_per_instance.max(
+                                eligible.len());
+                            let mut cells=std::collections::BTreeMap::<usize,Vec<_>>::new();
+                            for placement in items{
+                                cells.entry(placement.cell).or_default().push(placement);
+                            }
+                            for (cell,placements) in cells{
+                                let center=Vec3::new(
+                                    origin.x+(cell%16) as f32*32.0-240.0,
+                                    0.0,origin.y+(cell/16) as f32*32.0-240.0
+                                );
+                                let root=commands.spawn((
+                                    Transform::default(),Visibility::Inherited
+                                )).id();
+                                for placement in placements{
+                                    let t=Transform{
+                                        translation:Vec3::new(
+                                            origin.x+placement.position.x,
+                                            placement.position.y,
+                                            origin.y+placement.position.z,
+                                        ),
+                                        rotation:Quat::from_rotation_y(placement.yaw),
+                                        scale:Vec3::splat(placement.scale.clamp(0.05,10.0)),
+                                    };
+                                    for part in &eligible {
+                                        let child=commands.spawn((
+                                            Mesh3d(part.mesh.clone()),
+                                            MeshMaterial3d(part.material.clone()),t
+                                        )).id();
+                                        commands.entity(root).add_child(child);
+                                    }
+                                    preview.instances+=1;
+                                }
+                                preview.roots.push((root,center));
+                            }
+                        }
+                        preview.transparent_parts=skipped_transparent;
+                        preview.status=format!(
+                            "Native TBL preview: {} / {} placed, {} M3 models ({} unresolved/budget), {} eligible mesh parts, {} skipped transparent, {} populated cells. GPU draw calls not profiled.",
+                            preview.instances,count,loaded_models,missing_models,
+                            preview.opaque_parts,skipped_transparent,native.populated_cells
+                        );
+                    },
+                    Err(error)=>preview.status=format!(
+                        "Native clutter database unavailable: {error}"
+                    ),
+                }
+            }else{
             let path=state.clutter_model_path.trim();
             let mut budget=1;
             match client.prop_models.load(
@@ -259,6 +360,7 @@ pub fn update_preview(
                 None=>{
                     preview.status="M3 not available from ClientData; enter an indexed virtual .m3 path.".into();
                 },
+            }
             }
         }else{
             preview.status="Standalone AREA and indexed ClientData required.".into();

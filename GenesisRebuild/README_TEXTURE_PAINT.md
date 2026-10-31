@@ -16,7 +16,7 @@ The Genesis editor now has an experimental **native texture Save As path for kno
 - **Block 13**: changed 4×4 BC2/DXT3 RGB groups are compressed with BC1 four-colour endpoints. The original **8-byte BC2 alpha payload of every block is preserved byte-for-byte**, since the true role of the terrain alpha channel is not yet fully decoded.
 - Both blocks are updated together if both are present; edits refuse cells lacking these block types. **A 50/255 per-channel fidelity gate** compares the in-memory result to the native reloaded AREA and blocks poor exports.
 - The existing `Save AREA As...` now combines *height, WorldLayer weights and terrain RGB* in the same new non-overwriting file, subject to codec guards.
-- Color operations cannot yet synchronize the extra 65th sample at cell edges or adjacent AREA tile borders; seams remain a known limitation.
+- Edited RGB samples on the **left/top edges of a cell** now update the duplicated 65th texel in its left, top and top-left neighbours **inside the current AREA**. This covers RGB565 bit 3 and BC2 bit 13 while preserving original BC2 alpha bytes. The outer edge of the AREA is deliberately not propagated into another AREA file.
 - The newly added format tests verify raw RGB565, compressed BC2, preservation of unknown BC2 alpha bits and unrelated AREA chunks.
 
 ## Native AREA export: supported vs blocked
@@ -35,7 +35,7 @@ Supported (native, data-preserving where possible):
 
 **Known fidelity limits**:
 - The BC1 encoder is **lossy**. Its output is an approximation of 4×4 target weights. Neighbor pixels inside a re-encoded 4×4 region can change slightly even if they were not painted.
-- Changes to the 64×64 interior weight atlas do not yet regenerate every 65th edge texel/outer AREA border. This can produce seams along some cell/AREA boundaries. Cross-AREA writes are not implemented.
+- Texture-weight edits to x=0/z=0 now propagate into their **intra-AREA neighbour's 65th sample** for raw bit 2/29 and BC1 bit 17/18, including corner neighbours. Encoded BC1 correction samples are neutralised only inside re-encoded blocks. Neighbouring **AREA files** are not edited and cross-tile seams still need a multi-AREA solution. Export rejects absent neighbours, unresolved bit 19/20 neighbour layouts and reloaded seam deviations beyond the safety tolerance.
 - WildStar's material permutations and any unverified functions of the BC1 companion bits are not yet reproduced. If a cell uses unknown combinations, editing must fail closed.
 - Visual GPU verification with real game data is still required. Synthetically validated bytes are not a guarantee of exact retail WildStar rendering.
 
@@ -56,4 +56,6 @@ Supported (native, data-preserving where possible):
 
 The format writer lives under `crates/wildstar_formats/src/area/texture_write.rs`. The shared byte-preserving block writer is in `area.rs`; the editor's combined export is in `src/terrain_paint.rs`.
 
-**Next step**: verify bit 29's compressed companion pair **19/20**, implement its native encoder, improve BC1 error quality and border propagation, then validate with real retail maps before considering the system fully production-safe.
+**Current Phase A research:** The **Render → Bit 19/20 Weight Research** panel offers a *read-only, tentative* BC1 decode (using the known 17/18 interpretation as a hypothesis), and reports the selected cell's difference from native bit 29. This is diagnostic evidence, **not validation** of a 19/20 writer. All writes involving the unresolved 19/20 pair remain blocked.
+
+**Next step**: verify bit 29's compressed companion pair **19/20** using real client map samples and shader behavior, implement a native encoder only after validation, add multi-AREA tile-edge propagation, improve BC1/BC2 error quality, and visually verify real retail maps before considering the system production-safe.

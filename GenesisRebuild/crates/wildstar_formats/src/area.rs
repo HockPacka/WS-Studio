@@ -493,6 +493,57 @@ mod tests{
         assert!(!heights.present[128*257+128]);
     }
     #[test]
+    fn height_export_roundtrip_uncompressed_keeps_unrelated_bytes() {
+        let c = cell();
+        let mut stream = (c.len() as u32).to_le_bytes().to_vec();
+        stream.extend_from_slice(&c);
+        stream.extend_from_slice(&(c.len() as u32).to_le_bytes());
+        stream.extend_from_slice(&c);
+        let mut input = b"aera".to_vec();
+        input.extend_from_slice(&0u32.to_le_bytes());
+        input.extend(chunk(b"KNHC", &stream));
+        input.extend(chunk(b"pORP", &[2, 4, 6, 8, 10, 12]));
+        let original = RawArea::from_bytes(input).unwrap();
+        let bytes = original.with_height_changes(&[(16, 5, 13.75)]).unwrap();
+        let saved = RawArea::from_bytes(bytes.clone()).unwrap();
+        assert_eq!(saved.cells[0].as_ref().unwrap().height(16,5), Some(13.75));
+        assert_eq!(saved.cells[1].as_ref().unwrap().height(0,5), Some(13.75));
+        assert_eq!(saved.cells[0].as_ref().unwrap().layers(), Some([9,3,2,1]));
+        assert_eq!(saved.chunks[1].data, original.chunks[1].data);
+        assert_eq!(original.cells[0].as_ref().unwrap().height(16,5), Some(2.0));
+        assert_eq!(original.with_height_changes(&[]).unwrap(), original.original);
+        assert!(original.with_height_changes(&[(300,0,1.0)]).is_err());
+    }
+
+    #[test]
+    fn height_export_roundtrip_compressed_preserves_lod_and_unknown_subchunks() {
+        use flate2::{Compression,write::ZlibEncoder};
+        use std::io::Write;
+        let zip = |bytes: &[u8]| {
+            let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+            encoder.write_all(bytes).unwrap();
+            encoder.finish().unwrap()
+        };
+        let c = cell();
+        let prefix = vec![0xAB; 320];
+        let mut stream = (prefix.len() as u32).to_le_bytes().to_vec();
+        stream.extend(zip(&prefix));
+        stream.extend_from_slice(&(c.len() as u32).to_le_bytes());
+        stream.extend(zip(&c));
+        let mut input = b"AERA".to_vec();
+        input.extend_from_slice(&0u32.to_le_bytes());
+        input.extend(chunk(b"KNHC", &stream));
+        input.extend(chunk(b"WHAT", &[9, 8, 7]));
+        let original = RawArea::from_bytes(input).unwrap();
+        let changed = original.with_height_changes(&[(3,4,21.125)]).unwrap();
+        let saved = RawArea::from_bytes(changed).unwrap();
+        assert_eq!(saved.cells[0].as_ref().unwrap().height(3,4), Some(21.125));
+        assert_eq!(saved.lod_prefix, Some(prefix));
+        assert_eq!(saved.chunks[1].data, vec![9,8,7]);
+        assert_eq!(saved.cells[0].as_ref().unwrap().zones(), Some([101,102,0,0]));
+    }
+
+    #[test]
     fn compressed_lod(){
         use flate2::{Compression,write::ZlibEncoder};
         use std::io::Write;

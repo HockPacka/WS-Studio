@@ -34,6 +34,10 @@ pub struct TerrainPaint {
     baseline_slots: Vec<[u32;4]>,
     pub colors: Vec<u8>,
     baseline_colors: Vec<u8>,
+    /// Source-specific, read-only visual rasters. Neither affects native AREA exports.
+    rgb_bit3: Vec<u8>,
+    rgb_bit13: Vec<u8>,
+    alpha_bit13: Vec<u8>,
     color_present: Vec<bool>,
     pub color: [u8;3],
     pub color_mode: ColorMode,
@@ -76,13 +80,53 @@ impl TerrainPaint {
             .find(|(_,p)|**p).map(|(slots,_)|slots[0]).filter(|&id|id!=0);
         Ok(())
     }
-    pub fn load_colors(&mut self,pixels:&[u8])->Result<(),String>{
+    pub fn load_colors(&mut self,pixels:&[u8],area:&RawArea)->Result<(),String>{
         if !self.ready() || pixels.len()!=MAP_SIDE*MAP_SIDE*4 {
             return Err("Terrain tint must be an RGBA8 1024x1024 image".into());
         }
         self.colors=pixels.to_vec();
         self.baseline_colors=pixels.to_vec();
+        self.rgb_bit3=vec![128;MAP_SIDE*MAP_SIDE*3];
+        self.rgb_bit13=vec![128;MAP_SIDE*MAP_SIDE*3];
+        self.alpha_bit13=vec![0;MAP_SIDE*MAP_SIDE];
+        for (cell_idx,cell) in area.cells.iter().enumerate(){
+            let Some(cell)=cell.as_ref() else{continue;};
+            let cx=cell_idx%16*64;
+            let cz=cell_idx/16*64;
+            for z in 0..64{
+                for x in 0..64{
+                    let px=(cz+z)*MAP_SIDE+cx+x;
+                    if let Some(rgb)=cell.color_rgb565(x,z){
+                        self.rgb_bit3[px*3..px*3+3].copy_from_slice(&rgb);
+                    }
+                    if let Some(rgb)=cell.color_bc2(x,z){
+                        self.rgb_bit13[px*3..px*3+3].copy_from_slice(&rgb);
+                    }
+                    if let Some(alpha)=cell.bc2_color_alpha(x,z){
+                        self.alpha_bit13[px]=alpha;
+                    }
+                }
+            }
+        }
         Ok(())
+    }
+    /// Read-only source switch. Preserve alpha from the original BC2 blocks
+    /// for diagnostics, even when Bit 3 is used for the visible RGB.
+    /// Modified RGB texels are overlaid so editing stays visible in every mode.
+    pub fn render_tint(&self,source:u32)->Vec<u8>{
+        if !self.colors_ready(){return Vec::new();}
+        let mut result=self.colors.clone();
+        let pixels=MAP_SIDE*MAP_SIDE;
+        for i in 0..pixels{
+            if self.colors[i*4..i*4+3]==self.baseline_colors[i*4..i*4+3]{
+                if source==1 || source==2 {
+                    let rgb=if source==1{&self.rgb_bit3}else{&self.rgb_bit13};
+                    result[i*4..i*4+3].copy_from_slice(&rgb[i*3..i*3+3]);
+                }
+            }
+            result[i*4+3]=self.alpha_bit13.get(i).copied().unwrap_or(0);
+        }
+        result
     }
     pub fn colors_ready(&self)->bool {
         self.ready() && self.colors.len()==MAP_SIDE*MAP_SIDE*4

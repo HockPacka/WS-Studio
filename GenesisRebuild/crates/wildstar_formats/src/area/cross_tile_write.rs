@@ -323,13 +323,13 @@ mod tests{
             amended.cells[index].as_mut().unwrap().blocks[bit]=Some(data);
         }
         assert_eq!(amended.cells[255].as_ref().unwrap()
-            .normalized_weights(64,0),Some([0,15,0,0]));
+            .authoring_weights(64,0),Some([0,15,0,0]));
         assert_eq!(amended.cells[254].as_ref().unwrap()
-            .normalized_weights(64,64),Some([0,15,0,0]));
+            .authoring_weights(64,64),Some([0,15,0,0]));
         assert_eq!(amended.cells[255].as_ref().unwrap()
             .color_rgb565(64,64),Some([0,0,255]));
         assert_eq!(amended.cells[255].as_ref().unwrap()
-            .normalized_weights(0,0),Some([15,0,0,0]));
+            .authoring_weights(0,0),Some([15,0,0,0]));
         validate_cross_tile_border(&area,&amended,&samples).unwrap();
     }
     #[test]

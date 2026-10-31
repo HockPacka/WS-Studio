@@ -736,6 +736,28 @@ mod tests {
         result
     }
     #[test]
+    fn bc1_reencoding_keeps_original_unpainted_weights_when_preview_differs(){
+        let cell=populated_cell(0);
+        // Simulate a raw/preview disagreement: source BC1 is first-layer
+        // red, but the selected preview before/after is second-layer green.
+        let mut before=vec![0u8;CELL_RGBA_BYTES];
+        for px in before.chunks_exact_mut(4){px[1]=255;}
+        let mut after=before.clone();
+        after[0..4].copy_from_slice(&[0,0,255,0]);
+        let edit=TextureCellEdit{
+            index:0,layer_ids:[10,11,12,13],weights:after,before,
+        };
+        let patches=make_cell_edits(&cell,&edit).unwrap();
+        let mut rewritten=cell.clone();
+        for (bit,data) in patches{rewritten.blocks[bit]=Some(data);}
+        assert!(rewritten.compressed_weights(0,0).unwrap()[2]>0.65,
+            "edited pixel must use the new blue weight");
+        assert!(rewritten.compressed_weights(1,0).unwrap()[0]>0.75,
+            "unpainted BC1 neighbor must retain the original red weight");
+        assert_eq!(rewritten.normalized_weights(1,0),Some([15,0,0,0]),
+            "untouched raw weights must stay byte-exact");
+    }
+    #[test]
     fn optimized_bc1_never_exceeds_original_endpoint_error(){
         let grayscale=std::array::from_fn(|i| {
             let value=(i*16) as u8;

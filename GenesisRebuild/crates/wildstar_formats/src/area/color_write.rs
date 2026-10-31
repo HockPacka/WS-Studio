@@ -297,6 +297,35 @@ mod tests{
         }]).unwrap_err().contains("no native color blocks"));
     }
     #[test]
+    fn bc2_reencoding_preserves_unpainted_original_color_if_bit3_differs(){
+        let mut cell=populated_cell(0);
+        // The preview reads Bit 3 (red), but the original Bit 13 is green.
+        // Painting a single blue texel must not repaint the other 15 BC2
+        // texels red just because the two color attributes differ.
+        let compressed=cell.blocks[13].as_mut().unwrap();
+        for block in compressed.chunks_exact_mut(16){
+            block[8..16].copy_from_slice(&bc1_encode([[0,255,0];16]));
+        }
+        let mut before=vec![0u8;COLOR_BYTES];
+        for px in before.chunks_exact_mut(4){
+            px.copy_from_slice(&[255,0,0,165]);
+        }
+        let mut after=before.clone();
+        after[0..3].copy_from_slice(&[0,0,255]);
+        let patches=patches_for_cell(&cell,&ColorCellEdit{
+            index:0,before,after,
+        }).unwrap();
+        for (bit,data) in patches{cell.blocks[bit]=Some(data);}
+        assert!(cell.color_bc2(0,0).unwrap()[2]>180,
+            "painted pixel must be blue in Bit 13");
+        assert!(cell.color_bc2(1,0).unwrap()[1]>200,
+            "unpainted neighbor must preserve original green Bit 13");
+        assert_eq!(cell.color_rgb565(1,0),Some([255,0,0]),
+            "separate Bit 3 original remains red");
+        assert!(cell.block(13).unwrap().chunks_exact(16)
+            .all(|b|b[..8]==[0xA5;8]));
+    }
+    #[test]
     fn compressed_area_color_export_roundtrip_preserves_alpha(){
         let flags=(1u32<<3)|(1u32<<13);
         let mut decoded=flags.to_le_bytes().to_vec();

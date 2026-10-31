@@ -55,16 +55,22 @@ fn rgb_from_565(n:u16)->[f32;3] {
 /// Four-color BC1 block encoder. 4x4 texels and no alpha channel. Intentionally
 /// simple bounding-box / nearest-palette codec; the BC1 conversion is lossy.
 fn bc1_encode(rgb:[[u8;3];16])->[u8;8] {
-    let mut low=[255u8;3];
-    let mut high=[0u8;3];
-    for p in rgb {
-        for c in 0..3 {
-            low[c]=low[c].min(p[c]);
-            high[c]=high[c].max(p[c]);
+    // Pick actual texels with the largest RGB distance. Component-wise
+    // min/max can produce a non-existent color (e.g. yellow for mixed red and
+    // green weights) and destroy otherwise exact two-color blocks.
+    let mut endpoints=(0usize,0usize);
+    let mut spread=0u32;
+    for i in 0..16{
+        for j in (i+1)..16{
+            let dist=(0..3).map(|c|{
+                let d=rgb[i][c] as i32-rgb[j][c] as i32;
+                (d*d) as u32
+            }).sum::<u32>();
+            if dist>spread{spread=dist;endpoints=(i,j);}
         }
     }
-    let mut a=rgb565(high);
-    let mut b=rgb565(low);
+    let mut a=rgb565(rgb[endpoints.0]);
+    let mut b=rgb565(rgb[endpoints.1]);
     if a<b {std::mem::swap(&mut a,&mut b);}
     if a==b {
         if a<65535{a+=1;}else{b-=1;}

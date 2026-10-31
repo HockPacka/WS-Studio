@@ -226,6 +226,62 @@ mod tests{
             Some(0x1010 as f32*0.125-2048.0));
     }
     #[test]
+    fn height_border_roundtrips_raw_and_zlib_area_with_unknown_chunk_preserved(){
+        use flate2::{Compression,write::ZlibEncoder};
+        use std::io::Write;
+        let mut payload=1u32.to_le_bytes().to_vec();
+        payload.extend(vec![0x10u8;19*19*2]);
+        for compressed in [false,true]{
+            let mut stream=Vec::new();
+            let zip=|raw:&[u8]|{
+                let mut enc=ZlibEncoder::new(Vec::new(),Compression::default());
+                enc.write_all(raw).unwrap();
+                enc.finish().unwrap()
+            };
+            if compressed{
+                stream.extend(3u32.to_le_bytes());
+                stream.extend(zip(b"LOD"));
+            }
+            let mut last=0usize;
+            for index in [0usize,15,31,255]{
+                let delta=index-last;
+                let word=((delta as u32)<<24)|(payload.len() as u32);
+                stream.extend(word.to_le_bytes());
+                if compressed{stream.extend(zip(&payload));}
+                else{stream.extend(&payload);}
+                last=index+1;
+            }
+            let mut file=if compressed{b"AERA".to_vec()}else{b"aera".to_vec()};
+            file.extend(0u32.to_le_bytes());
+            file.extend(b"KNHC");
+            file.extend((stream.len() as u32).to_le_bytes());
+            file.extend(stream);
+            file.extend(b"KEEP");
+            file.extend(3u32.to_le_bytes());
+            file.extend(b"XYZ");
+            let original=RawArea::from_bytes(file).unwrap();
+            let samples=[
+                HeightBorderSample{x:-1,z:0,height:16.375},
+                HeightBorderSample{x:256,z:16,height:19.125},
+                HeightBorderSample{x:257,z:257,height:-2.625},
+            ];
+            let plan=plan_cross_tile_height_edits(&original,&samples).unwrap();
+            assert_eq!(plan.len(),4);
+            let data=original.with_cell_block_changes(&plan).unwrap();
+            let exported=RawArea::from_bytes(data).unwrap();
+            validate_cross_tile_heights(&exported,&samples).unwrap();
+            assert_eq!(exported.cell_count(),original.cell_count());
+            assert_eq!(exported.chunks[1].data,b"XYZ");
+            if compressed{assert_eq!(exported.lod_prefix,Some(b"LOD".to_vec()));}
+            assert_eq!(original.cells[0].as_ref().unwrap().height(0,0),
+                exported.cells[0].as_ref().unwrap().height(0,0));
+            assert_eq!(exported.cells[15].as_ref().unwrap().height(16,16),
+                Some(19.125));
+            assert_eq!(exported.cells[31].as_ref().unwrap().height(16,0),
+                Some(19.125));
+        }
+    }
+    #[test]
     fn rejects_bad_coordinates_duplicate_and_unrepresented_vertices(){
         let source=area(&[0]);
         for sample in [

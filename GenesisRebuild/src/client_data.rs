@@ -16,6 +16,8 @@ pub struct ClientFiles {
     pub status:String,
     pub index:Option<AssetIndex>,
     receiver:Mutex<Option<Receiver<AssetIndex>>>,
+    /// Decoded .m3/.i3 prop meshes; dropped together with the index on re-scan.
+    pub prop_models:crate::props::PropModelCache,
 }
 impl Default for ClientFiles {
     fn default()->Self{
@@ -26,6 +28,7 @@ impl Default for ClientFiles {
             status:"Select WildStar root containing ClientData (and ClientDataEN).".into(),
             index:None,
             receiver:Mutex::new(None),
+            prop_models:Default::default(),
         }
     }
 }

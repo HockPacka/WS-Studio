@@ -28,7 +28,7 @@ Der **Assets-Tab** in der rechten Genesis-Leiste zeigt die Indexgröße und die 
 - Mehrere `ClientData`- und `ClientDataEN`-Vorkommen werden nach Dateityp behandelt. Binäre Assets bevorzugen `ClientData`, tabellen-/textbezogene Dateien bevorzugen `ClientDataEN`.
 - Die verwendeten `WorldLayer`-, `WorldSky`- und `WorldZone`-IDs werden gesammelt und die entsprechenden Datenbankdateien (falls vorhanden) im Index angezeigt.
 
-**Wichtig:** Die eigentliche Beziehung `WorldLayer.ID → Texturpfad` und `WorldSky.ID → .sky` benötigt einen zusätzlichen nativen `.tbl`-Tabellendekoder. Ein gefundener Tabellen-Dateipfad bedeutet noch nicht, dass die einzelnen IDs schon aufgelöst werden können. Originale Terrain-Materialien und M3/I3-Renderobjekte bleiben bis zu diesem weiteren Arbeitsschritt Debug-/Inspektionsdaten.
+**Wichtig:** Die eigentliche Beziehung `WorldLayer.ID → Texturpfad` und `WorldSky.ID → .sky` benötigt einen zusätzlichen nativen `.tbl`-Tabellendekoder. Ein gefundener Tabellen-Dateipfad bedeutet noch nicht, dass die einzelnen IDs schon aufgelöst werden können. Originale Terrain-Materialien bleiben bis zu diesem weiteren Arbeitsschritt Debug-/Inspektionsdaten. M3/I3-Props werden nativ gelesen (siehe `README_M3_I3.md`).
 
 ## Start und Tests
 

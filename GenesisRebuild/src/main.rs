@@ -353,7 +353,8 @@ fn load_raw_area(
                             loaded.water_entity=Some(water_ent);
                         }
 
-                        loaded.prop_entities=props::spawn_props(&mut commands, &loaded.props, &mut meshes, &mut materials);
+                        loaded.prop_entities=props::spawn_props(&mut commands, &loaded.props, &mut meshes, &mut materials,
+                            client.index.as_ref(), &client.prop_models);
 
                         state.status=format!(
                             "AREA | {} cells | {} props | {} water | {} | {}",

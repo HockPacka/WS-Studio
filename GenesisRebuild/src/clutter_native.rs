@@ -148,8 +148,8 @@ pub fn generate_cell_with_paint(
     let mut out=NativeGenerated::default();
     if index>=256||trials_per_cell==0{return out;}
     let seed=tile_seed(source);
-        let Some(cell)=area.cells[index].as_ref() else{continue;};
-        let Some(ids)=cell.layers() else{continue;};
+        let Some(cell)=area.cells[index].as_ref() else{return out;};
+        let Some(ids)=cell.layers() else{return out;};
         let mut mapping:[[Option<&WorldClutter>;4];4]=[[None;4];4];
         let mut max_density=0.0f32;
         for slot in 0..4{
@@ -163,7 +163,7 @@ pub fn generate_cell_with_paint(
                 }
             }
         }
-        if max_density<=0.0{continue;}
+        if max_density<=0.0{return out;}
         out.populated_cells+=1;
         let mut rng=seed^(index as u32).wrapping_mul(0x9E3779B1)^0xA341316C;
         if rng==0{rng=0x9E3779B9;}

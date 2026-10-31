@@ -1,5 +1,5 @@
-//! Phase 1: CPU-editable 4-channel WildStar terrain splat weights and WorldLayer browser.
-//! All texture edits are preview-only until a native multi-block AREA writer is validated.
+//! Native WildStar AREA terrain splat and RGB editor with guarded native Save As.
+//! Block 19/20 weight encoding and multi-AREA boundary writes remain unavailable.
 use bevy::prelude::*;
 use bevy_egui::egui;
 use std::collections::HashMap;
@@ -481,6 +481,71 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         Ok(())
     }
 
+    /// Validate duplicated 65th samples after all native cell blocks have
+    /// been re-encoded and reloaded. Every internal seam sample is checked;
+    /// the outer tile edge intentionally remains an independent AREA boundary.
+    fn verify_native_edge_samples(&self,exported:&RawArea)->Result<(),String>{
+        for index in 0..256{
+            if !self.present[index]{continue;}
+            let (cx,cz)=(index%16,index/16);
+            let adjacent=[
+                (cx>0,index.saturating_sub(1),64usize,0usize),
+                (cz>0,index.saturating_sub(16),0usize,64usize),
+                (cx>0&&cz>0,index.saturating_sub(17),64usize,64usize),
+            ];
+            for (exists,neighbour,ghost_x,ghost_z) in adjacent {
+                if !exists{continue;}
+                let Some(cell)=exported.cells.get(neighbour)
+                    .and_then(Option::as_ref) else {
+                    // There can be sparse AREA tiles. The seam writer will
+                    // refuse an edit that needs to update a missing neighbour.
+                    continue;
+                };
+                let source_x=if ghost_x==64{0}else{usize::MAX};
+                let source_z=if ghost_z==64{0}else{usize::MAX};
+                let count=if ghost_x==64&&ghost_z==64{1}else{64};
+                for axis in 0..count{
+                    let sx=if source_x==0{0}else{axis};
+                    let sz=if source_z==0{0}else{axis};
+                    let gx=if ghost_x==64{64}else{axis};
+                    let gz=if ghost_z==64{64}else{axis};
+                    let src=((cz*64+sz)*MAP_SIDE+cx*64+sx)*4;
+                    let weight_dirty=self.weights[src..src+4]!=self.baseline[src..src+4];
+                    let color_dirty=self.colors_ready() &&
+                        self.colors[src..src+3]!=self.baseline_colors[src..src+3];
+                    if weight_dirty {
+                        let actual=cell.compressed_weights(gx,gz).or_else(||{
+                            cell.normalized_weights(gx,gz)
+                                .or_else(||cell.authoring_weights(gx,gz))
+                                .map(|raw|{
+                                    let sum=raw.iter().map(|&v|v as f32).sum::<f32>();
+                                    if sum>0.0{raw.map(|v|v as f32/sum)}
+                                    else{[1.0,0.0,0.0,0.0]}
+                                })
+                        }).ok_or("AREA seam: adjacent weight data unreadable")?;
+                        for layer in 0..4{
+                            let expected=self.weights[src+layer] as f32/255.0;
+                            if (actual[layer]-expected).abs()>0.20{
+                                return Err(format!("AREA weight seam error between cells {index} and {neighbour}, layer {layer}"));
+                            }
+                        }
+                    }
+                    if color_dirty {
+                        let actual=cell.terrain_color(gx,gz)
+                            .ok_or("AREA seam: adjacent color data unreadable")?;
+                        for channel in 0..3{
+                            let delta=actual[channel] as i16-self.colors[src+channel] as i16;
+                            if delta.abs()>50{
+                                return Err(format!("AREA color seam error between cells {index} and {neighbour}, channel {channel}"));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Export a combined height+texture AREA into a NEW file. Supports only
     /// recognized native texture weight layouts. Unknown compressed companion
     /// formats (e.g. bit 19/20) fail closed BEFORE any file is created.
@@ -531,6 +596,7 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         // All blocks/unknown payloads are validated inside with_cell_block_changes.
         self.verify_native_weight_fidelity(&reread)?;
         self.verify_native_color_fidelity(&reread)?;
+        self.verify_native_edge_samples(&reread)?;
         let mut file=std::fs::OpenOptions::new().write(true).create_new(true)
             .open(destination).map_err(|e|format!("Cannot create {}: {e}",destination.display()))?;
         if let Err(error)=file.write_all(&bytes).and_then(|_|file.sync_all()){
@@ -657,7 +723,7 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         });
         ui.label("Paint affects cells containing the selected WorldLayer ID.");
         ui.colored_label(egui::Color32::DARK_RED,
-            "PREVIEW ONLY: Save AREA As exports HEIGHTS, not texture edits.");
+            "Native Save AREA As: height, textures and RGB color (supported blocks only).");
         ui.label(format!("Unsaved texture edits: {}",if self.dirty(){"YES"}else{"no"}));
     }
 }

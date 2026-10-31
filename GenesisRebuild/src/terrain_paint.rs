@@ -135,6 +135,18 @@ impl TerrainPaint {
         self.ready() && (self.weights!=self.baseline || self.slots!=self.baseline_slots
             || self.colors!=self.baseline_colors)
     }
+    pub fn stroking(&self)->bool{self.stroke.is_some()}
+    /// Live weightmap lookup for instanced Clutter preview. Native authoring
+    /// remains in-memory; this does not encode uncertain bit19/20 textures.
+    pub fn clutter_weight_at(&self,cell:usize,x:usize,z:usize,slot:usize)->Option<f32>{
+        if !self.ready()||cell>=256||x>64||z>64||slot>=4{return None;}
+        let gx=(cell%16*64+x).min(MAP_SIDE-1);
+        let gz=(cell/16*64+z).min(MAP_SIDE-1);
+        let start=(gz*MAP_SIDE+gx)*4;
+        let rgba=self.weights.get(start..start+4)?;
+        let total=rgba.iter().map(|&v|v as f32).sum::<f32>();
+        (total>0.0).then(||rgba[slot] as f32/total)
+    }
     pub fn can_undo(&self)->bool{!self.undo.is_empty()}
     pub fn can_redo(&self)->bool{!self.redo.is_empty()}
     fn snapshot(&self)->Snapshot {

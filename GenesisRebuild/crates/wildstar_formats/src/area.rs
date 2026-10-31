@@ -687,6 +687,45 @@ mod tests{
     }
 
     #[test]
+    fn native_cell_block_writer_roundtrips_compressed_and_raw(){
+        use flate2::{Compression,write::ZlibEncoder};
+        use std::io::Write;
+        let c=cell();
+        for compressed in [false,true] {
+            let mut stream=Vec::new();
+            if compressed {
+                let prefix=vec![0x66;128];
+                let mut enc=ZlibEncoder::new(Vec::new(),Compression::default());
+                enc.write_all(&prefix).unwrap();
+                stream.extend((prefix.len() as u32).to_le_bytes());
+                stream.extend(enc.finish().unwrap());
+                let mut enc=ZlibEncoder::new(Vec::new(),Compression::default());
+                enc.write_all(&c).unwrap();
+                stream.extend((c.len() as u32).to_le_bytes());
+                stream.extend(enc.finish().unwrap());
+            }else{
+                stream.extend((c.len() as u32).to_le_bytes());
+                stream.extend_from_slice(&c);
+            }
+            let mut input=if compressed {b"AERA".to_vec()}else{b"aera".to_vec()};
+            input.extend(0u32.to_le_bytes());
+            input.extend(chunk(b"KNHC",&stream));
+            input.extend(chunk(b"EXTR",b"unrecognized and unchanged"));
+            let area=RawArea::from_bytes(input).unwrap();
+            let new_ids=[7u32,8,9,10].iter().flat_map(|id|id.to_le_bytes()).collect::<Vec<_>>();
+            let output=area.with_cell_block_changes(&[(0,1,new_ids)]).unwrap();
+            let after=RawArea::from_bytes(output).unwrap();
+            assert_eq!(after.cells[0].as_ref().unwrap().layers(),Some([7,8,9,10]));
+            assert_eq!(after.chunks[1].data,area.chunks[1].data);
+            assert_eq!(after.cells[0].as_ref().unwrap().height(0,0),
+                area.cells[0].as_ref().unwrap().height(0,0));
+            assert!(area.with_cell_block_changes(&[(0,1,vec![0])]).is_err());
+            assert!(area.with_cell_block_changes(&[(1,1,vec![0;16])]).is_err());
+            assert!(area.with_cell_block_changes(&[
+                (0,1,vec![0;16]),(0,1,vec![0;16])]).is_err());
+        }
+    }
+    #[test]
     fn compressed_lod(){
         use flate2::{Compression,write::ZlibEncoder};
         use std::io::Write;

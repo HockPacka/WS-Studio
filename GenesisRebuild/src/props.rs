@@ -555,6 +555,50 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
     out
 }
 
+/// Open one indexed model as an independent Genesis viewport preview.
+/// All files are read-only; the FEDI sector companions still resolve through ClientData.
+pub fn spawn_model_preview(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    images: &mut Assets<Image>,
+    index: &AssetIndex,
+    cache: &PropModelCache,
+    path: &str,
+) -> Result<(Vec<Entity>, [f32;3], [f32;3]), String> {
+    let kind = model_kind(path).ok_or("Select a .m3 or .i3 model")?;
+    let data = read_asset(index, path).ok_or("Model not found in indexed ClientData or exceeds 64 MiB")?;
+    let (min, max) = match kind {
+        ModelKind::M3 => {
+            let m = m3::read_m3(&data)?;
+            (m.bounds_min, m.bounds_max)
+        }
+        ModelKind::I3 => {
+            if i3::is_sector(&data) {
+                let m = i3::read_sector(&data)?;
+                (m.bbox_min, m.bbox_max)
+            } else {
+                let m = i3::read_model(&data)?;
+                (m.bbox_min, m.bbox_max)
+            }
+        }
+    };
+    let mut budget = 1;
+    let model = cache.load(index, meshes, materials, images, path, &mut budget)
+        .ok_or("Model has no drawable parts (or sector files could not be loaded)")?;
+    let root = commands.spawn((Transform::default(), Visibility::default())).id();
+    let mut entities = vec![root];
+    for part in &model.parts {
+        let child = commands.spawn((
+            Mesh3d(part.mesh.clone()), MeshMaterial3d(part.material.clone()),
+            Transform::default(),
+        )).id();
+        commands.entity(root).add_child(child);
+        entities.push(child);
+    }
+    Ok((entities, min, max))
+}
+
 pub fn spawn_props(
     commands: &mut Commands,
     props: &[AreaProp],

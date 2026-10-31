@@ -580,11 +580,11 @@ fn refresh_terrain_view(
     let Some(tile)=loaded.tile.as_ref() else{return;};
     let Some(entity)=loaded.mesh_entity else{return;};
     let preview=if target.0==5 && loaded.terrain_albedo.is_none(){1}else{target.0};
-    let Ok((mesh,_))=if let Some(grid)=edit.grid() {
+    let Ok((mesh,_))=(if let Some(grid)=edit.grid() {
         terrain::terrain_mesh_from_grid(tile,preview,target.1,&grid)
     } else {
         terrain::terrain_mesh(tile,preview,target.1)
-    } else{return;};
+    }) else{return;};
     if let Ok((mut component,material))=mesh_components.get_mut(entity) {
         if let Some(mut terrain)=materials.get_mut(&material.0){
             let textured=target.0==5;

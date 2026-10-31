@@ -5,11 +5,14 @@ use wildstar_formats::zone::{MapDiscovery, ZoneTileCoords};
 mod area_ui;
 mod client_data;
 mod props;
+mod terrain_splat;
+mod splat_demo;
 mod streaming;
 mod terrain;
 mod terrain_material;
 mod water;
 use bevy::prelude::*;
+use bevy::pbr::ExtendedMaterial;
 use bevy::camera::Viewport;
 use std::path::Path;
 use bevy_egui::{egui, EguiContexts, EguiGlobalSettings, EguiPlugin,
@@ -104,6 +107,8 @@ struct LoadedArea {
     last_preview: (usize, usize),
     terrain_albedo: Option<Handle<Image>>,
     terrain_normal: Option<Handle<Image>>,
+    /// The terrain material carries runtime splat data (see `terrain_splat`).
+    terrain_splat: bool,
     water_entity: Option<Entity>,
     water_count: usize,
     layer_status: String,
@@ -224,6 +229,7 @@ fn load_raw_area(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut terrain_materials: ResMut<Assets<terrain_splat::TerrainMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     // Never load an AREA before its WildStar client asset root is indexed.
@@ -303,6 +309,8 @@ fn load_raw_area(
                     } else {
                         // Standalone single-tile mode: spawn terrain at world_center, water and props
                         loaded.terrain_albedo=None;
+                        loaded.terrain_splat=false;
+                        let mut splat_ext=terrain_splat::SplatExt::default();
                         loaded.layer_notes.clear();
                         loaded.missing_textures.clear();
                         loaded.layer_status=String::from("WorldLayer material unavailable");
@@ -315,7 +323,11 @@ fn load_raw_area(
                                 }
                             }
                         });
-                        if let Some(atlas)=atlas{
+                        if let Some(mut atlas)=atlas{
+                            if let Some(data)=atlas.splat.take(){
+                                splat_ext=data.into_extension(&mut images,state.terrain_view==5);
+                                loaded.terrain_splat=true;
+                            }
                             loaded.layer_status=format!(
                                 "WorldLayer: {} IDs, {} decoded textures ({} unresolved)",
                                 atlas.layers,atlas.textures,atlas.unresolved.len()
@@ -328,18 +340,21 @@ fn load_raw_area(
 
                         loaded.mesh_entity=Some(commands.spawn((
                             Mesh3d(meshes.add(mesh)),
-                            MeshMaterial3d(materials.add(StandardMaterial {
-                                base_color:Color::WHITE,
-                                base_color_texture:if state.terrain_view==5 {
-                                    loaded.terrain_albedo.clone()
-                                }else{None},
-                                normal_map_texture:if state.terrain_view==5 {
-                                    loaded.terrain_normal.clone()
-                                }else{None},
-                                perceptual_roughness:0.85,
-                                reflectance:0.2,
-                                cull_mode:None,
-                                ..default()
+                            MeshMaterial3d(terrain_materials.add(ExtendedMaterial{
+                                base:StandardMaterial{
+                                    base_color:Color::WHITE,
+                                    base_color_texture:if state.terrain_view==5 && !loaded.terrain_splat {
+                                        loaded.terrain_albedo.clone()
+                                    }else{None},
+                                    normal_map_texture:if state.terrain_view==5 && !loaded.terrain_splat {
+                                        loaded.terrain_normal.clone()
+                                    }else{None},
+                                    perceptual_roughness:0.85,
+                                    reflectance:0.2,
+                                    cull_mode:None,
+                                    ..default()
+                                },
+                                extension:splat_ext,
                             })),
                             Transform::from_xyz(world_center[0], 0.0, world_center[2]),
                         )).id());
@@ -382,8 +397,8 @@ fn refresh_terrain_view(
     state:Res<GenesisState>,
     mut loaded:ResMut<LoadedArea>,
     mut meshes:ResMut<Assets<Mesh>>,
-    mut materials:ResMut<Assets<StandardMaterial>>,
-    mut mesh_components:Query<(&mut Mesh3d,&MeshMaterial3d<StandardMaterial>)>,
+    mut materials:ResMut<Assets<terrain_splat::TerrainMaterial>>,
+    mut mesh_components:Query<(&mut Mesh3d,&MeshMaterial3d<terrain_splat::TerrainMaterial>)>,
 ){
     let target=(state.terrain_view,state.texture_index);
     if loaded.last_preview==target{return;}
@@ -392,11 +407,13 @@ fn refresh_terrain_view(
     let preview=if target.0==5 && loaded.terrain_albedo.is_none(){1}else{target.0};
     let Ok((mesh,_))=terrain::terrain_mesh(tile,preview,target.1) else{return;};
     if let Ok((mut component,material))=mesh_components.get_mut(entity) {
-        if let Some(mut standard)=materials.get_mut(&material.0){
-            standard.base_color_texture=if target.0==5{
+        if let Some(mut terrain)=materials.get_mut(&material.0){
+            let textured=target.0==5;
+            terrain.extension.params.enabled=(textured && loaded.terrain_splat) as u32;
+            terrain.base.base_color_texture=if textured && !loaded.terrain_splat{
                 loaded.terrain_albedo.clone()
             }else{None};
-            standard.normal_map_texture=if target.0==5{
+            terrain.base.normal_map_texture=if textured && !loaded.terrain_splat{
                 loaded.terrain_normal.clone()
             }else{None};
         }
@@ -441,6 +458,10 @@ fn update_camera(
 }
 
 fn main() {
+    if let Some(out)=std::env::var_os("GENESIS_SPLAT_DEMO"){
+        splat_demo::run(out.to_string_lossy().into_owned());
+        return;
+    }
     App::new()
         .insert_resource(GenesisState::default())
         .insert_resource(LoadedArea::default())
@@ -463,6 +484,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(EguiPlugin::default())
+        .add_plugins(terrain_splat::TerrainSplatPlugin)
         .add_systems(Startup, setup_scene)
         .add_systems(Update, (client_data::poll_system, load_raw_area,
             streaming::update_world_streaming,

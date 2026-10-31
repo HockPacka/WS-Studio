@@ -21,6 +21,8 @@ use crate::client_data::ClientFiles;
 use crate::props;
 use crate::terrain;
 use crate::terrain_material::{self, AtlasResult, TextureCache};
+use crate::terrain_splat::{SplatExt, TerrainMaterial};
+use bevy::pbr::ExtendedMaterial;
 use crate::water;
 use crate::{GenesisState, OrbitCamera};
 
@@ -139,7 +141,8 @@ impl WorldStreaming {
         self.receiver = Some(Mutex::new(resp_rx));
 
         let shared_rx = Arc::new(Mutex::new(req_rx));
-        let shared_cache = Arc::new(Mutex::new(TextureCache::default()));
+        // Streaming keeps many tiles resident: 256 px layer arrays keep their memory bounded.
+        let shared_cache = Arc::new(Mutex::new(TextureCache { splat_side: 256, ..Default::default() }));
 
         // Scale worker pool across available CPU cores (e.g. 6-8 threads on Ryzen)
         let worker_count = thread::available_parallelism()
@@ -313,6 +316,7 @@ pub fn update_world_streaming(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut terrain_materials: ResMut<Assets<TerrainMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     if !client.ready() {
@@ -336,7 +340,7 @@ pub fn update_world_streaming(
         processed_this_frame += 1;
 
         match resp.result {
-            Ok(baked) => {
+            Ok(mut baked) => {
                 // Check if tile is still within unload range of camera origin
                 let cam_origin = orbit.origin();
                 let current_cam = ZoneTileCoords::from_world_pos(cam_origin.x, cam_origin.z);
@@ -354,22 +358,31 @@ pub fn update_world_streaming(
                     .as_ref()
                     .and_then(|a| a.normal_image.as_ref().map(|img| images.add(img.clone())));
 
-                let terrain_mat = materials.add(StandardMaterial {
-                    base_color: Color::WHITE,
-                    base_color_texture: if state.terrain_view == 5 {
-                        albedo_handle
-                    } else {
-                        None
+                let splat = baked.atlas.as_mut().and_then(|a| a.splat.take());
+                let has_splat = splat.is_some();
+                let extension = match splat {
+                    Some(data) => data.into_extension(&mut images, state.terrain_view == 5),
+                    None => SplatExt::default(),
+                };
+                let terrain_mat = terrain_materials.add(ExtendedMaterial {
+                    base: StandardMaterial {
+                        base_color: Color::WHITE,
+                        base_color_texture: if state.terrain_view == 5 && !has_splat {
+                            albedo_handle
+                        } else {
+                            None
+                        },
+                        normal_map_texture: if state.terrain_view == 5 && !has_splat {
+                            normal_handle
+                        } else {
+                            None
+                        },
+                        perceptual_roughness: 0.85,
+                        reflectance: 0.2,
+                        cull_mode: None,
+                        ..default()
                     },
-                    normal_map_texture: if state.terrain_view == 5 {
-                        normal_handle
-                    } else {
-                        None
-                    },
-                    perceptual_roughness: 0.85,
-                    reflectance: 0.2,
-                    cull_mode: None,
-                    ..default()
+                    extension,
                 });
 
                 if streaming.loaded_tiles.is_empty() {

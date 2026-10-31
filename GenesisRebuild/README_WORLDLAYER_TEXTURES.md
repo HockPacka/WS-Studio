@@ -54,3 +54,21 @@ cargo fast
 Im Client-Root-Dialog den WildStar-Root auswählen und anschließend über `File -> Open AREA...` eine echte WildStar-`.area`-Datei laden. In `AREA -> Textured` den Materialstatus prüfen.
 
 Referenzen: `HockPacka/WS-Tools/wowdecomp/Engine/Source/Area3/Tbl.cpp`, `tools/tbl_dump.py`, `tools/blender_addon/wildstar_m3/tex.py`, `docs/area_format.md`, `docs/terrain_blocks_dbg39.md`, `docs/terrain_texture_fixes_dbg40.md`.
+
+## Runtime-Splatting (Pixel-Shader, wie LandPS)
+Statt eines gebackenen Atlas mischt `src/terrain_splat.wesl` die vier WorldLayer-Texturen jeder 32-m-Zelle pro Pixel:
+
+- **Texture-Array** aller im Tile benutzten Layer (Albedo sRGB + Tangent-Normal), mit Mip-Kette, Repeat und 16x Anisotropie. Größe 512 px (Einzel-Tile) bzw. 256 px (Streaming, begrenzt den Speicher).
+- **Gewichtskarte** 1024² (4 Gewichte je Pixel), **Macro-Tint** 1024² (neutral 128), **Layer-Index je Zelle** 16×16, **Kachelgröße je Layer** (`meters_per_tile`) im Uniform.
+- Farbe = Σ Gewicht × Layer(Weltmeter / Kachelgröße) × Tint; Normal-Layer werden gemischt und über die Tangente ins Lighting gegeben.
+- Debug-Ansichten (1–4) laufen unverändert über die Vertexfarben; nur Ansicht 5 aktiviert den Splat-Shader.
+- Fällt der Splat-Pfad aus (keine Texturen dekodierbar), greift weiter der alte Atlas.
+
+### Selbsttest ohne WildStar-Daten
+```bash
+GENESIS_SPLAT_DEMO=out.png cargo run      # rendert prozedurale Layer, speichert out.png, beendet sich
+```
+Headless (Linux): `Xvfb :99 &`, `DISPLAY=:99 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`.
+
+### Nicht geprüft
+Mit echten ClientData-Texturen wurde der Shader nicht gesehen. Offen: Vorzeichen der Normal-Y-Achse (DirectX vs. OpenGL), exakte Blend-Funktion der Original-Shader-Permutation.

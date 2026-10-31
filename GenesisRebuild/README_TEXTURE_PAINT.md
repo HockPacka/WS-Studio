@@ -27,6 +27,23 @@ The Genesis editor now has an experimental **native texture Save As path for kno
 - New regressions compare quality with the legacy encoder across greyscale gradients, mixed colors, uniform colors, tints and fixed-seed noise, and verify source preservation when Bit 3/13 or raw/BC1 representations disagree.
 - This is **format quality and safety**, not proof of retail GPU shader parity. The original game assets and native bit 19/20 encoding are unchanged.
 
+## Cross-AREA border bundle export (experimental)
+
+The **Paint** and **Sculpt** panels provide a separate **Export AREA Bundle (sync neighbour borders)...** action. This does **not** replace the existing single-file `Save AREA As...`.
+
+- Open a native `MapName.ZZXX.area` in standalone edit mode and paint weights or RGB at the **first pixel row/column** of the AREA (x=0 or z=0).
+- Choose an existing **parent folder** with the Windows folder picker. Genesis creates a **new, unused subfolder** `<source-stem>_GenesisBundle` containing the edited source AREA and only the required *left, top and/or top-left* neighbouring AREA copies. All output files retain their original `MapName.ZZXX.area` filenames so the tiles remain discoverable together.
+- The source and neighbour files are read-only. Genesis pre-validates **every output AREA in memory** (including border colors, weights, original BC2 alpha and cell/prop counts) before creating the output folder; writes use `create_new` and sync. If a write fails, it attempts to remove only the files it created. **Multi-file writes are not crash-atomic**: a power outage can leave an incomplete isolated bundle, but never overwrites original game files.
+- Edge samples in neighbouring AREAs are written only into the **65th stored row/column**, including duplicated samples where two inner cells meet. The writer never changes a neighbour's 64×64 interior, nor invents a missing block.
+- Weight propagation is rejected if the relevant neighbour's four **WorldLayer IDs differ** from the source cell, if bit 19/20 are present, if the neighbour lacks the native weight blocks, or if decompressed errors exceed 20%. RGB565/BC2 color borders are checked within 50/255 per channel; original BC2 alpha is byte-preserved.
+- Missing required neighbour files (or ambiguous coordinate names) cause export refusal. The original single-file Save As remains available.
+- Cross-AREA **height boundary** samples are not yet supported; the bundle exporter refuses height edits on x=0/x=256/z=0/z=256. Height edits confined to the interior are allowed. A future height-boundary exporter must use the separate 257×257 height sample and 19×19 native ghost layout.
+- For a standalone edited AREA to be *globally* seam-consistent, neighbouring AREA tiles with their own independent edits need coordinated conflict-resolution; this exporter accepts only the current editable source AREA and unmodified neighbour inputs.
+
+### Internal API
+
+`crates/wildstar_formats/src/area/cross_tile_write.rs` provides `BorderSample`, `BorderWeights`, `plan_cross_tile_border_edits`, and `validate_cross_tile_border`. The planner operates in native *target tile coordinates*, accepts only x=1024 or z=1024 and produces exact-length replacement blocks via `RawArea::with_cell_block_changes`. The editor's bundle workflow lives in `src/terrain_bundle.rs`.
+
 ## Native AREA export: supported vs blocked
 
 Supported (native, data-preserving where possible):
@@ -66,4 +83,4 @@ The format writer lives under `crates/wildstar_formats/src/area/texture_write.rs
 
 **Current Phase A research:** The **Render → Bit 19/20 Weight Research** panel offers a *read-only, tentative* BC1 decode (using the known 17/18 interpretation as a hypothesis), and reports the selected cell's difference from native bit 29. This is diagnostic evidence, **not validation** of a 19/20 writer. All writes involving the unresolved 19/20 pair remain blocked.
 
-**Next step**: verify bit 29's compressed companion pair **19/20** using real client map samples and shader behavior, implement a native encoder only after validation, add multi-AREA tile-edge propagation, improve BC1/BC2 error quality, and visually verify real retail maps before considering the system production-safe.
+**Next step**: verify bit 29's compressed companion pair **19/20** using real client map samples and shader behavior, implement a native encoder only after validation, extend multi-AREA handling to cross-tile HEIGHT edits and conflicting simultaneous tile edits, improve BC1/BC2 error quality, and visually verify real retail maps before considering the system production-safe.

@@ -91,6 +91,10 @@ impl ClutterPaint {
             preset>3||action>2{return false;}
         let center=(world-self.origin+Vec2::splat(256.0))*2.0;
         let radius=(radius*2.0).clamp(0.5,128.0);
+        if center.x+radius<0.0||center.y+radius<0.0||
+            center.x-radius>=1024.0||center.y-radius>=1024.0{
+            return false;
+        }
         let x0=((center.x-radius).floor() as isize).max(0) as usize;
         let x1=((center.x+radius).ceil() as isize).min(1023) as usize;
         let z0=((center.y-radius).floor() as isize).max(0) as usize;
@@ -235,6 +239,17 @@ mod tests{
         assert_eq!(p.selector_at(0,32,32,1),Some(3));
         assert!(p.undo());
         assert_eq!(p.mask_at(0,32,32),Some(false));
+    }
+    #[test]
+    fn out_of_bounds_world_hit_never_writes_or_overflows(){
+        let (_,mut p)=fixture();
+        p.begin();
+        assert!(!p.brush(Vec2::new(-10000.0,-10000.0),
+            50.0,0,1,0));
+        assert!(!p.brush(Vec2::new(10000.0,10000.0),
+            50.0,0,1,0));
+        p.end();
+        assert!(!p.dirty());
     }
     #[test]
     fn fails_closed_when_native_block_is_missing(){

@@ -94,6 +94,41 @@ impl Default for M3Material {
             color_mod:[1.0;3],layer_count:0,color_texture:None,normal_texture:None}
     }
 }
+/// A native M3 DPointer keyframe track. The track index determines its type:
+/// 0..=3 half3 scale, 4..=5 quaternion, 6..=7 float3 translation.
+#[derive(Debug,Clone,Default)]
+pub struct M3BoneTrack {
+    pub times_ms:Vec<u32>,
+    /// xyz for scales/translations, xyzw for quaternion rotation.
+    pub values:Vec<[f32;4]>,
+}
+impl M3BoneTrack {
+    pub fn sample(&self,time_ms:u32,rotation:bool)->Option<[f32;4]>{
+        let count=self.times_ms.len();
+        if count==0||count!=self.values.len(){return None;}
+        if count==1||time_ms<=self.times_ms[0]{return Some(self.values[0]);}
+        if time_ms>=self.times_ms[count-1]{return Some(self.values[count-1]);}
+        let hi=self.times_ms.partition_point(|&t|t<=time_ms);
+        let lo=hi-1;
+        let duration=self.times_ms[hi]-self.times_ms[lo];
+        if duration==0{return Some(self.values[hi]);}
+        let t=(time_ms-self.times_ms[lo]) as f32/duration as f32;
+        let a=self.values[lo];
+        let mut b=self.values[hi];
+        // Rotate along the quaternion's shortest arc.
+        if rotation && (0..4).map(|i|a[i]*b[i]).sum::<f32>()<0.0 {
+            for v in &mut b{*v = -*v;}
+        }
+        let mut v=[0.0;4];
+        for i in 0..4{v[i]=a[i]+(b[i]-a[i])*t;}
+        if rotation{
+            let len=v.iter().map(|v|v*v).sum::<f32>().sqrt();
+            if len>1e-8{for c in &mut v{*c/=len;}}
+        }
+        Some(v)
+    }
+}
+
 #[derive(Debug,Clone)]
 pub struct M3Bone {
     pub model_bone_id:u16,
@@ -103,6 +138,8 @@ pub struct M3Bone {
     pub pivot:[f32;3],
     /// World bind matrix as stored (row-vector convention).
     pub bind_world:[f32;16],
+    /// Native tracks (primary 0/2/4/6; alternate 1/3/5/7).
+    pub tracks:[M3BoneTrack;8],
 }
 #[derive(Debug,Clone)]
 pub struct M3Clip {
@@ -128,6 +165,11 @@ pub struct M3Model {
     pub bounds_max:[f32;3],
 }
 impl M3Model {
+    /// Sample a bone track directly on the model's shared millisecond timeline.
+    pub fn sample_bone_track(&self,bone:usize,track:usize,time_ms:u32)->Option<[f32;4]>{
+        let values=self.bones.get(bone)?.tracks.get(track)?;
+        values.sample(time_ms,track==4||track==5)
+    }
     pub fn triangle_count(&self)->usize{self.indices.len()/3}
     pub fn bounds_size(&self)->[f32;3]{
         [self.bounds_max[0]-self.bounds_min[0],self.bounds_max[1]-self.bounds_min[1],
@@ -188,8 +230,42 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
 
     let (n,a)=ap(0x180).filter(|&(n,a)|n<=len as u64&&a as u64+n*0x160<=len as u64)
         .ok_or("bones out of bounds")?;
+    // Bone DPointer offsets are relative to the aligned end of the full bone table.
+    let track_base=align16(a+n as usize*0x160);
     for i in 0..n as usize{
         let o=a+i*0x160;
+        let mut tracks:[M3BoneTrack;8]=std::array::from_fn(|_|M3BoneTrack::default());
+        for (ti,track) in tracks.iter_mut().enumerate(){
+            let p=o+0x10+ti*0x18;
+            let count=u64_at(d,p).unwrap_or(0);
+            if count==0{continue;}
+            if count>1_000_000{return Err("bone animation has too many keys".into());}
+            let stride=if ti<4{6}else if ti<6{8}else{12};
+            let key=u64_at(d,p+8).ok_or("bone animation key pointer missing")?;
+            let value=u64_at(d,p+16).ok_or("bone animation value pointer missing")?;
+            let ka=range(len,track_base,key,count,4).ok_or("bone animation keys out of bounds")?;
+            let va=range(len,track_base,value,count,stride).ok_or("bone animation values out of bounds")?;
+            for k in 0..count as usize{
+                let time=u32_at(d,ka+k*4).ok_or("bone animation key missing")?;
+                if track.times_ms.last().is_some_and(|&prev|time<prev){
+                    return Err("bone animation keys are not ordered".into());
+                }
+                track.times_ms.push(time);
+                let at=va+k*stride;
+                let mut out=[0.0;4];
+                if ti<4{
+                    for j in 0..3{out[j]=half_to_f32(u16_at(d,at+j*2).unwrap_or(0));}
+                }else if ti<6{
+                    for j in 0..4{out[j]=(u16_at(d,at+j*2).unwrap_or(0) as i16) as f32/16384.0;}
+                }else{
+                    for j in 0..3{out[j]=f32_at(d,at+j*4).unwrap_or(0.0);}
+                }
+                if out.iter().any(|v|!v.is_finite()){
+                    return Err("non-finite bone animation value".into());
+                }
+                track.values.push(out);
+            }
+        }
         let mut bind_world=[0f32;16];
         for (k,v) in bind_world.iter_mut().enumerate(){*v=f32_at(d,o+0xD0+k*4).unwrap_or(0.0);}
         m.bones.push(M3Bone{
@@ -197,7 +273,7 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
             parent:u16_at(d,o+4).unwrap_or(0xFFFF) as i16,
             hash:u32_at(d,o+8).unwrap_or(0),
             pivot:[bind_world[12],bind_world[13],bind_world[14]],
-            bind_world,
+            bind_world,tracks,
         });
     }
 
@@ -477,6 +553,32 @@ mod tests {
         assert_eq!(m.vertices[0].uv1,[2.0,0.0]);
         assert_eq!(m.vertices[0].color0,[128,64,255,192]);
         assert_eq!(m.vertices[0].color1,[11,22,33,44]);
+    }
+    #[test]
+    fn decodes_and_samples_bone_quaternion_track(){
+        let mut d=sample();
+        let bones=align16(d.len());
+        put(&mut d,0x180,&1u64.to_le_bytes());
+        put(&mut d,0x188,&((bones-HEADER_END) as u64).to_le_bytes());
+        d.resize(bones+0x160,0);
+        let keys=align16(bones+0x160);
+        let p=bones+0x70; // rotation track 4
+        put(&mut d,p,&2u64.to_le_bytes());
+        put(&mut d,p+8,&0u64.to_le_bytes());
+        put(&mut d,p+16,&16u64.to_le_bytes());
+        put(&mut d,keys,&0u32.to_le_bytes());
+        put(&mut d,keys+4,&1000u32.to_le_bytes());
+        // First quaternion = identity; last = 90-degree around Z.
+        let q0=[0i16,0,0,16384];
+        let q1=[0i16,0,11585,11585];
+        for (k,q) in [q0,q1].iter().enumerate(){
+            for j in 0..4{put(&mut d,keys+16+k*8+j*2,&q[j].to_le_bytes());}
+        }
+        let m=read_m3(&d).unwrap();
+        assert_eq!(m.bones[0].tracks[4].times_ms,[0,1000]);
+        let halfway=m.sample_bone_track(0,4,500).unwrap();
+        assert!((halfway[2]-0.38268).abs()<0.002);
+        assert!((halfway[3]-0.92388).abs()<0.002);
     }
     #[test]
     fn half_floats(){

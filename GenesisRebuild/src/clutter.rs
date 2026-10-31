@@ -38,6 +38,7 @@ pub struct ClutterPreview {
     seen_request:u64,
     source:Option<std::path::PathBuf>,
     last_camera:Option<Vec3>,
+    last_cutoff:f32,
 }
 fn next(random:&mut u32)->f32{
     *random^=*random<<13;
@@ -152,6 +153,12 @@ fn destroy(commands:&mut Commands,preview:&mut ClutterPreview){
     preview.opaque_parts=0;
     preview.transparent_parts=0;
     preview.last_camera=None;
+    preview.last_cutoff=0.0;
+    preview.transparent_parts=0;
+    preview.rejected_by_mask=0;
+    preview.rejected_by_selector=0;
+    preview.rejected_by_weight=0;
+    preview.rejected_by_slope=0;
 }
 pub fn update_preview(
     mut commands:Commands,
@@ -259,11 +266,13 @@ pub fn update_preview(
     }
     if preview.roots.is_empty(){return;}
     let camera=orbit.origin();
-    if preview.last_camera.is_some_and(|last|last.distance_squared(camera)<16.0){
+    let cutoff=state.clutter_view_distance.max(32.0);
+    if preview.last_cutoff==cutoff &&
+        preview.last_camera.is_some_and(|last|last.distance_squared(camera)<16.0){
         return;
     }
     preview.last_camera=Some(camera);
-    let cutoff=state.clutter_view_distance.max(32.0);
+    preview.last_cutoff=cutoff;
     let square=cutoff*cutoff;
     for &(entity,center) in &preview.roots{
         // Cull spatial groups on X/Z, not arbitrary terrain elevation.
@@ -284,6 +293,55 @@ mod tests{
         for _ in 0..250{
             assert_eq!(next(&mut a),next(&mut b));
         }
+    }
+    fn test_area(blocked:bool,selector:u8)->(RawArea,HeightGrid){
+        let mut raw=vec![None;32];
+        let mut layers=Vec::new();
+        for layer in [71u32,0,0,0] {
+            layers.extend(layer.to_le_bytes());
+        }
+        raw[1]=Some(layers);
+        let mut weightmap=vec![0u8;65*65*2];
+        for bytes in weightmap.chunks_exact_mut(2){
+            bytes.copy_from_slice(&0x000Fu16.to_le_bytes());
+        }
+        raw[2]=Some(weightmap);
+        raw[16]=Some(vec![if blocked{0x20}else{0};64*64]);
+        raw[27]=Some(vec![selector;64*64]);
+        let cell=wildstar_formats::area::AreaCell{
+            index:0,flags:(1<<1)|(1<<2)|(1<<16)|(1<<27),
+            blocks:raw,subchunks:Vec::new(),
+        };
+        let mut cells=vec![None;256];
+        cells[0]=Some(cell);
+        let a=RawArea{version:0,compressed:false,original:Vec::new(),
+            chunks:Vec::new(),cells,lod_prefix:None};
+        let g=HeightGrid{
+            heights:vec![0.0;GRID*GRID],
+            present:vec![true;GRID*GRID],
+            cells:1,min:0.0,max:0.0,
+        };
+        (a,g)
+    }
+    #[test]
+    fn selector_mask_weights_and_budgets_gate_deterministic_generation(){
+        let (area,grid)=test_area(false,0);
+        let a=placements(&area,&grid,0,0,32,12);
+        let b=placements(&area,&grid,0,0,32,12);
+        assert_eq!(a.instances.len(),12);
+        assert_eq!(a.instances.len(),b.instances.len());
+        for (a,b) in a.instances.iter().zip(&b.instances){
+            assert_eq!(a.local,b.local);
+            assert_eq!(a.yaw,b.yaw);
+            assert_eq!(a.scale,b.scale);
+            assert_eq!(a.cell,0);
+        }
+        assert!(placements(&area,&grid,0,1,32,50).instances.is_empty());
+        assert!(placements(&area,&grid,1,0,32,50).instances.is_empty());
+        let (blocked,grid)=test_area(true,0);
+        let result=placements(&blocked,&grid,0,0,32,50);
+        assert_eq!(result.instances.len(),0);
+        assert_eq!(result.masked,32);
     }
     #[test]
     fn missing_native_clutter_blocks_produce_no_guessed_instances(){

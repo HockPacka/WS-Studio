@@ -17,6 +17,9 @@ gefunden wird (Cache pro Pfad, max. 48 neue Modelle pro Tile-Spawn, Dateien > 64
 Nicht lesbare Modelle behalten den Würfel.
 Props werden pro Material in Teilmeshes zerlegt; der Texturpfad (M3: erste Material-Ebene, I3: Material-Set `Default_Pass` wenn vorhanden, sonst 0) wird über den Index aufgelöst und mit dem `.tex`-Decoder (max. 512 px) als Farbtextur gesetzt. Fehlt die Textur, bleibt die Einfärbung.
 
+### Direkte Modellvorschau
+Im File-Menü **Open Model (.m3/.i3)...** wählen (oder **Open Model...** im oberen Toolbar). Die Datei muss in den aktuell indexierten `ClientData`-/`ClientDataEN`-Ordnern liegen. Genesis zeigt FEDI-Modelle mit ihren FEDS-Sektoren, einzelne FEDS-Dateien und M3-Modelle im 3D-Viewport, setzt den Kamera-Fokus anhand der Bounds und zeigt die Metadaten im Objects-Dock. Beim Wechsel in die Modellvorschau wird das laufende World Streaming beendet; die Dateien werden nicht verändert.
+
 ### M3/I3-Rendering-Ausbau
 - M3 liest nun **beide UV-Sets und beide Vertexfarbkanäle** aus den Vertexlayouts. Für den PBR-Vertexfarbkanal wird M3-Color0 mit WildStar-RGB-Multiplikator 2 (`byte / 128`) übernommen; ein nicht vorhandener Farbkanal bleibt neutral.
 - Die Geometrie übergibt UV0, UV1 und Vertexfarbe an Bevy. `StandardMaterial` verwendet zunächst UV0; das zweite UV-Set und Color1 sind für einen künftigen WildStar-spezifischen Shader vorhanden, aber **kein Nachweis der originalen Layer-Mischung**.
@@ -46,8 +49,8 @@ Im Objects-Dock zeigt jeder Prop-Eintrag alle Modell-Metadaten (Vertices, Dreiec
 ## Noch offen
 - Skinfx-Texturen, Mehrschicht-Materialien (4 Layer, Layer-Gewichte aus Vertexfarbe 1) und Material-Varianten (`Aurin_Autumn`); nur Layer 0 wird gerendert.
 - Animierte Material-Parameter (nur der erste Key), Parallax/Height, originalgetreues I3-Vertexfarb-Blending und UV1-abhängige Spezialshader.
-- Skinning/Animation: Modelle stehen in der Bind-Pose.
-- M3: Animationstracks, Partikel/Ribbons, Lichter, Kameras werden nicht dekodiert.
+- Skelette: Die acht nativen Keyframe-Tracks pro M3-Bone werden nun dekodiert (Scale-Half3, Quaternion-i16 und Translation-f32), inklusive Zeitstempeln und Interpolations-API. **GPU-/CPU-Skinning und tatsächliches Abspielen der Clips fehlen noch**; Modelle werden weiterhin statisch dargestellt. Alternative Pose-Layers 1/3/5/7 sind nur als Rohtracks verfügbar.
+- M3: Spezial-Emittersysteme, Ribbon-Rendering, Licht- und Kamera-Entities sowie sekundäre Animations-Pose-Layer-Interpretation fehlen.
 - Achsen/Skalierung der Props gegenüber dem Terrain sind ungeprüft (Transform wird wie beim Marker übernommen).
 
 ## Prüfen
@@ -56,4 +59,4 @@ cargo test -p wildstar_formats
 cargo run -p wildstar_formats --example dump_model -- Avatus.m3
 ```
 
-> **Verifikationsstand:** Parser-Unit-Tests decken nun die M3-Zweitkanäle und I3-Passkodierung ab. Original-WildStar-GPU-Vergleich, Animationsplayback und vollständige Sondermaterialien sind weiterhin nicht nachgewiesen.
+> **Verifikationsstand:** Parser-Unit-Tests decken nun die M3-Zweitkanäle, M3-Bonetracks (inkl. Quaternion-Interpolation) und I3-Passkodierung ab. Original-WildStar-GPU-Vergleich, Animationsplayback und vollständige Sondermaterialien sind weiterhin nicht nachgewiesen.

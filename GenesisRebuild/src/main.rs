@@ -303,6 +303,11 @@ fn load_raw_area(
         Ok(tile)=>{
             loaded.preview_model=None;
             viewer.clear_preview();
+            if !is_streaming {
+                streaming.clear_all(&mut commands);
+                streaming.active_map = None;
+                streaming.camera_tile = None;
+            }
             let water_bodies=tile.all_water_bodies();
             loaded.water_count=water_bodies.len();
             let decoded_props=tile.prop_placements();
@@ -524,6 +529,30 @@ fn load_model_preview(
     }
 }
 /// Replace only the mesh asset when an AREA debug-view option changes.
+/// Rebuild the standalone AREA mesh after in-memory height edits or Undo/Redo.
+/// The raw AREA remains intact until Save As. One asset is replaced, not
+/// reloaded from disk, so texture splatting and prop entities remain attached.
+fn refresh_edited_terrain(
+    state: Res<GenesisState>,
+    loaded: Res<LoadedArea>,
+    mut edit: ResMut<terrain_edit::TerrainEdit>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mesh_entities: Query<&Mesh3d>,
+) {
+    if !edit.is_ready() || edit.revision == edit.mesh_revision { return; }
+    let (Some(area),Some(entity))=(loaded.tile.as_ref(), loaded.mesh_entity) else {return;};
+    let Ok(mesh_handle)=mesh_entities.get(entity) else {return;};
+    let Some(grid)=edit.grid() else {return;};
+    let preview=if state.terrain_view==5 && loaded.terrain_albedo.is_none(){
+        1
+    }else{state.terrain_view};
+    if let Ok((mesh,_))=terrain::terrain_mesh_from_grid(area,preview,state.texture_index,&grid) {
+        if let Some(asset)=meshes.get_mut(&mesh_handle.0){
+            *asset = mesh;
+            edit.mesh_revision = edit.revision;
+        }
+    }
+}
 /// Push the macro tint settings to every terrain material (single tile and streamed tiles).
 fn apply_tint_settings(
     state:Res<GenesisState>,
@@ -540,6 +569,7 @@ fn apply_tint_settings(
 }
 fn refresh_terrain_view(
     state:Res<GenesisState>,
+    edit: Res<terrain_edit::TerrainEdit>,
     mut loaded:ResMut<LoadedArea>,
     mut meshes:ResMut<Assets<Mesh>>,
     mut materials:ResMut<Assets<terrain_splat::TerrainMaterial>>,
@@ -550,7 +580,11 @@ fn refresh_terrain_view(
     let Some(tile)=loaded.tile.as_ref() else{return;};
     let Some(entity)=loaded.mesh_entity else{return;};
     let preview=if target.0==5 && loaded.terrain_albedo.is_none(){1}else{target.0};
-    let Ok((mesh,_))=terrain::terrain_mesh(tile,preview,target.1) else{return;};
+    let Ok((mesh,_))=if let Some(grid)=edit.grid() {
+        terrain::terrain_mesh_from_grid(tile,preview,target.1,&grid)
+    } else {
+        terrain::terrain_mesh(tile,preview,target.1)
+    } else{return;};
     if let Ok((mut component,material))=mesh_components.get_mut(entity) {
         if let Some(mut terrain)=materials.get_mut(&material.0){
             let textured=target.0==5;
@@ -1784,6 +1818,8 @@ fn dock_world(
     ui.label(egui::RichText::new("World / Zone Streaming").strong().size(10.));
     ui.separator();
 
+    ui.checkbox(&mut state.area_standalone, "Open AREA standalone (editable)");
+    ui.label(egui::RichText::new("Streaming zone tiles are read-only. Standalone AREA supports sculpting.").small());
     ui.group(|ui| {
         ui.label(egui::RichText::new("World Streaming").strong().size(10.));
         ui.horizontal(|ui| {

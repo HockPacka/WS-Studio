@@ -312,8 +312,8 @@ mod tests{
         let area=mock_area();
         let weight=BorderWeights{layer_ids:[3,4,5,6],rgba:[0,255,0,0]};
         let samples=[
-            BorderSample{x:1024,z:1000,weights:Some(weight),rgb:Some([0,255,0])},
-            BorderSample{x:1000,z:1024,weights:Some(weight),rgb:None},
+            BorderSample{x:1024,z:960,weights:Some(weight),rgb:Some([0,255,0])},
+            BorderSample{x:960,z:1024,weights:Some(weight),rgb:None},
             BorderSample{x:1024,z:1024,weights:None,rgb:Some([0,0,255])},
         ];
         let plan=plan_cross_tile_border_edits(&area,&samples).unwrap();
@@ -323,9 +323,9 @@ mod tests{
             amended.cells[index].as_mut().unwrap().blocks[bit]=Some(data);
         }
         assert_eq!(amended.cells[255].as_ref().unwrap()
-            .normalized_weights(64,40),Some([0,15,0,0]));
+            .normalized_weights(64,0),Some([0,15,0,0]));
         assert_eq!(amended.cells[254].as_ref().unwrap()
-            .normalized_weights(40,64),Some([0,15,0,0]));
+            .normalized_weights(64,64),Some([0,15,0,0]));
         assert_eq!(amended.cells[255].as_ref().unwrap()
             .color_rgb565(64,64),Some([0,0,255]));
         assert_eq!(amended.cells[255].as_ref().unwrap()

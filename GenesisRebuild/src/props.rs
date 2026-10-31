@@ -76,14 +76,14 @@ impl PartMaterial {
 }
 
 #[derive(Clone)]
-struct ModelPart {
-    mesh: Handle<Mesh>,
-    material: Handle<StandardMaterial>,
+pub(crate) struct ModelPart {
+    pub(crate) mesh: Handle<Mesh>,
+    pub(crate) material: Handle<StandardMaterial>,
 }
 
 #[derive(Clone)]
-struct CachedModel {
-    parts: Vec<ModelPart>,
+pub(crate) struct CachedModel {
+    pub(crate) parts: Vec<ModelPart>,
 }
 
 pub(crate) fn generate_fast_tangents(mesh: &mut Mesh) {
@@ -436,7 +436,7 @@ impl PropModelCache {
         handle
     }
 
-    fn load(
+    pub(crate) fn load(
         &self,
         index: &AssetIndex,
         meshes: &mut Assets<Mesh>,

@@ -10,6 +10,7 @@ mod terrain_splat;
 mod splat_demo;
 mod streaming;
 mod terrain;
+mod terrain_edit;
 mod terrain_material;
 mod water;
 mod sky;
@@ -63,6 +64,10 @@ struct GenesisState {
     bottom_tab: usize,
     time_of_day: f32,
     terrain_view: usize,
+    area_standalone: bool,
+    terrain_save_dialog: bool,
+    terrain_undo_request: bool,
+    terrain_redo_request: bool,
 }
 impl Default for GenesisState {
     fn default() -> Self {
@@ -99,6 +104,10 @@ impl Default for GenesisState {
             bottom_tab: 0,
             time_of_day: 12.0,
             terrain_view: 5,
+            area_standalone: true,
+            terrain_save_dialog: false,
+            terrain_undo_request: false,
+            terrain_redo_request: false,
         }
     }
 }
@@ -249,6 +258,7 @@ fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>,
 }
 fn load_raw_area(
     mut state: ResMut<GenesisState>,
+    mut edit: ResMut<terrain_edit::TerrainEdit>,
     mut viewer: ResMut<prop_viewer::PropViewer>,
     client: Res<client_data::ClientFiles>,
     mut loaded: ResMut<LoadedArea>,
@@ -274,7 +284,7 @@ fn load_raw_area(
     });
 
     let mut is_streaming = false;
-    if let Some((parent, map_name)) = is_map_folder {
+    if !state.area_standalone { if let Some((parent, map_name)) = is_map_folder {
         if let Some(client_dir) = client.client_data_dir() {
             if parent.starts_with(client_dir.join("Map")) {
                 if let Ok(()) = streaming.open_map(&map_name, &client, &mut orbit, &mut commands) {
@@ -287,7 +297,7 @@ fn load_raw_area(
                 }
             }
         }
-    }
+    }}
 
     match area::RawArea::from_path(Path::new(&path)) {
         Ok(tile)=>{
@@ -314,6 +324,10 @@ fn load_raw_area(
                 .map(|c| c.world_center())
                 .unwrap_or([0.0, 0.0, 0.0]);
 
+            if is_streaming { edit.reset(); } else {
+                edit.load(Path::new(&path), &tile,
+                    Vec2::new(world_center[0], world_center[2]));
+            }
             let preview=if state.terrain_view==5 && loaded.terrain_albedo.is_none(){
                 1
             }else{state.terrain_view};
@@ -434,6 +448,7 @@ fn load_raw_area(
 /// Open a single model in the world viewport independently of an AREA tile.
 fn load_model_preview(
     mut state: ResMut<GenesisState>,
+    mut edit: ResMut<terrain_edit::TerrainEdit>,
     mut viewer: ResMut<prop_viewer::PropViewer>,
     client: Res<client_data::ClientFiles>,
     mut loaded: ResMut<LoadedArea>,
@@ -487,6 +502,7 @@ fn load_model_preview(
                 if let Ok(mut e) = commands.get_entity(old) { e.despawn(); }
             }
             loaded.prop_entities = scene.entities.clone();
+            edit.reset();
             viewer.set_preview(virtual_path.clone(), &scene);
             loaded.tile = None;
             loaded.props.clear();
@@ -606,6 +622,7 @@ fn main() {
     App::new()
         .insert_resource(GenesisState::default())
         .insert_resource(LoadedArea::default())
+        .insert_resource(terrain_edit::TerrainEdit::default())
         .insert_resource(OrbitCamera::default())
         .insert_resource(client_data::ClientFiles::default())
         .insert_resource(prop_viewer::PropViewer::default())
@@ -632,7 +649,7 @@ fn main() {
         .add_systems(Update, (client_data::poll_system, load_raw_area, load_model_preview,
             prop_viewer::update,
             streaming::update_world_streaming,
-            update_camera,
+            update_camera, refresh_edited_terrain,
             refresh_terrain_view, apply_tint_settings, sky::update_sky_lighting, sky::update_skybox_position, sky::update_skybox_celestials, sky::update_camera_fog, water::update_water_color).chain())
         .add_systems(EguiPrimaryContextPass, editor_ui)
         .run();
@@ -689,6 +706,8 @@ fn load_scenes(ctx: &egui::Context, previews: &mut Viewports) {
     }
 }
 fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
+             mut edit: ResMut<terrain_edit::TerrainEdit>,
+             camera_query: Query<(&Camera,&GlobalTransform),With<GenesisCamera>>,
              mut previews: Local<Viewports>, mut initialized: Local<bool>,
              mut orbit: ResMut<OrbitCamera>, mut loaded: ResMut<LoadedArea>,
              mut streaming: ResMut<streaming::WorldStreaming>,
@@ -720,9 +739,47 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 if state.dock_visible && !state.floating_mode {
                     dock_panels(ui, &mut state, &loaded, &client, viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &mut commands);
                 }
-                viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref(), &sky_mgr);
+                viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref(), &sky_mgr,
+                    edit.as_mut(), &camera_query);
             });
         });
+    // Keyboard undo/redo when no text editor is focused.
+    if !ctx.wants_keyboard_input() {
+        let (undo,redo)=ctx.input(|i|(
+            i.modifiers.command && i.key_pressed(egui::Key::Z) && !i.modifiers.shift,
+            (i.modifiers.command && i.key_pressed(egui::Key::Y)) ||
+            (i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::Z)),
+        ));
+        state.terrain_undo_request |= undo;
+        state.terrain_redo_request |= redo;
+    }
+    if state.terrain_undo_request {
+        state.terrain_undo_request=false;
+        state.status=if edit.undo(){ "Height Undo".into() }else{"Nothing to undo".into()};
+    }
+    if state.terrain_redo_request {
+        state.terrain_redo_request=false;
+        state.status=if edit.redo(){ "Height Redo".into() }else{"Nothing to redo".into()};
+    }
+    if state.terrain_save_dialog {
+        state.terrain_save_dialog = false;
+        if let (Some(area),Some(source))=(loaded.tile.as_ref(),edit.source.as_ref()) {
+            let suggested=source.file_stem().and_then(|s|s.to_str()).unwrap_or("terrain");
+            let mut picker=rfd::FileDialog::new()
+                .set_title("Export edited WildStar AREA (never overwrites originals)")
+                .add_filter("WildStar AREA", &["area"])
+                .set_file_name(format!("{suggested}_edited.area"));
+            if let Some(parent)=source.parent(){picker=picker.set_directory(parent);}
+            if let Some(out)=picker.save_file(){
+                state.status=match edit.save_as(area,&out) {
+                    Ok(vertices)=>format!("Saved {vertices} edited height vertices to {}",out.display()),
+                    Err(err)=>format!("AREA save failed: {err}"),
+                };
+            }
+        } else {
+            state.status="Open a standalone AREA before using Save As".into();
+        }
+    }
     if state.floating_mode { floating_panels(ctx, &mut state); }
     area_inspector_panel(ctx, &mut state, &loaded);
     if state.change_client_root {
@@ -778,7 +835,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
         if !open{state.open_area_path_dialog=false;}
     }
     zone_browser_dialog(ctx, &mut state, streaming.as_mut(), &client, orbit.as_mut(), &mut commands,
-        loaded.as_mut(), viewer.as_mut());
+        loaded.as_mut(), viewer.as_mut(), edit.as_mut());
     client_data::startup_prompt(ctx,&mut client);
     Ok(())
 }
@@ -786,6 +843,9 @@ fn command(state: &mut GenesisState, name: &'static str) {
     state.active = name;
     state.status = format!("{name}");
     match name {
+        "Undo" => {state.terrain_undo_request = true;}
+        "Redo" => {state.terrain_redo_request = true;}
+        "Save" | "Save As" | "Save Package" => {state.terrain_save_dialog = true;}
         "Terrain Sculpt" | "Sculpt" => {
             state.dock_tab = 0;
             state.dock_visible = true;
@@ -796,6 +856,10 @@ fn command(state: &mut GenesisState, name: &'static str) {
         }
         "Height Brush" | "Smooth" | "Flatten" | "Noise" | "Clone" | "Stamp" => {
             state.sculpt_tool = name;
+            state.mode = match name {
+                "Smooth" => 1, "Flatten" => 2, "Noise" => 3,
+                "Clone" => 4, "Stamp" => 5, _ => 0,
+            };
             state.dock_tab = 0;
             state.dock_visible = true;
         }
@@ -1084,7 +1148,9 @@ fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAr
 fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             previews:&Viewports,orbit:&mut OrbitCamera,loaded:&LoadedArea,
             streaming:&streaming::WorldStreaming,
-            sky_mgr:&sky::SkyManager) {
+            sky_mgr:&sky::SkyManager,
+            edit:&mut terrain_edit::TerrainEdit,
+            camera_query:&Query<(&Camera,&GlobalTransform),With<GenesisCamera>>) {
     egui::CentralPanel::default()
         .frame(egui::Frame::default().fill(if state.raw_view {
             egui::Color32::TRANSPARENT
@@ -1094,6 +1160,41 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             if state.raw_view {
                 orbit.rect=Some([rect.left(),rect.top(),rect.right(),rect.bottom()]);
                 let response=ui.allocate_rect(rect,egui::Sense::click_and_drag());
+                if !ui.input(|i| i.pointer.primary_down()) { edit.end_stroke(); }
+                if edit.is_ready() && streaming.active_map.is_none() &&
+                    state.dock_tab==0 && state.mode<=3 && response.hovered() {
+                    if let Some(pointer)=ui.input(|i|i.pointer.interact_pos()) {
+                        let (primary,shift,dt)=ui.input(|i|
+                            (i.pointer.primary_down(),i.modifiers.shift,i.stable_dt));
+                        let physical=(pointer-rect.min)*orbit.ui_pixels_per_point;
+                        if let Ok((camera, transform))=camera_query.single() {
+                            if let Ok(ray)=camera.viewport_to_world(transform,
+                                Vec2::new(physical.x,physical.y)) {
+                                if let Some(hit)=edit.raycast(ray) {
+                                    let radius=(state.brush_size*10.0).clamp(1.0,50.0);
+                                    let mode=match state.mode {
+                                        1=>terrain_edit::BrushMode::Smooth,
+                                        2=>terrain_edit::BrushMode::Flatten,
+                                        3=>terrain_edit::BrushMode::Noise,
+                                        _=>terrain_edit::BrushMode::Raise,
+                                    };
+                                    if primary {
+                                        let point=Vec2::new(hit.x,hit.z);
+                                        edit.begin_stroke(point);
+                                        let signed_power=if shift {-state.power}else{state.power};
+                                        edit.brush(point,radius,signed_power,dt,mode);
+                                    }
+                                    // Screen-space guide; actual brush influence uses metres.
+                                    let pixel_radius=(radius /
+                                        (orbit.origin()-hit).length().max(1.0) *
+                                        rect.height()*1.20).clamp(4.0,160.0);
+                                    ui.painter().circle_stroke(pointer,pixel_radius,
+                                        egui::Stroke::new(1.3,egui::Color32::from_rgb(250,209,99)));
+                                }
+                            }
+                        }
+                    }
+                }
                 if response.dragged_by(egui::PointerButton::Secondary) {
                     let delta=ui.input(|i|i.pointer.delta());
                     orbit.yaw -= delta.x * 0.003;
@@ -1386,8 +1487,8 @@ fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState) {
     });
     ui.separator();
     ui.label(egui::RichText::new(format!("Active Tool: {}", state.sculpt_tool)).strong().size(9.5).color(INK));
-    row_slider(ui, "Size", &mut state.brush_size, 0.01..=5.0);
-    row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
+    row_slider(ui, "Size", &mut state.brush_size, 0.1..=5.0);
+    row_slider(ui, "Power", &mut state.power, -2.0..=2.0);
     row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
     ui.horizontal_wrapped(|ui| {
         for (i, title) in ["Circle", "Chunk", "Selection"].iter().enumerate() {
@@ -1412,7 +1513,17 @@ fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState) {
         if ui.button("Clear Selection").clicked() { command(state, "Clear Selection"); }
         if ui.button("Invert Brush").clicked() { state.power = -state.power; }
     });
-    ui.label(egui::RichText::new("Sculpt operations are preview-only").size(8.5).color(EDGE));
+    ui.label(egui::RichText::new("Left drag: sculpt | Shift: reverse height brush").size(8.5).color(INK));
+    ui.label("Radius = Size x 10 m. 1 height step = 0.125 m.");
+    if state.mode >= 4 {
+        ui.colored_label(egui::Color32::DARK_RED,
+            "Clone and Stamp are not implemented yet.");
+    }
+    ui.horizontal(|ui| {
+        if ui.button("Undo").clicked(){command(state,"Undo");}
+        if ui.button("Redo").clicked(){command(state,"Redo");}
+        if ui.button("Save AREA As...").clicked(){command(state,"Save As");}
+    });
 }
 
 fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea) {
@@ -1859,6 +1970,7 @@ fn zone_browser_dialog(
     commands: &mut Commands,
     loaded: &mut LoadedArea,
     viewer: &mut prop_viewer::PropViewer,
+    edit: &mut terrain_edit::TerrainEdit,
 ) {
     if !state.open_zone_dialog {
         return;
@@ -1923,6 +2035,7 @@ fn zone_browser_dialog(
                                     loaded.props.clear();
                                     loaded.preview_model = None;
                                     viewer.clear_preview();
+                                    edit.reset();
                                     state.status = format!("Loaded zone {map_name}");
                                     state.dock_tab = 6;
                                     state.open_zone_dialog = false;

@@ -427,6 +427,67 @@ mod tests {
             assert_eq!(area.cells[0].as_ref().unwrap().layers(),Some([10,11,12,13]));
         }
     }
+    fn populated_cell(index:usize)->AreaCell{
+        let mut c=cell(&[2,29,17,18]);
+        c.index=index;
+        for bit in [2,29] {
+            let mut raw=vec![0u8;8450];
+            for p in raw.chunks_exact_mut(2){p.copy_from_slice(&0x000Fu16.to_le_bytes());}
+            c.blocks[bit]=Some(raw);
+        }
+        let mut base=Vec::new();
+        let mut corr=Vec::new();
+        for _ in 0..(BC_BLOCKS*BC_BLOCKS){
+            base.extend(bc1_encode([[255,0,0];16]));
+            corr.extend(neutral_correction_block());
+        }
+        c.blocks[17]=Some(base);
+        c.blocks[18]=Some(corr);
+        c
+    }
+    #[test]
+    fn internal_weight_seams_sync_raw_and_bc1_and_preserve_outer_tile_edge(){
+        let mut cells=vec![None;256];
+        for index in [0,1,16,17] {cells[index]=Some(populated_cell(index));}
+        let area=RawArea{version:0,compressed:false,original:Vec::new(),
+            chunks:Vec::new(),cells,lod_prefix:None};
+        let mut change=edit();
+        change.index=17;
+        let patch=plan_texture_edits(&area,&[change]).unwrap();
+        // Edited cell (17), its left (16), upper (1) and diagonal (0).
+        assert_eq!(patch.len(),16);
+        let mut rewritten=area.clone();
+        for (index,bit,data) in patch {
+            rewritten.cells[index].as_mut().unwrap().blocks[bit]=Some(data);
+        }
+        for (index,x,z) in [(17,0,0),(16,64,0),(1,0,64),(0,64,64)] {
+            let cell=rewritten.cells[index].as_ref().unwrap();
+            assert_eq!(cell.normalized_weights(x,z),Some([0,15,0,0]));
+            let w=cell.compressed_weights(x,z).unwrap();
+            assert!(w[1]>0.90,"seam ({index},{x},{z}) = {w:?}");
+        }
+        // Pixel (63,63) in every neighbour must not be touched.
+        for index in [0,1,16] {
+            let cell=rewritten.cells[index].as_ref().unwrap();
+            assert_eq!(cell.normalized_weights(63,63),Some([15,0,0,0]));
+        }
+        // The first cell has no left/up neighbours; do not touch an adjacent AREA.
+        let patch=plan_texture_edits(&area,&[edit()]).unwrap();
+        assert!(patch.iter().all(|(index,_,_)|*index==0));
+    }
+    #[test]
+    fn ghost_write_refuses_unresolved_19_20_neighbour(){
+        let mut cells=vec![None;256];
+        let mut neighbour=populated_cell(0);
+        neighbour.blocks[19]=Some(vec![0u8;2312]);
+        cells[0]=Some(neighbour);
+        cells[1]=Some(populated_cell(1));
+        let area=RawArea{version:0,compressed:false,original:Vec::new(),
+            chunks:Vec::new(),cells,lod_prefix:None};
+        let mut edit=edit();
+        edit.index=1;
+        assert!(plan_texture_edits(&area,&[edit]).unwrap_err().contains("19/20"));
+    }
     #[test]
     fn bc1_encoder_has_four_color_endpoint_order(){
         let enc=bc1_encode([[96,80,40];16]);

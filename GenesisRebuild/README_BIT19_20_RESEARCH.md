@@ -46,6 +46,59 @@ whose four nibbles sum to zero are **excluded** from error comparisons. These
 cases are explicitly counted and are never treated as matching data. Each
 raw29 sample is divided by its original total to yield 0..1 contributions.
 
+## Batch research on original local AREA maps
+
+The new **standalone, read-only** CLI scans several client AREAs at once, so
+individual synthetic examples do not get mistaken for proof of the actual
+shader/format behavior. Run from `GenesisRebuild`:
+
+```powershell
+# Create a separate destination for the reports only; never point at ClientData.
+New-Item -ItemType Directory -Force "D:\\AREAResearch" | Out-Null
+cargo run -p wildstar_formats --bin area_weight_probe -- --root "D:\\WildStar\\ClientData\\World" --out "D:\\AREAResearch" --max-files 2000
+```
+
+You can also pass `--file "D:\\...\\Western.393b.area"` several times, or
+combine `--file` and `--root`. Folders are searched recursively;
+symbolic links are skipped. The tool detects duplicates, sorts paths for
+deterministic results and **stops before creating reports** when more than the
+configured file limit is found (default 250 files, maximum 100000).
+AREA files exceeding 128 MiB are reported as errors rather than read into
+memory without bounds.
+
+The existing output directory receives **two new, non-overwriting files**:
+
+- `Genesis_Bit19_20_Areas.csv`: one row per AREA, including parse errors,
+  presence of bit19/20, bit29 comparison coverage, aggregate model
+  reconstruction errors, and counts of tied or anomalous cells.
+- `Genesis_Bit19_20_Cells.csv`: one row per decoded cell with the original
+  model metrics, BC1 block/coverage statistics and a `high_error` review flag
+  for cells where **every available model** exceeds a mean absolute
+  normalized weight error of 0.10. This threshold is only a triage heuristic,
+  not a WildStar client acceptance threshold.
+
+The CLI does **not** copy, modify, re-encode or upload source game data.
+Existing output CSV names cause an error instead of replacement. Damaged
+files produce explicit per-file error rows and are not counted as successful
+format comparisons. The Windows CI invokes the CLI against the bundled
+`WildStarModelStudio/demo/Hills.area` to verify command execution and
+CSV generation. **That demo integration check alone does not establish
+Bit19/20 behavior in original retail maps.**
+
+### Interpreting the results safely
+
+A new condition in the comparator detects **statistically tied models**:
+if the two smallest aggregate MAEs differ by at most `1e-6`, the
+`best_model` field is intentionally empty / ambiguous. Neutral correction
+textures may yield the same predictions under multiple hypotheses; choosing
+one by list order would be misleading. Malformed compressed pairs and
+zero-sum bit29 samples also no longer inflate the comparable sample count.
+
+Before attempting a native encoder, collect multiple client map reports,
+look for consistent preference across different environments, and inspect
+the exact bit19/20 shader path in the original client. Numerical fit alone
+is insufficient to establish native encode/decode equivalence.
+
 ## Implementation
 
 - `crates/wildstar_formats/src/area/weight_research.rs`: independent
@@ -54,9 +107,10 @@ raw29 sample is divided by its original total to yield 0..1 contributions.
   and four-color modes, 4225-sample counts, zero-data cases and CSV structure.
 - `src/main.rs`: cached on-demand research UI (recomputed only when requested),
   per-cell/aggregate results and safe CSV Save As.
-- Existing `area/metadata.rs::candidate_weights_19_20` is intentionally **not
-  changed**, so results from the old fixed-four-color/half-correction model
-  remain available for historical comparison.
+- `crates/wildstar_formats/src/bin/area_weight_probe.rs` provides deterministic
+  recursive local file research without touching original game assets.
+- Existing `area/metadata.rs::candidate_weights_19_20` remains separate for
+  comparison with the old fixed-four-color/half-correction model.
 
 ## Next evidence required
 

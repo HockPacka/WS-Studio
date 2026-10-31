@@ -393,12 +393,13 @@ fn load_raw_area(
                                 }
                                 if paint.ready() {
                                     if let Some(colors)=data.tint.data.as_deref() {
-                                        if let Err(error)=paint.load_colors(colors){
+                                        if let Err(error)=paint.load_colors(colors,&tile){
                                             state.status=format!("Terrain color initialization: {error}");
                                         }
                                     }
                                 }
                                 splat_ext=data.into_extension(&mut images,state.terrain_view==5);
+                                state.tint.configure_params(&mut splat_ext.params);
                                 loaded.terrain_splat=true;
                             }
                             loaded.layer_status=format!(
@@ -580,10 +581,15 @@ fn refresh_painted_splat(
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<terrain_splat::TerrainMaterial>>,
     mesh_materials: Query<&MeshMaterial3d<terrain_splat::TerrainMaterial>>,
+    mut last_source: Local<Option<u32>>,
+    mut last_entity: Local<Option<Entity>>,
 ) {
-    if !paint.ready() || !loaded.terrain_splat ||
-        (paint.revision == paint.gpu_revision && !paint.rebuild_pending) {return;}
+    if !paint.ready() || !loaded.terrain_splat {return;}
     let (Some(source),Some(entity))=(loaded.tile.as_ref(),loaded.mesh_entity) else{return;};
+    if paint.revision==paint.gpu_revision && !paint.rebuild_pending &&
+        *last_source==Some(state.tint.color_source) && *last_entity==Some(entity) {
+        return;
+    }
     let Ok(component)=mesh_materials.get(entity) else{return;};
     let Some(mut material)=materials.get_mut(&component.0) else{return;};
     if paint.rebuild_pending {
@@ -596,10 +602,11 @@ fn refresh_painted_splat(
                     return;
                 };
                 data.weights.data=Some(paint.weights.clone());
-                if paint.colors_ready(){data.tint.data=Some(paint.colors.clone());}
+                if paint.colors_ready(){
+                    data.tint.data=Some(paint.render_tint(state.tint.color_source));
+                }
                 material.extension=data.into_extension(&mut images,state.terrain_view==5);
-                material.extension.params.tint_strength=state.tint.strength;
-                material.extension.params.tint_gamma=state.tint.gamma_space as u32;
+                state.tint.configure_params(&mut material.extension.params);
                 paint.rebuild_pending=false;
                 paint.gpu_revision=paint.revision;
                 paint.error.clear();
@@ -617,12 +624,14 @@ fn refresh_painted_splat(
         if paint.colors_ready(){
             if let Some(handle)=material.extension.tint.as_ref(){
                 if let Some(mut image)=images.get_mut(handle){
-                    image.data=Some(paint.colors.clone());
+                    image.data=Some(paint.render_tint(state.tint.color_source));
                 }else{uploaded=false;}
             }else{uploaded=false;}
         }
         if uploaded{paint.gpu_revision=paint.revision;}
     }
+    *last_source=Some(state.tint.color_source);
+    *last_entity=Some(entity);
 }
 /// Push the macro tint settings to every terrain material (single tile and streamed tiles).
 fn apply_tint_settings(
@@ -1560,7 +1569,7 @@ fn area_inspector_panel(
 // A resizable dock replaces fixed-position floating tools in the default layout.
 // Classic floating property windows can still be enabled from Window > Float Properties.
 const DOCK_TABS: &[&str] = &[
-    "Sculpt", "Paint", "Clutter", "Props", "Water", "Env", "World", "Zones", "Inspect", "Assets", "Prop Viewer"
+    "Sculpt", "Paint", "Clutter", "Props", "Water", "Env", "World", "Zones", "Inspect", "Assets", "Prop Viewer", "Render"
 ];
 
 fn dock_panels(
@@ -1618,6 +1627,7 @@ fn dock_panels(
                         6 => dock_world(ui, state, loaded, streaming, orbit, commands),
                         7 => dock_zones(ui, state, sky_mgr),
                         8 => dock_area(ui, state, loaded),
+                        11 => dock_terrain_render(ui,state,loaded,streaming),
                         10 => {
                             let report = viewer.preview.as_ref().and_then(|preview| {
                                 client.index.as_ref().map(|index| {
@@ -1695,7 +1705,10 @@ fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState) {
 fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea,
     client: &client_data::ClientFiles, paint: &mut terrain_paint::TerrainPaint) {
     if (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush") && paint.ready() {state.terrain_view=5;}
-    ui.label(egui::RichText::new("Terrain Paint Properties").strong().size(10.5));
+    ui.horizontal(|ui|{
+        ui.label(egui::RichText::new("Terrain Paint Properties").strong().size(10.5));
+        if ui.small_button("Render Options").clicked(){state.dock_tab=11;}
+    });
     ui.separator();
     ui.label(egui::RichText::new("Paint Tools").strong().size(9.0));
     ui.horizontal_wrapped(|ui| {
@@ -1928,6 +1941,88 @@ fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea,
     if ui.button("Snap Points Properties").clicked(){
         command(state,"Snap Points Properties");
     }
+}
+
+/// Diagnostic and artistic render controls; does not mutate native AREA blocks.
+fn dock_terrain_render(
+    ui:&mut egui::Ui,
+    state:&mut GenesisState,
+    loaded:&LoadedArea,
+    streaming:&streaming::WorldStreaming,
+){
+    ui.label(egui::RichText::new("Terrain Render Options").strong().size(10.5));
+    if state.terrain_view!=5 && loaded.terrain_splat {
+        if ui.button("Activate Textured Terrain").clicked(){state.terrain_view=5;}
+    }
+    if !loaded.terrain_splat && streaming.active_map.is_none(){
+        ui.colored_label(egui::Color32::DARK_RED,
+            "Load a standalone AREA with decoded WorldLayer textures first.");
+    }
+    ui.separator();
+    ui.label(egui::RichText::new("Macro Color Source (standalone AREA)").strong());
+    let options=["Auto (Bit 3, fallback 13)","Bit 3 RGB565 only","Bit 13 BC2/DXT3 only"];
+    ui.horizontal_wrapped(|ui|{
+        for (id,label) in options.iter().enumerate(){
+            ui.radio_value(&mut state.tint.color_source,id as u32,*label);
+        }
+    });
+    if streaming.active_map.is_some(){
+        ui.label("Source selection currently affects standalone AREA tiles only.");
+    }
+    if let Some(area)=loaded.tile.as_ref(){
+        let (mut bit3,mut bit13,mut both)=(0usize,0usize,0usize);
+        for cell in area.cells.iter().flatten(){
+            let b3=cell.block(3).is_some();
+            let b13=cell.block(13).is_some();
+            if b3{bit3+=1;}
+            if b13{bit13+=1;}
+            if b3&&b13{both+=1;}
+        }
+        ui.label(format!("Bit 3: {bit3} cells | Bit 13: {bit13} cells | Both: {both}"));
+        ui.label("Missing color source = neutral color, not an invented blend.");
+    }
+    ui.separator();
+    ui.label(egui::RichText::new("Macro Tint").strong());
+    ui.add(egui::Slider::new(&mut state.tint.strength,0.0..=1.0).text("Tint Strength"));
+    ui.checkbox(&mut state.tint.gamma_space,"Multiply tint in gamma space");
+    ui.separator();
+    ui.label(egui::RichText::new("WorldLayer Textures").strong());
+    ui.add(egui::Slider::new(&mut state.tint.tiling_scale,0.25..=8.0)
+        .logarithmic(true).text("Texture Repeats"));
+    ui.checkbox(&mut state.tint.show_normals,"Use normal maps");
+    if state.tint.show_normals {
+        ui.add(egui::Slider::new(&mut state.tint.normal_strength,0.0..=2.0)
+            .text("Normal Strength"));
+    }
+    ui.separator();
+    ui.label(egui::RichText::new("Render / Debug View").strong());
+    for (id,label) in [
+        "Lit WorldLayer + PBR",
+        "Unlit WorldLayer albedo",
+        "Weightmap RGB (slots 0-2)",
+        "Selected layer weight (grayscale)",
+        "Macro-color RGB",
+        "Bit 13 BC2 alpha (raw)",
+        "Surface normals (world space)",
+    ].iter().enumerate(){
+        ui.radio_value(&mut state.tint.debug_mode,id as u32,*label);
+    }
+    if state.tint.debug_mode==3 {
+        ui.horizontal_wrapped(|ui|{
+            for slot in 0..4{
+                ui.radio_value(&mut state.tint.debug_slot,slot,format!("Slot {slot}"));
+            }
+        });
+    }
+    if state.tint.debug_mode==5 {
+        ui.colored_label(egui::Color32::DARK_RED,
+            "BC2 alpha is diagnostic only; its original terrain meaning is unresolved.");
+    }
+    ui.separator();
+    if ui.button("Reset Render Options").clicked(){
+        state.tint=terrain_splat::TintSettings::default();
+    }
+    ui.label("Preview-only settings: AREA files, layer IDs and texture weights are not changed.");
 }
 
 fn dock_water(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea) {

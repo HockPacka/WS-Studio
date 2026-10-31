@@ -708,6 +708,36 @@ mod tests{
         assert!(!p.dirty());
     }
     #[test]
+    fn color_brush_undo_redo_and_native_rgb565_plan() {
+        let mut source=sample_area();
+        let cell=source.cells[0].as_mut().unwrap();
+        cell.blocks[3]=Some(vec![0;8450]);
+        cell.flags|=1<<3;
+        let mut painter=TerrainPaint::default();
+        let mut weights=vec![0u8;MAP_SIDE*MAP_SIDE*4];
+        for pixel in weights.chunks_exact_mut(4){pixel[0]=255;}
+        painter.load(&source,&weights,Vec2::ZERO).unwrap();
+        let mut colors=vec![128u8;MAP_SIDE*MAP_SIDE*4];
+        for pixel in colors.chunks_exact_mut(4){pixel[3]=255;}
+        painter.load_colors(&colors).unwrap();
+        painter.color=[200,30,120];
+        painter.begin();
+        assert!(painter.color_brush(Vec2::new(-248.0,-248.0),4.0,
+            2.0,0.3,0.1,None));
+        painter.end();
+        assert!(painter.dirty());
+        assert_eq!(painter.colors[3],255,"BC2 alpha channel must never be painted");
+        let (changes,cells)=painter.native_color_edits(&source).unwrap();
+        assert_eq!(cells,1);
+        assert_eq!(changes.len(),1);
+        assert_eq!(changes[0].1,3);
+        assert!(painter.undo());
+        assert!(!painter.dirty());
+        assert_eq!(painter.colors,colors);
+        assert!(painter.redo());
+        assert!(painter.dirty());
+    }
+    #[test]
     fn editing_requires_a_valid_tile(){
         let mut p=TerrainPaint::default();
         assert!(!p.ready());

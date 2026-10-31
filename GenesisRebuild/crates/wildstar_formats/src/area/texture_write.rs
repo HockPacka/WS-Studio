@@ -266,6 +266,61 @@ mod tests {
         assert!(err.contains("19/20"));
     }
     #[test]
+    fn native_texture_export_reloads_in_compressed_and_raw_area(){
+        use flate2::{Compression,write::ZlibEncoder};
+        use std::io::Write;
+        let original=cell(&[2,17,18,29]);
+        let mut payload=Vec::new();
+        let flags=(1u32<<1)|(1u32<<2)|(1u32<<17)|(1u32<<18)|(1u32<<29);
+        payload.extend(flags.to_le_bytes());
+        payload.extend(original.block(1).unwrap());
+        payload.extend(vec![0x0f;8450]);
+        // Original 17/18 BC1 blocks are valid uniform first-layer weights.
+        for _ in 0..(17*17){payload.extend(bc1_encode([[255,0,0];16]));}
+        for _ in 0..(17*17){payload.extend(neutral_correction_block());}
+        payload.extend(vec![0x0f;8450]);
+        for compressed in [false,true]{
+            let mut stream=Vec::new();
+            if compressed{
+                let mut enc=ZlibEncoder::new(Vec::new(),Compression::default());
+                enc.write_all(b"LOD").unwrap();
+                stream.extend(3u32.to_le_bytes());
+                stream.extend(enc.finish().unwrap());
+                let mut enc=ZlibEncoder::new(Vec::new(),Compression::default());
+                enc.write_all(&payload).unwrap();
+                stream.extend((payload.len() as u32).to_le_bytes());
+                stream.extend(enc.finish().unwrap());
+            }else{
+                stream.extend((payload.len() as u32).to_le_bytes());
+                stream.extend(&payload);
+            }
+            let mut bytes=if compressed{b"AERA".to_vec()}else{b"aera".to_vec()};
+            bytes.extend(0u32.to_le_bytes());
+            bytes.extend(b"KNHC");
+            bytes.extend((stream.len() as u32).to_le_bytes());
+            bytes.extend(stream);
+            bytes.extend(b"KEEP");
+            bytes.extend(3u32.to_le_bytes());
+            bytes.extend(b"END");
+            let area=RawArea::from_bytes(bytes).unwrap();
+            let cell=&area.cells[0].as_ref().unwrap();
+            assert_eq!(cell.layers(),Some([10,11,12,13]));
+            let mut change=edit();
+            change.layer_ids[3]=99;
+            let changes=plan_texture_edits(&area,&[change]).unwrap();
+            let output=area.with_cell_block_changes(&changes).unwrap();
+            let result=RawArea::from_bytes(output).unwrap();
+            let changed=result.cells[0].as_ref().unwrap();
+            assert_eq!(changed.layers(),Some([10,11,12,99]));
+            assert_eq!(changed.normalized_weights(0,0),Some([0,15,0,0]));
+            let rendered=changed.compressed_weights(0,0).unwrap();
+            assert!(rendered[1]>0.90,"BC1 green weight: {rendered:?}");
+            assert_eq!(result.chunks[1].data,b"END");
+            if compressed{assert_eq!(result.lod_prefix,Some(b"LOD".to_vec()));}
+            assert_eq!(area.cells[0].as_ref().unwrap().layers(),Some([10,11,12,13]));
+        }
+    }
+    #[test]
     fn bc1_encoder_has_four_color_endpoint_order(){
         let enc=bc1_encode([[96,80,40];16]);
         let e0=u16::from_le_bytes([enc[0],enc[1]]);

@@ -861,6 +861,7 @@ fn load_scenes(ctx: &egui::Context, previews: &mut Viewports) {
 fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
              mut edit: ResMut<terrain_edit::TerrainEdit>,
              mut paint: ResMut<terrain_paint::TerrainPaint>,
+             mut clutter_paint: ResMut<clutter_paint::ClutterPaint>,
              camera_query: Query<(&Camera,&GlobalTransform),With<GenesisCamera>>,
              mut previews: Local<Viewports>, mut initialized: Local<bool>,
              mut orbit: ResMut<OrbitCamera>, mut loaded: ResMut<LoadedArea>,
@@ -892,10 +893,10 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 menu_and_toolbars(ui, &mut state);
                 bottom_strip(ui, &mut state, &loaded, orbit.as_mut(), streaming.as_ref());
                 if state.dock_visible && !state.floating_mode {
-                    dock_panels(ui, &mut state, &loaded, &client, paint.as_mut(), viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &clutter_preview, &mut commands);
+                    dock_panels(ui, &mut state, &loaded, &client, paint.as_mut(), clutter_paint.as_mut(), viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &clutter_preview, &mut commands);
                 }
                 viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref(), &sky_mgr,
-                    edit.as_mut(), paint.as_mut(), &camera_query);
+                    edit.as_mut(), paint.as_mut(), clutter_paint.as_mut(), &camera_query);
             });
         });
     // Keyboard undo/redo when no text editor is focused.
@@ -912,12 +913,16 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
         state.terrain_undo_request=false;
         state.status=if state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush") {
             if paint.undo(){"Texture Undo".into()}else{"Nothing to undo".into()}
+        }else if state.dock_tab==2 && state.clutter_brush_enabled{
+            if clutter_paint.undo(){"Clutter Undo".into()}else{"Nothing to undo".into()}
         }else if edit.undo(){"Height Undo".into()}else{"Nothing to undo".into()};
     }
     if state.terrain_redo_request {
         state.terrain_redo_request=false;
         state.status=if state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush") {
             if paint.redo(){"Texture Redo".into()}else{"Nothing to redo".into()}
+        }else if state.dock_tab==2 && state.clutter_brush_enabled{
+            if clutter_paint.redo(){"Clutter Redo".into()}else{"Nothing to redo".into()}
         }else if edit.redo(){"Height Redo".into()}else{"Nothing to redo".into()};
     }
     if state.terrain_save_dialog {
@@ -930,7 +935,16 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 .set_file_name(format!("{suggested}_edited.area"));
             if let Some(parent)=source.parent(){picker=picker.set_directory(parent);}
             if let Some(out)=picker.save_file(){
-                if paint.dirty() {
+                if clutter_paint.dirty(){
+                    let heights=edit.changes();
+                    state.status=match clutter_paint.export_as(
+                        area,paint.as_mut(),&heights,&out
+                    ){
+                        Ok(edits)=>format!("Saved {} native Clutter edits to {}",
+                            edits,out.display()),
+                        Err(err)=>format!("Native Clutter export blocked: {err}"),
+                    };
+                }else if paint.dirty() {
                     let heights=edit.changes();
                     state.status=match paint.save_native_as(area,&heights,&out){
                         Ok((vertices,cells))=>format!(
@@ -958,7 +972,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
             if let Some(parent)=picker.pick_folder(){
                 let heights=edit.changes();
                 state.status=match terrain_bundle::export_bundle(
-                    paint.as_mut(),area,source,&heights,&parent,
+                    paint.as_mut(),clutter_paint.as_ref(),area,source,&heights,&parent,
                 ){
                     Ok(paths)=>format!("Exported {} AREA tiles into new isolated bundle: {}",
                         paths.len(),paths.first().and_then(|p|p.parent())

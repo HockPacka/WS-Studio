@@ -148,10 +148,12 @@ impl AreaCell {
     }
     /// Terrain macro color tint (Bit 3 RGB565 or Bit 13 BC2).
     pub fn terrain_color(&self,x:usize,z:usize)->Option<[u8;3]>{
+        self.color_rgb565(x,z).or_else(||self.color_bc2(x,z))
+    }
+    /// Decompress bit 13 BC2/DXT3 RGB independently from bit 3.
+    /// The 4-bit alpha has an unknown terrain meaning and is exposed separately.
+    pub fn color_bc2(&self,x:usize,z:usize)->Option<[u8;3]>{
         if x>=65||z>=65{return None;}
-        if let Some(c)=self.color_rgb565(x,z){
-            return Some(c);
-        }
         let b=self.block(13)?;
         if b.len()<4624{return None;}
         let bx=(x/4).min(16);
@@ -184,6 +186,19 @@ impl AreaCell {
             ],
         };
         Some(res)
+    }
+    /// Raw bit 13 BC2 alpha sample, 0..255, without attributing semantics.
+    /// BC2 explicitly packs 16 four-bit alphas in bytes 0..7 per 4x4 block.
+    pub fn bc2_color_alpha(&self,x:usize,z:usize)->Option<u8>{
+        if x>=65||z>=65{return None;}
+        let bytes=self.block(13)?;
+        let bx=(x/4).min(16);
+        let bz=(z/4).min(16);
+        let index=(z%4)*4+(x%4);
+        let offset=(bz*17+bx)*16+index/2;
+        let byte=*bytes.get(offset)?;
+        let nibble=if index%2==0 {byte&15}else{byte>>4};
+        Some(nibble*17)
     }
     /// Compressed weights from Bit 17 (base weights BC1) + Bit 18 (signed corrections BC1).
     pub fn compressed_weights(&self,x:usize,z:usize)->Option<[f32;4]>{

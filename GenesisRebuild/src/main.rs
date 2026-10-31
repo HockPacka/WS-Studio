@@ -547,7 +547,7 @@ fn refresh_edited_terrain(
         1
     }else{state.terrain_view};
     if let Ok((mesh,_))=terrain::terrain_mesh_from_grid(area,preview,state.texture_index,&grid) {
-        if let Some(asset)=meshes.get_mut(&mesh_handle.0){
+        if let Some(mut asset)=meshes.get_mut(&mesh_handle.0){
             *asset = mesh;
             edit.mesh_revision = edit.revision;
         }
@@ -778,7 +778,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
             });
         });
     // Keyboard undo/redo when no text editor is focused.
-    if !ctx.wants_keyboard_input() {
+    if !ctx.egui_wants_keyboard_input() {
         let (undo,redo)=ctx.input(|i|(
             i.modifiers.command && i.key_pressed(egui::Key::Z) && !i.modifiers.shift,
             (i.modifiers.command && i.key_pressed(egui::Key::Y)) ||

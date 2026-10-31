@@ -96,17 +96,86 @@ fn patches_for_cell(cell:&AreaCell,edit:&ColorCellEdit)
 pub fn plan_color_edits(area:&RawArea,edits:&[ColorCellEdit])
     ->Result<Vec<(usize,usize,Vec<u8>)>,String>
 {
-    let mut seen=BTreeMap::<usize,()>::new();
-    let mut patches=Vec::new();
+    // A 65x65 raster includes a duplicate sample at x=64 / z=64. These
+    // trailing samples belong to the next cell's first column/row. Patches
+    // therefore propagate LEFT, UP and UP-LEFT from edited x=0/z=0 samples.
+    // Never guess the outermost x/z=64 boundary of an AREA tile.
+    let mut patches=BTreeMap::<(usize,usize),Vec<u8>>::new();
+    let mut seen=BTreeSet::new();
+    let mut ghost=BTreeMap::<usize,BTreeMap<(usize,usize),[u8;3]>>::new();
     for edit in edits{
-        if seen.insert(edit.index,()).is_some(){return Err("Duplicate AREA color cell edit".into());}
+        if !seen.insert(edit.index){return Err("Duplicate AREA color cell edit".into());}
         let cell=area.cells.get(edit.index).and_then(Option::as_ref)
             .ok_or("Color edit targets a missing AREA cell")?;
         for (bit,bytes) in patches_for_cell(cell,edit)?{
-            patches.push((edit.index,bit,bytes));
+            patches.insert((edit.index,bit),bytes);
+        }
+        if edit.before.len()!=COLOR_BYTES || edit.after.len()!=COLOR_BYTES{
+            return Err("AREA color edit requires 64x64 RGBA8 source and target".into());
+        }
+        let cx=edit.index%16;
+        let cz=edit.index/16;
+        for z in 0..COLOR_SIDE{
+            for x in 0..COLOR_SIDE{
+                let pixel=z*COLOR_SIDE+x;
+                if !modified_rgb(&edit.before,&edit.after,pixel){continue;}
+                if x!=0 && z!=0{continue;}
+                let p=&edit.after[pixel*4..pixel*4+3];
+                let rgb=[p[0],p[1],p[2]];
+                if x==0 && cx>0 {
+                    ghost.entry(edit.index-1).or_default().insert((64,z),rgb);
+                }
+                if z==0 && cz>0 {
+                    ghost.entry(edit.index-16).or_default().insert((x,64),rgb);
+                }
+                if x==0 && z==0 && cx>0 && cz>0 {
+                    ghost.entry(edit.index-17).or_default().insert((64,64),rgb);
+                }
+            }
         }
     }
-    Ok(patches)
+    for (index,samples) in ghost {
+        let cell=area.cells.get(index).and_then(Option::as_ref)
+            .ok_or_else(||format!("Color seam targets missing AREA cell {index}"))?;
+        if let Some(original)=cell.block(3){
+            let mut raw=patches.remove(&(index,3)).unwrap_or_else(||original.to_vec());
+            for (&(x,z),rgb) in &samples{
+                let offset=(z*SOURCE_SIDE+x)*2;
+                raw[offset..offset+2].copy_from_slice(&encode_rgb565(rgb).to_le_bytes());
+            }
+            patches.insert((index,3),raw);
+        }
+        if let Some(original)=cell.block(13){
+            let mut compressed=patches.remove(&(index,13))
+                .unwrap_or_else(||original.to_vec());
+            let blocks=samples.keys().map(|&(x,z)|{
+                (z/4)*BLOCK_SIDE+x/4
+            }).collect::<BTreeSet<_>>();
+            for block in blocks{
+                let bx=block%BLOCK_SIDE;
+                let bz=block/BLOCK_SIDE;
+                let mut colors=[[0u8;3];16];
+                for dy in 0..4{
+                    for dx in 0..4{
+                        let x=bx*4+dx;
+                        let z=bz*4+dy;
+                        colors[dy*4+dx]=samples.get(&(x,z)).copied()
+                            .or_else(||cell.color_bc2(x.min(64),z.min(64)))
+                            .ok_or("Color seam: BC2 sample unavailable")?;
+                    }
+                }
+                // Change RGB only. The BC2 alpha nibbles are not understood
+                // and must stay exactly as they were in the source bytes.
+                compressed[block*16+8..block*16+16]
+                    .copy_from_slice(&bc1_encode(colors));
+            }
+            patches.insert((index,13),compressed);
+        }
+        if cell.block(3).is_none() && cell.block(13).is_none(){
+            return Err(format!("Color seam cell {index} has no native color blocks"));
+        }
+    }
+    Ok(patches.into_iter().map(|((cell,bit),bytes)|(cell,bit,bytes)).collect())
 }
 
 #[cfg(test)]

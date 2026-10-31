@@ -1355,6 +1355,7 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             sky_mgr:&sky::SkyManager,
             edit:&mut terrain_edit::TerrainEdit,
             paint:&mut terrain_paint::TerrainPaint,
+            clutter_paint:&mut clutter_paint::ClutterPaint,
             camera_query:&Query<(&Camera,&GlobalTransform),With<GenesisCamera>>) {
     egui::CentralPanel::default()
         .frame(egui::Frame::default().fill(if state.raw_view {
@@ -1368,6 +1369,7 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                 if !ui.input(|i| i.pointer.primary_down()) {
                     edit.end_stroke();
                     paint.end();
+                    clutter_paint.end();
                 }
                 if edit.is_ready() && streaming.active_map.is_none() &&
                     state.dock_tab==0 && state.mode<=3 && response.hovered() {
@@ -1438,6 +1440,38 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                         *rect.height()*1.20).clamp(4.0,160.0);
                                     ui.painter().circle_stroke(pointer,visual_radius,
                                         egui::Stroke::new(1.3,egui::Color32::from_rgb(110,224,151)));
+                                }
+                            }
+                        }
+                    }
+                }
+                if clutter_paint.ready() && edit.is_ready() &&
+                    streaming.active_map.is_none() && state.dock_tab==2 &&
+                    state.clutter_brush_enabled && response.hovered()
+                {
+                    if let Some(pointer)=ui.input(|i|i.pointer.interact_pos()){
+                        let physical=(pointer-rect.min)*orbit.ui_pixels_per_point;
+                        if let Ok((camera,transform))=camera_query.single(){
+                            if let Ok(ray)=camera.viewport_to_world(
+                                transform,Vec2::new(physical.x,physical.y)
+                            ){
+                                if let Some(hit)=edit.raycast(ray){
+                                    let primary=ui.input(|i|i.pointer.primary_down());
+                                    let radius=(state.brush_size*10.0).clamp(1.0,50.0);
+                                    if primary{
+                                        clutter_paint.begin();
+                                        clutter_paint.brush(
+                                            Vec2::new(hit.x,hit.z),radius,
+                                            state.clutter_layer,state.clutter_selector,
+                                            state.clutter_brush_action
+                                        );
+                                    }
+                                    let pixel_radius=(radius/
+                                        (orbit.origin()-hit).length().max(1.0)*
+                                        rect.height()*1.20).clamp(4.0,160.0);
+                                    ui.painter().circle_stroke(pointer,pixel_radius,
+                                        egui::Stroke::new(1.5,
+                                            egui::Color32::from_rgb(176,232,120)));
                                 }
                             }
                         }
@@ -1652,6 +1686,7 @@ fn dock_panels(
     loaded: &LoadedArea,
     client: &client_data::ClientFiles,
     paint: &mut terrain_paint::TerrainPaint,
+    clutter_paint: &mut clutter_paint::ClutterPaint,
     viewer: &mut prop_viewer::PropViewer,
     streaming: &mut streaming::WorldStreaming,
     orbit: &mut OrbitCamera,
@@ -1695,7 +1730,7 @@ fn dock_panels(
                     match state.dock_tab {
                         0 => dock_sculpt(ui, state),
                         1 => dock_paint(ui, state, loaded, client, paint),
-                        2 => dock_clutter(ui, state, clutter_preview),
+                        2 => dock_clutter(ui, state, clutter_paint, clutter_preview),
                         3 => dock_objects(ui, state, loaded, client),
                         4 => dock_water(ui, state, loaded),
                         5 => dock_environment(ui, state, sky_mgr),
@@ -1961,6 +1996,7 @@ fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState) {
     }
 }
 fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
+    clutter_paint:&mut clutter_paint::ClutterPaint,
     preview:&clutter::ClutterPreview)
 {
     ui.label(egui::RichText::new("Clutter GPU Instancing").strong());
@@ -1980,6 +2016,49 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
             ui.label("Bit27 preset");
             ui.add(egui::DragValue::new(&mut state.clutter_selector).range(0..=3));
         });
+    }
+    ui.separator();
+    ui.checkbox(&mut state.clutter_auto_refresh,
+        "Auto-regenerate after Terrain/Clutter edits");
+    ui.checkbox(&mut state.clutter_brush_enabled,
+        "Paint native AREA Clutter data");
+    if state.clutter_brush_enabled{
+        ui.horizontal_wrapped(|ui|{
+            ui.label("Brush mode");
+            ui.selectable_value(&mut state.clutter_brush_action,0,"Preset");
+            ui.selectable_value(&mut state.clutter_brush_action,1,"Exclude");
+            ui.selectable_value(&mut state.clutter_brush_action,2,"Restore");
+        });
+        ui.horizontal(|ui|{
+            ui.label("WorldLayer slot");
+            ui.add(egui::DragValue::new(&mut state.clutter_layer).range(0..=3));
+        });
+        ui.horizontal(|ui|{
+            ui.label("Preset 0-3");
+            ui.add(egui::DragValue::new(&mut state.clutter_selector).range(0..=3));
+        });
+        ui.add(egui::Slider::new(&mut state.brush_size,0.1..=5.0)
+            .text("Brush radius"));
+        ui.horizontal(|ui|{
+            if ui.button("Undo Clutter").clicked(){
+                state.status=if clutter_paint.undo(){"Clutter Undo".into()}
+                    else{"Nothing to undo".into()};
+            }
+            if ui.button("Redo Clutter").clicked(){
+                state.status=if clutter_paint.redo(){"Clutter Redo".into()}
+                    else{"Nothing to redo".into()};
+            }
+        });
+        ui.label(if clutter_paint.dirty(){
+            "Native Clutter edits: UNSAVED"
+        }else{"Native Clutter edits: none"});
+        if ui.button("Save AREA As...").clicked(){
+            state.terrain_save_dialog=true;
+        }
+        if ui.button("Export AREA Bundle...").clicked(){
+            state.terrain_bundle_dialog=true;
+        }
+        ui.small("Preset modifies only one Bit27 two-bit slot; Exclude/Restore toggles only Bit16 0x20. Originals remain read-only.");
     }
     ui.label("Candidates per cell");
     ui.add(egui::Slider::new(&mut state.clutter_density,0..=128));

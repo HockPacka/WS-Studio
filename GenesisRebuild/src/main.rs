@@ -855,9 +855,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
     }
     if state.terrain_save_dialog {
         state.terrain_save_dialog = false;
-        if paint.dirty() {
-            state.status="Texture painting is preview-only; please Undo texture changes before height-only Save As.".into();
-        }else if let (Some(area),Some(source))=(loaded.tile.as_ref(),edit.source.as_ref()) {
+        if let (Some(area),Some(source))=(loaded.tile.as_ref(),edit.source.as_ref()) {
             let suggested=source.file_stem().and_then(|s|s.to_str()).unwrap_or("terrain");
             let mut picker=rfd::FileDialog::new()
                 .set_title("Export edited WildStar AREA (never overwrites originals)")
@@ -865,10 +863,20 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 .set_file_name(format!("{suggested}_edited.area"));
             if let Some(parent)=source.parent(){picker=picker.set_directory(parent);}
             if let Some(out)=picker.save_file(){
-                state.status=match edit.save_as(area,&out) {
-                    Ok(vertices)=>format!("Saved {vertices} edited height vertices to {}",out.display()),
-                    Err(err)=>format!("AREA save failed: {err}"),
-                };
+                if paint.dirty() {
+                    let heights=edit.changes();
+                    state.status=match paint.save_native_as(area,&heights,&out){
+                        Ok((vertices,cells))=>format!(
+                            "Saved {vertices} height vertices and {cells} texture cells to {}",
+                            out.display()),
+                        Err(err)=>format!("AREA texture export blocked: {err}"),
+                    };
+                }else{
+                    state.status=match edit.save_as(area,&out){
+                        Ok(vertices)=>format!("Saved {vertices} edited height vertices to {}",out.display()),
+                        Err(err)=>format!("AREA save failed: {err}"),
+                    };
+                }
             }
         } else {
             state.status="Open a standalone AREA before using Save As".into();

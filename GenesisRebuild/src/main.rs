@@ -14,6 +14,7 @@ mod terrain_edit;
 mod terrain_paint;
 mod terrain_bundle;
 mod clutter;
+mod clutter_native;
 mod terrain_material;
 mod water;
 mod sky;
@@ -43,6 +44,7 @@ struct GenesisState {
     color_panel: bool, color_palette: bool, texture_panel: bool,
     clutter_panel: bool, prop_panel: bool, object_list: bool,
     clutter_preview_enabled: bool,
+    clutter_native_mode: bool,
     clutter_preview_request: u64,
     clutter_model_path: String,
     clutter_layer: usize,
@@ -93,6 +95,7 @@ impl Default for GenesisState {
             color_panel: true, color_palette: true, texture_panel: false,
             clutter_panel: false, prop_panel: false, object_list: false,
             clutter_preview_enabled: false,
+            clutter_native_mode: true,
             clutter_preview_request: 0,
             clutter_model_path: String::new(),
             clutter_layer: 0,
@@ -1935,21 +1938,24 @@ fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState) {
 fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
     preview:&clutter::ClutterPreview)
 {
-    ui.label(egui::RichText::new("GPU Clutter Instancing (diagnostic)").strong());
-    ui.label("Native AREA Bit27 selectors, Bit16 suppression and layer weights.");
-    ui.label("WorldClutter.tbl presets and spawn densities are NOT decoded yet.");
+    ui.label(egui::RichText::new("Clutter GPU Instancing").strong());
+    ui.label("Native: WorldLayer.tbl → WorldClutter.tbl → weighted M3 models.");
+    ui.label("AREA Bit27 selects presets; Bit16 suppresses clutter.");
     ui.separator();
-    ui.label("ClientData virtual M3 model path");
-    ui.add(egui::TextEdit::singleline(&mut state.clutter_model_path)
-        .hint_text("Art/..../GroundPlant.m3"));
-    ui.horizontal(|ui|{
-        ui.label("WorldLayer slot");
-        ui.add(egui::DragValue::new(&mut state.clutter_layer).range(0..=3));
-    });
-    ui.horizontal(|ui|{
-        ui.label("Bit27 preset");
-        ui.add(egui::DragValue::new(&mut state.clutter_selector).range(0..=3));
-    });
+    ui.checkbox(&mut state.clutter_native_mode,"Native TBL-driven placement");
+    if !state.clutter_native_mode{
+        ui.label("Manual diagnostic M3 path");
+        ui.add(egui::TextEdit::singleline(&mut state.clutter_model_path)
+            .hint_text("Art/..../GroundPlant.m3"));
+        ui.horizontal(|ui|{
+            ui.label("WorldLayer slot");
+            ui.add(egui::DragValue::new(&mut state.clutter_layer).range(0..=3));
+        });
+        ui.horizontal(|ui|{
+            ui.label("Bit27 preset");
+            ui.add(egui::DragValue::new(&mut state.clutter_selector).range(0..=3));
+        });
+    }
     ui.label("Candidates per cell");
     ui.add(egui::Slider::new(&mut state.clutter_density,0..=128));
     ui.label("Maximum instances");
@@ -1957,7 +1963,8 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
     ui.label("Group view distance (m)");
     ui.add(egui::Slider::new(&mut state.clutter_view_distance,32.0..=1024.0));
     ui.horizontal(|ui|{
-        if ui.button("Build Instanced Preview").clicked(){
+        if ui.button(if state.clutter_native_mode {"Build Native Instanced Clutter"}
+            else {"Build Manual Instanced Preview"}).clicked(){
             state.clutter_preview_enabled=true;
             state.clutter_preview_request=state.clutter_preview_request.wrapping_add(1);
         }
@@ -1975,7 +1982,7 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
         preview.rejected_by_mask,preview.rejected_by_selector,
         preview.rejected_by_weight,preview.rejected_by_slope));
     ui.label(&preview.status);
-    ui.small("Meshes/materials reused by handle; Bevy 0.20 automatic batching. Actual GPU draw-call count requires a graphics profiler.");
+    ui.small("Native TBL values drive model selection. Placement RNG and density are preview approximations; final draw calls require GPU profiling.");
 }
 fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea,
                 client:&client_data::ClientFiles) {

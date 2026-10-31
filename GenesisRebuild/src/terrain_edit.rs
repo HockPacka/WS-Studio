@@ -71,9 +71,9 @@ impl TerrainEdit {
         let tz = (z - z0 as f32).clamp(0.0, 1.0);
         let ids = [z0*GRID+x0,z0*GRID+x0+1,(z0+1)*GRID+x0,(z0+1)*GRID+x0+1];
         if ids.iter().any(|&i| !self.present[i]) { return None; }
-        let h0 = self.heights[ids[0]].lerp(self.heights[ids[1]], tx);
-        let h1 = self.heights[ids[2]].lerp(self.heights[ids[3]], tx);
-        Some(h0.lerp(h1, tz))
+        let h0 = self.heights[ids[0]] + (self.heights[ids[1]]-self.heights[ids[0]])*tx;
+        let h1 = self.heights[ids[2]] + (self.heights[ids[3]]-self.heights[ids[2]])*tx;
+        Some(h0 + (h1-h0)*tz)
     }
 
     /// Ray march against the height field, refine the first entry crossing.
@@ -139,8 +139,8 @@ impl TerrainEdit {
                 let amount = strength.abs().clamp(0.0, 30.0)*dt.clamp(0.0, 0.1)*influence;
                 let new = match mode {
                     BrushMode::Raise => old + strength.signum()*amount*4.0,
-                    BrushMode::Flatten => old.lerp(
-                        self.flatten_target.unwrap_or(old), amount.clamp(0.0, 1.0)),
+                    BrushMode::Flatten => old +
+                        (self.flatten_target.unwrap_or(old)-old)*amount.clamp(0.0, 1.0),
                     BrushMode::Smooth => {
                         let mut sum = 0.0;
                         let mut count = 0.0;
@@ -151,7 +151,7 @@ impl TerrainEdit {
                             }
                         }
                         if count > 0.0 {
-                            old.lerp(sum/count, amount.clamp(0.0,1.0))
+                            old + (sum/count-old)*amount.clamp(0.0,1.0)
                         } else { old }
                     }
                     BrushMode::Noise => {

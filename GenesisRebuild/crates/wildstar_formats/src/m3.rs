@@ -11,6 +11,12 @@ pub struct M3Vertex {
     pub pos:[f32;3],
     pub normal:[f32;3],
     pub uv:[f32;2],
+    /// Optional second half-float UV channel, used by detail/lightmap shaders.
+    pub uv1:[f32;2],
+    /// Color0: the WildStar vertex shader multiplies RGB by two (0x80 = 1.0).
+    pub color0:[u8;4],
+    /// Extra material/color channel (includes secondary texture coordinates).
+    pub color1:[u8;4],
     pub bone_idx:[u8;4],
     pub bone_weight:[u8;4],
 }
@@ -272,25 +278,27 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
 
         // Field order is sequential; the sum of field sizes must equal the vertex size.
         let mut off=0usize;
-        let (mut pos_off,mut nor_off,mut bi_off,mut bw_off,mut uv_off)=(None,None,None,None,None);
+        let (mut pos_off,mut nor_off,mut bi_off,mut bw_off,mut uv_off,mut uv1_off,mut c0_off,mut c1_off)=
+            (None,None,None,None,None,None,None,None);
         match types[0]{1=>{pos_off=Some(off);off+=12;},2=>{pos_off=Some(off);off+=6;},_=>{}}
         if types[1]==3{off+=2;}
         if types[2]==3{nor_off=Some(off);off+=2;}
         if types[3]==3{off+=2;}
         if types[4]==4{bi_off=Some(off);off+=4;}
         if types[5]==4{bw_off=Some(off);off+=4;}
-        if types[6]==4{off+=4;}
-        if types[7]==4{off+=4;}
+        if types[6]==4{c0_off=Some(off);off+=4;}
+        if types[7]==4{c1_off=Some(off);off+=4;}
         if types[8]==5{uv_off=Some(off);off+=4;}
-        if types[9]==5{off+=4;}
+        if types[9]==5{uv1_off=Some(off);off+=4;}
         if types[10]==6{off+=1;}
-        if vsize!=0&&off!=vsize{return Err("vertex layout size mismatch".into());}
+        if off!=vsize{return Err("vertex layout size mismatch".into());}
 
         let va=range(len,gb,vdo,vcount as u64,vsize).ok_or("vertex data out of bounds")?;
         let base=m.vertices.len();
         for v in 0..vcount{
             let p=va+v*vsize;
-            let mut out=M3Vertex{normal:[0.0,1.0,0.0],bone_weight:[255,0,0,0],..Default::default()};
+            let mut out=M3Vertex{normal:[0.0,1.0,0.0],color0:[128,128,128,255],
+                bone_weight:[255,0,0,0],..Default::default()};
             if let Some(o)=pos_off{
                 for k in 0..3{
                     out.pos[k]=if types[0]==1{f32_at(d,p+o+k*4).unwrap_or(0.0)}
@@ -301,6 +309,11 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
             if let Some(o)=uv_off{
                 out.uv=[half_to_f32(u16_at(d,p+o).unwrap_or(0)),half_to_f32(u16_at(d,p+o+2).unwrap_or(0))];
             }
+            if let Some(o)=uv1_off{
+                out.uv1=[half_to_f32(u16_at(d,p+o).unwrap_or(0)),half_to_f32(u16_at(d,p+o+2).unwrap_or(0))];
+            }
+            if let Some(o)=c0_off{out.color0.copy_from_slice(&d[p+o..p+o+4]);}
+            if let Some(o)=c1_off{out.color1.copy_from_slice(&d[p+o..p+o+4]);}
             if let Some(o)=bi_off{out.bone_idx.copy_from_slice(&d[p+o..p+o+4]);}
             if let Some(o)=bw_off{out.bone_weight.copy_from_slice(&d[p+o..p+o+4]);}
             m.vertices.push(out);
@@ -434,6 +447,36 @@ mod tests {
         assert!(m.visible_indices().is_empty());
         m.meshes[0].group = 0xFFFF; // unassigned
         assert!(m.meshes[0].is_visible_default(&m.mesh_display));
+    }
+    #[test]
+    fn preserves_both_uvs_and_vertex_colours(){
+        let mut d=sample();
+        let geo=HEADER_END+u64_at(&d,0x258).unwrap() as usize;
+        let gb=align16(geo+0xC8);
+        let original_mesh=d[gb+0x40..gb+0x40+0x70].to_vec();
+        // pos f32x3, color0 RGBA, color1 RGBA, UV0 half2, UV1 half2.
+        put(&mut d,geo+0x1C,&28u16.to_le_bytes());
+        put(&mut d,geo+0x20,&[1,0,0,0,0,0,4,4,5,5,0]);
+        put(&mut d,geo+0x78,&0x60u64.to_le_bytes());
+        put(&mut d,geo+0x88,&0x70u64.to_le_bytes());
+        for i in 0..3 {
+            let at=gb+i*28;
+            put(&mut d,at,&(i as f32).to_le_bytes());
+            put(&mut d,at+12,&[128,64,255,192]);
+            put(&mut d,at+16,&[11,22,33,44]);
+            put(&mut d,at+20,&0x3C00u16.to_le_bytes()); // UV0.x = 1
+            put(&mut d,at+22,&0x3800u16.to_le_bytes()); // UV0.y = 0.5
+            put(&mut d,at+24,&0x4000u16.to_le_bytes()); // UV1.x = 2
+            put(&mut d,at+26,&0x0000u16.to_le_bytes());
+        }
+        for (i,ix) in [0u16,1,2].iter().enumerate(){put(&mut d,gb+0x60+i*2,&ix.to_le_bytes());}
+        put(&mut d,gb+0x70,&original_mesh);
+        let m=read_m3(&d).unwrap();
+        assert_eq!(m.visible_indices(),vec![0,1,2]);
+        assert_eq!(m.vertices[0].uv,[1.0,0.5]);
+        assert_eq!(m.vertices[0].uv1,[2.0,0.0]);
+        assert_eq!(m.vertices[0].color0,[128,64,255,192]);
+        assert_eq!(m.vertices[0].color1,[11,22,33,44]);
     }
     #[test]
     fn half_floats(){

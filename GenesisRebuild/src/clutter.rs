@@ -203,10 +203,12 @@ pub fn update_preview(
         preview.status="Open a standalone AREA and select a native M3 model.".into();
     }
     let revisions=(edit.revision,paint.revision,clutter_paint.revision);
+    let client_changed=state.clutter_native_mode &&
+        preview.catalog_root!=client.root_text;
     let auto=state.clutter_auto_refresh && state.clutter_preview_enabled &&
         !edit.stroking() && !paint.stroking() && !clutter_paint.stroking() &&
-        revisions!=(preview.last_height_revision,
-            preview.last_texture_revision,preview.last_clutter_revision);
+        (client_changed || revisions!=(preview.last_height_revision,
+            preview.last_texture_revision,preview.last_clutter_revision));
     let explicit=state.clutter_preview_request!=preview.seen_request;
     if explicit || auto {
         preview.seen_request=state.clutter_preview_request;

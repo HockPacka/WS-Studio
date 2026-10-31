@@ -208,19 +208,120 @@ fn make_cell_edits(cell:&AreaCell, edit:&TextureCellEdit)
 pub fn plan_texture_edits(area:&RawArea, edits:&[TextureCellEdit])
     ->Result<Vec<(usize,usize,Vec<u8>)>,String>
 {
-    let mut result=Vec::new();
-    let mut seen=BTreeMap::<usize,()>::new();
+    use std::collections::BTreeSet;
+    // The native authoring rasters are 65x65, not 64x64: x=64/z=64
+    // duplicates the next cell's x=0/z=0 sample. Propagate only *inside*
+    // this AREA tile, without guessing neighbouring AREA file contents.
+    let mut patches=BTreeMap::<(usize,usize),Vec<u8>>::new();
+    let mut seen=BTreeSet::new();
+    let mut seam=BTreeMap::<usize,BTreeMap<(usize,usize),[u8;4]>>::new();
     for edit in edits {
-        if seen.insert(edit.index,()).is_some(){
+        if !seen.insert(edit.index) {
             return Err("Texture codec: duplicated cell edit".into());
         }
         let cell=area.cells.get(edit.index).and_then(Option::as_ref)
             .ok_or("Texture codec: editing absent cell")?;
         for (bit,data) in make_cell_edits(cell,edit)? {
-            result.push((edit.index,bit,data));
+            patches.insert((edit.index,bit),data);
+        }
+        if edit.before.len()!=CELL_RGBA_BYTES || edit.weights.len()!=CELL_RGBA_BYTES {
+            return Err("Texture codec: invalid 64x64 RGBA8 weight payload".into());
+        }
+        let cx=edit.index%16;
+        let cz=edit.index/16;
+        for z in 0..CELL_SIDE {
+            for x in 0..CELL_SIDE {
+                let pixel=z*CELL_SIDE+x;
+                if px4(&edit.before,pixel)==px4(&edit.weights,pixel) {
+                    continue;
+                }
+                if x!=0 && z!=0 {continue;}
+                let rgba=px4(&edit.weights,pixel);
+                if rgba.iter().map(|&v|v as u16).sum::<u16>()!=255 {
+                    return Err("Texture seam: changed sample weights must sum to 255".into());
+                }
+                if x==0 && cx>0 {
+                    seam.entry(edit.index-1).or_default().insert((64,z),rgba);
+                }
+                if z==0 && cz>0 {
+                    seam.entry(edit.index-16).or_default().insert((x,64),rgba);
+                }
+                if x==0 && z==0 && cx>0 && cz>0 {
+                    seam.entry(edit.index-17).or_default().insert((64,64),rgba);
+                }
+            }
         }
     }
-    Ok(result)
+    for (index,samples) in seam {
+        let cell=area.cells.get(index).and_then(Option::as_ref)
+            .ok_or_else(||format!("Texture seam cell {index} missing in source AREA"))?;
+        if cell.block(19).is_some()||cell.block(20).is_some() {
+            return Err(format!(
+                "Texture seam cell {index} uses unresolved 19/20 compressed companions"
+            ));
+        }
+        let writable=[2usize,29usize,17usize].iter()
+            .any(|&bit|cell.block(bit).is_some());
+        if !writable {
+            return Err(format!("Texture seam cell {index} has no native weight blocks"));
+        }
+        if cell.block(18).is_some() && cell.block(17).is_none() {
+            return Err(format!("Texture seam cell {index} has bit 18 without bit 17"));
+        }
+        for bit in [2,29] {
+            if let Some(original)=cell.block(bit) {
+                let mut raw=patches.remove(&(index,bit))
+                    .unwrap_or_else(||original.to_vec());
+                for (&(x,z),rgba) in &samples {
+                    let offset=(z*RAW_SIDE+x)*2;
+                    raw[offset..offset+2]
+                        .copy_from_slice(&nibbles_for_rgba(*rgba).to_le_bytes());
+                }
+                patches.insert((index,bit),raw);
+            }
+        }
+        if let Some(original)=cell.block(17) {
+            let mut base=patches.remove(&(index,17))
+                .unwrap_or_else(||original.to_vec());
+            let mut correction=cell.block(18).map(|raw|
+                patches.remove(&(index,18)).unwrap_or_else(||raw.to_vec()));
+            let touched=samples.keys()
+                .map(|&(x,z)|(z/4)*BC_BLOCKS+x/4)
+                .collect::<BTreeSet<_>>();
+            for block in touched {
+                let bx=block%BC_BLOCKS;
+                let bz=block/BC_BLOCKS;
+                let mut rgb=[[0u8;3];16];
+                for dz in 0..4 {
+                    for dx in 0..4 {
+                        let x=bx*4+dx;
+                        let z=bz*4+dz;
+                        let w=samples.get(&(x,z)).map(|v|v.map(|c|c as f32/255.0))
+                            .or_else(||cell.compressed_weights(x.min(64),z.min(64)))
+                            .or_else(||{
+                                cell.normalized_weights(x.min(64),z.min(64)).map(|v|{
+                                    let total=v.iter().map(|&v|v as f32).sum::<f32>();
+                                    if total>0.0 {
+                                        v.map(|c|c as f32/total)
+                                    }else{[1.0,0.0,0.0,0.0]}
+                                })
+                            })
+                            .ok_or("Texture seam: unable to restore original BC1 samples")?;
+                        rgb[dz*4+dx]=std::array::from_fn(|c|
+                            (w[c].clamp(0.0,1.0)*255.0).round() as u8);
+                    }
+                }
+                base[block*8..block*8+8].copy_from_slice(&bc1_encode(rgb));
+                if let Some(c)=correction.as_mut(){
+                    c[block*8..block*8+8].copy_from_slice(&neutral_correction_block());
+                }
+            }
+            patches.insert((index,17),base);
+            if let Some(c)=correction {patches.insert((index,18),c);}
+        }
+    }
+    Ok(patches.into_iter()
+        .map(|((cell,bit),data)|(cell,bit,data)).collect())
 }
 
 #[cfg(test)]

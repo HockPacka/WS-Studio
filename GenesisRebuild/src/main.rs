@@ -2036,6 +2036,8 @@ fn dock_terrain_render(
                 ));
                 if let Some(best)=report.best_model{
                     ui.label(format!("Lowest aggregate MAE: {} (HYPOTHESIS only)",best.label()));
+                }else if report.compared_samples>0 {
+                    ui.label("Models tied within tolerance: no unique best fit.");
                 }else{
                     ui.label("No comparable Bit29/19+20 samples in this AREA.");
                 }

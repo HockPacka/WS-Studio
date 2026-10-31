@@ -116,7 +116,8 @@ impl TerrainEdit {
     }
 
     /// Change the in-memory height grid only; native AREA bytes are not mutated here.
-    pub fn brush(&mut self, point: Vec2, radius: f32, strength: f32, dt: f32, mode: BrushMode) -> bool {
+    pub fn brush(&mut self, point: Vec2, radius: f32, strength: f32, falloff: f32,
+        dt: f32, mode: BrushMode) -> bool {
         if !self.is_ready() || self.before_stroke.is_none() { return false; }
         let cx = (point.x - self.origin.x + 256.0) * 0.5;
         let cz = (point.y - self.origin.y + 256.0) * 0.5;
@@ -134,7 +135,7 @@ impl TerrainEdit {
                 if !self.present[i] { continue; }
                 let d = Vec2::new(x as f32-cx,z as f32-cz).length();
                 if d >= radius_grid { continue; }
-                let influence = (1.0 - d/radius_grid).powi(2);
+                let influence = (1.0 - d/radius_grid).powf(1.0+falloff.clamp(0.0,1.0)*4.0);
                 let old = self.heights[i];
                 let amount = strength.abs().clamp(0.0, 30.0)*dt.clamp(0.0, 0.1)*influence;
                 let new = match mode {
@@ -239,7 +240,7 @@ mod tests {
     #[test]
     fn missing_session_rejects_strokes_and_writes() {
         let mut session=TerrainEdit::default();
-        assert!(!session.brush(Vec2::ZERO, 10.0, 1.0, 0.1, BrushMode::Raise));
+        assert!(!session.brush(Vec2::ZERO, 10.0, 1.0, 0.5, 0.1, BrushMode::Raise));
         assert_eq!(session.changes().len(),0);
         assert!(!session.undo());
     }

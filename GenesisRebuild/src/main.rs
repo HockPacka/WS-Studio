@@ -1980,6 +1980,44 @@ fn dock_terrain_render(
         }
         ui.label(format!("Bit 3: {bit3} cells | Bit 13: {bit13} cells | Both: {both}"));
         ui.label("Missing color source = neutral color, not an invented blend.");
+        ui.collapsing("Bit 19/20 Weight Research (read-only)",|ui|{
+            let pairs=area.cells.iter().flatten().filter(|c|
+                c.block(19).is_some() && c.block(20).is_some()).count();
+            ui.label(format!("BC1 companion pairs: {pairs} cells"));
+            ui.label("Experimental decode as 17/18-style base + correction.");
+            if let Some(cell)=area.cells.get(state.selected_cell.min(255))
+                .and_then(Option::as_ref){
+                let mut n=0usize;
+                let mut error=0.0f32;
+                let mut maximum=0.0f32;
+                for z in (0..65).step_by(4){
+                    for x in (0..65).step_by(4){
+                        if let (Some(raw),Some(candidate))=(
+                            cell.normalized_weights(x,z),
+                            cell.candidate_weights_19_20(x,z)
+                        ){
+                            let total=raw.iter().map(|&v|v as f32).sum::<f32>();
+                            if total<=0.0{continue;}
+                            for layer in 0..4{
+                                let delta=(raw[layer] as f32/total-candidate[layer]).abs();
+                                error+=delta;
+                                maximum=maximum.max(delta);
+                                n+=1;
+                            }
+                        }
+                    }
+                }
+                if n>0{
+                    ui.label(format!("Cell {}: {} comparisons, mean diff {:.3}, max diff {:.3}",
+                        cell.index,n,error/n as f32,maximum));
+                    ui.label("Differences are research data, not proof of layout or parity.");
+                }else{
+                    ui.label("Selected cell: no comparable bit 29 / 19+20 samples.");
+                }
+            }
+            ui.colored_label(egui::Color32::DARK_RED,
+                "Export of edited 19/20 weight pairs remains blocked.");
+        });
     }
     ui.separator();
     ui.label(egui::RichText::new("Macro Tint").strong());

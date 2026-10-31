@@ -33,7 +33,7 @@ The **Paint** and **Sculpt** panels provide a separate **Export AREA Bundle (syn
 
 - Open a native `MapName.ZZXX.area` in standalone edit mode and paint weights or RGB at the **first pixel row/column** of the AREA (x=0 or z=0).
 - Choose an existing **parent folder** with the Windows folder picker. Genesis creates a **new, unused subfolder** `<source-stem>_GenesisBundle` containing the edited source AREA and only the required *left, top, top-left and (for height boundaries) right, bottom and the remaining diagonals* neighbouring AREA copies. All output files retain their original `MapName.ZZXX.area` filenames so the tiles remain discoverable together.
-- The source and neighbour files are read-only. Genesis pre-validates **every output AREA in memory** (including border colors, weights, original BC2 alpha and cell/prop counts) before creating the output folder; writes use `create_new` and sync. If a write fails, it attempts to remove only the files it created. **Multi-file writes are not crash-atomic**: a power outage can leave an incomplete isolated bundle, but never overwrites original game files.
+- The source and neighbour files are read-only. Genesis pre-validates **every output AREA in memory** (including border colors, weights, original BC2 alpha and cell/prop counts). It then writes every AREA into a **new, hidden sibling staging folder**, flushes each file to disk, reads the bytes back, and reparses the AREA. Only after every file passes does it **publish the entire folder with a single directory rename**. A failed ordinary write removes only its newly created staging directory. A process crash before publication can leave a hidden `.stage` folder, not an incomplete final bundle. **Power-loss durability is not fully guaranteed**, because filesystem directory fsync and cross-platform no-replace semantics still need dedicated handling.
 - Edge samples in neighbouring AREAs are written only into the **65th stored row/column**, including duplicated samples where two inner cells meet. The writer never changes a neighbour's 64×64 interior, nor invents a missing block.
 - Weight propagation is rejected if the relevant neighbour's four **WorldLayer IDs differ** from the source cell, if bit 19/20 are present, if the neighbour lacks the native weight blocks, or if decompressed errors exceed 20%. RGB565/BC2 color borders are checked within 50/255 per channel; original BC2 alpha is byte-preserved.
 - Missing required neighbour files (or ambiguous coordinate names) cause export refusal. The original single-file Save As remains available.
@@ -44,6 +44,14 @@ The **Paint** and **Sculpt** panels provide a separate **Export AREA Bundle (syn
 ### Internal API
 
 `crates/wildstar_formats/src/area/cross_tile_write.rs` provides `BorderSample`, `BorderWeights`, `plan_cross_tile_border_edits`, and `validate_cross_tile_border`. The color/weight planner operates in native *target tile coordinates*, accepts only x=1024 or z=1024 and produces exact-length replacement blocks via `RawArea::with_cell_block_changes`. For heights, `crates/wildstar_formats/src/area/height_border.rs` provides `route_source_height_edges`, `plan_cross_tile_height_edits`, and `validate_cross_tile_heights`; its target coordinates can range from **-1 to 257** for the native 19×19 ghost overlap. The editor's bundle workflow lives in `src/terrain_bundle.rs`.
+
+### Export staging and recovery
+
+The `wildstar_formats::area::bundle_io::publish_area_bundle` helper validates native AREA bytes, rejects unsafe output names and case-insensitive filename collisions, writes to a unique sibling `.stage.<pid>.<index>` directory and verifies each staged file byte-for-byte before publishing. It uses a single same-filesystem directory rename, rather than gradually revealing separate `.area` files in the final folder.
+
+If the operating system or machine stops before the rename, the final folder normally does not exist. A hidden staging folder may remain and must be inspected before manual removal. The tool does **not** automatically delete staging directories from previous processes, because they could contain recoverable data. On Windows, renaming onto an existing folder fails; non-Windows platforms still need a platform-specific no-replace primitive for race-free protection if the destination appears between checking and renaming.
+
+New Format-Crate tests cover successful publishing, byte-for-byte readback, no overwrite, invalid filenames, duplicate names and simulated failure between staged files. This is **atomic visibility under ordinary failures**, not transactional durability across a sudden power loss.
 
 ## Native AREA export: supported vs blocked
 

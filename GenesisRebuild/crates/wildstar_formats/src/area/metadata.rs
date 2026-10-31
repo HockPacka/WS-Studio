@@ -382,6 +382,7 @@ mod tests {
         // 17x17 blocks, each 16 bytes. Test block 0:
         // bytes 0..7 alpha, 8..11 RGB565 endpoints, 12..15 indices
         // c0 = pure red (0xF800), c1 = pure green (0x07E0), index 0 = 0 -> c0
+        b13[0]=0xF2; // first pixel alpha=2, second alpha=15
         b13[8..10].copy_from_slice(&0xF800u16.to_le_bytes());
         b13[10..12].copy_from_slice(&0x07E0u16.to_le_bytes());
         let mut c = AreaCell {
@@ -392,6 +393,18 @@ mod tests {
         };
         c.blocks[13] = Some(b13);
         assert_eq!(c.terrain_color(0, 0), Some([255, 0, 0]));
+        assert_eq!(c.bc2_color_alpha(0,0),Some(34));
+        assert_eq!(c.bc2_color_alpha(1,0),Some(255));
+        assert_eq!(c.color_bc2(0,0),Some([255,0,0]));
+        assert_eq!(c.bc2_color_alpha(65,0),None);
+        let mut raw565=vec![0u8;8450];
+        raw565[..2].copy_from_slice(&0x001Fu16.to_le_bytes());
+        c.blocks[3]=Some(raw565);
+        c.flags|=1<<3;
+        assert_eq!(c.terrain_color(0,0),Some([0,0,255])); // bit3 priority
+        assert_eq!(c.color_bc2(0,0),Some([255,0,0])); // independent bit13
+        assert_eq!(c.bc2_color_alpha(0,0),Some(34));
+
 
         let mut b17 = vec![0u8; 2312];
         // 17x17 blocks, each 8 bytes. c0 = pure red, c1 = black, index 0 = 0

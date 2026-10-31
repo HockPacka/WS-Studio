@@ -10,6 +10,8 @@ struct SplatParams {
     enabled: u32,
     has_normals: u32,
     tile_meters: f32,
+    tint_strength: f32,
+    tint_gamma: u32,
     pad: u32,
     tiling: array<vec4<f32>, 64>,
 }
@@ -40,7 +42,8 @@ fn fragment(
         let cell = clamp(vec2<i32>(floor(uv * 16.0)), vec2<i32>(0), vec2<i32>(15));
         let ids = textureLoad(cell_layers, cell, 0) * 255.0;
         let weights = textureSample(weight_map, weight_sampler, uv);
-        let tint = textureSample(tint_map, weight_sampler, uv).rgb * (255.0 / 128.0);
+        // Neutral of the colour map is 128; strength blends between no tint and the full tint.
+        let tint = mix(vec3<f32>(1.0), textureSample(tint_map, weight_sampler, uv).rgb * (255.0 / 128.0), splat.tint_strength);
 
         var color = vec3<f32>(0.0);
         var normal = vec3<f32>(0.0);
@@ -60,7 +63,14 @@ fn fragment(
             }
         }
         if (total > 0.0001) {
-            pbr_input.material.base_color = vec4<f32>(color / total * tint, 1.0);
+            var albedo = color / total;
+            if (splat.tint_gamma != 0u) {
+                // Multiply in gamma space: the sRGB bytes times the tint, as the atlas bake did.
+                albedo = pow(pow(albedo, vec3<f32>(1.0 / 2.2)) * tint, vec3<f32>(2.2));
+            } else {
+                albedo = albedo * tint;
+            }
+            pbr_input.material.base_color = vec4<f32>(albedo, 1.0);
             if (splat.has_normals != 0u) {
                 let tbn = calculate_tbn_mikktspace(pbr_input.world_normal, in.world_tangent);
                 pbr_input.N = normalize(tbn * normalize(normal));

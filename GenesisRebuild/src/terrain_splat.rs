@@ -34,13 +34,17 @@ pub struct SplatParams {
     pub has_normals: u32,
     /// Edge length of the tile in metres (UV 0..1).
     pub tile_meters: f32,
+    /// 0 = macro tint off, 1 = full strength (blend towards neutral in between).
+    pub tint_strength: f32,
+    /// 0 = multiply in linear light, 1 = multiply in sRGB/gamma space (how the old atlas bake worked).
+    pub tint_gamma: u32,
     pub _pad: u32,
     /// Inverse tiling length (1 / metres per texture repeat), indexed by array layer.
     pub tiling: [Vec4; TILING_VECS],
 }
 impl Default for SplatParams {
     fn default() -> Self {
-        Self { enabled: 0, has_normals: 0, tile_meters: 512.0, _pad: 0, tiling: [Vec4::ZERO; TILING_VECS] }
+        Self { enabled: 0, has_normals: 0, tile_meters: 512.0, tint_strength: 1.0, tint_gamma: 1, _pad: 0, tiling: [Vec4::ZERO; TILING_VECS] }
     }
 }
 
@@ -93,6 +97,27 @@ impl SplatData {
             weights: Some(images.add(self.weights)),
             tint: Some(images.add(self.tint)),
             cell_layers: Some(images.add(self.cell_layers)),
+        }
+    }
+}
+
+/// Live tint settings, applied to every terrain material.
+#[derive(Clone, Copy, PartialEq)]
+pub struct TintSettings {
+    pub strength: f32,
+    pub gamma_space: bool,
+}
+impl Default for TintSettings {
+    fn default() -> Self {
+        Self { strength: 1.0, gamma_space: true }
+    }
+}
+
+impl TintSettings {
+    pub fn apply(&self, materials: &mut Assets<TerrainMaterial>) {
+        for (_, material) in materials.iter_mut() {
+            material.extension.params.tint_strength = self.strength;
+            material.extension.params.tint_gamma = self.gamma_space as u32;
         }
     }
 }

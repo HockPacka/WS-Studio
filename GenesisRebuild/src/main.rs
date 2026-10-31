@@ -36,6 +36,7 @@ struct GenesisState {
     clutter_panel: bool, prop_panel: bool, object_list: bool,
     zone_panel: bool,
     grid: bool, palette_index: usize, texture_index: usize,
+    tint: terrain_splat::TintSettings,
     search: String,
     status: String,
     raw_view: bool,
@@ -67,6 +68,7 @@ impl Default for GenesisState {
             color_panel: true, color_palette: true, texture_panel: false,
             clutter_panel: false, prop_panel: false, object_list: false,
             zone_panel: false, grid: false, palette_index: 0, texture_index: 0,
+            tint: terrain_splat::TintSettings::default(),
             search: String::new(),
             status: "3D AREA Preview: right drag orbit, middle drag pan, wheel zoom".to_string(),
             raw_view: true,
@@ -393,6 +395,20 @@ fn load_raw_area(
     }
 }
 /// Replace only the mesh asset when an AREA debug-view option changes.
+/// Push the macro tint settings to every terrain material (single tile and streamed tiles).
+fn apply_tint_settings(
+    state:Res<GenesisState>,
+    mut materials:ResMut<Assets<terrain_splat::TerrainMaterial>>,
+    mut last:Local<Option<terrain_splat::TintSettings>>,
+    mut known:Local<usize>,
+){
+    // Also re-apply when new tiles were added, so they pick up the current settings.
+    let count=materials.len();
+    if *last==Some(state.tint) && *known==count{return;}
+    *last=Some(state.tint);
+    *known=count;
+    state.tint.apply(&mut materials);
+}
 fn refresh_terrain_view(
     state:Res<GenesisState>,
     mut loaded:ResMut<LoadedArea>,
@@ -492,7 +508,7 @@ fn main() {
         .add_systems(Startup, setup_scene)
         .add_systems(Update, (client_data::poll_system, load_raw_area,
             streaming::update_world_streaming,
-            refresh_terrain_view, update_camera).chain())
+            refresh_terrain_view, apply_tint_settings, update_camera).chain())
         .add_systems(EguiPrimaryContextPass, editor_ui)
         .run();
 }
@@ -1192,7 +1208,7 @@ fn dock_panels(ui_root:&mut egui::Ui, state:&mut GenesisState,
                         3=>dock_clutter(ui,state),
                         4=>dock_objects(ui,state,loaded,client),
                         5=>dock_world(ui,state,loaded,streaming,orbit,commands),
-                        6=>dock_area(ui,state,loaded),
+                        6=>{let mut tint=state.tint;dock_area(ui,state,loaded,&mut tint);state.tint=tint;},
                         _=>{
                             if ui.button("Choose Client Root...").clicked(){
                                 command(state,"Choose Client Root...");
@@ -1623,7 +1639,7 @@ fn zone_browser_dialog(
         state.open_zone_dialog = false;
     }
 }
-fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea){
+fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea,tint:&mut terrain_splat::TintSettings){
     ui.label("Terrain preview");
     ui.horizontal_wrapped(|ui|{
         for (i,name) in ["Height","RGB565","Layer IDs","Zone IDs","Blend","Textured"].iter().enumerate(){
@@ -1637,6 +1653,11 @@ fn dock_area(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea){
         });
     }
     if state.terrain_view==5{
+        ui.horizontal(|ui|{
+            ui.label("Macro tint");
+            ui.add(egui::Slider::new(&mut tint.strength,0.0..=1.0));
+        });
+        ui.checkbox(&mut tint.gamma_space,"Tint in gamma space (like the old atlas)");
         ui.label(egui::RichText::new(&loaded.layer_status).small().strong());
         if loaded.terrain_albedo.is_none(){
             ui.colored_label(egui::Color32::DARK_RED,

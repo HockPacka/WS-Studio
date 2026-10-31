@@ -16,10 +16,14 @@ const PAGE: usize = 12;
 #[derive(Clone,Copy,PartialEq,Eq,Default)]
 pub enum PaintMode { #[default] Paint, Erase, Smooth }
 
+#[derive(Clone,Copy,PartialEq,Eq,Default)]
+pub enum ColorMode { #[default] Color, Darken, Lighten, Smooth }
+
 #[derive(Clone)]
 struct Snapshot {
     weights: Vec<u8>,
     slots: Vec<[u32;4]>,
+    colors: Vec<u8>,
 }
 #[derive(Resource,Default)]
 pub struct TerrainPaint {
@@ -28,6 +32,11 @@ pub struct TerrainPaint {
     baseline: Vec<u8>,
     pub slots: Vec<[u32;4]>,
     baseline_slots: Vec<[u32;4]>,
+    pub colors: Vec<u8>,
+    baseline_colors: Vec<u8>,
+    color_present: Vec<bool>,
+    pub color: [u8;3],
+    pub color_mode: ColorMode,
     present: Vec<bool>,
     stroke: Option<Snapshot>,
     undo: Vec<Snapshot>,
@@ -60,17 +69,32 @@ impl TerrainPaint {
         self.present=area.cells.iter().map(|c|c.as_ref().and_then(|c|c.block(1)).is_some()).collect();
         self.slots=area.cells.iter().map(|c|c.as_ref().and_then(|c|c.layers()).unwrap_or([0;4])).collect();
         self.baseline_slots=self.slots.clone();
+        self.color_present=area.cells.iter().map(|c|c.as_ref()
+            .is_some_and(|c|c.block(3).is_some()||c.block(13).is_some())).collect();
+        self.color=[128,128,128];
         self.selected_id=self.slots.iter().zip(&self.present)
             .find(|(_,p)|**p).map(|(slots,_)|slots[0]).filter(|&id|id!=0);
         Ok(())
     }
+    pub fn load_colors(&mut self,pixels:&[u8])->Result<(),String>{
+        if !self.ready() || pixels.len()!=MAP_SIDE*MAP_SIDE*4 {
+            return Err("Terrain tint must be an RGBA8 1024x1024 image".into());
+        }
+        self.colors=pixels.to_vec();
+        self.baseline_colors=pixels.to_vec();
+        Ok(())
+    }
+    pub fn colors_ready(&self)->bool {
+        self.ready() && self.colors.len()==MAP_SIDE*MAP_SIDE*4
+    }
     pub fn dirty(&self)->bool {
-        self.ready() && (self.weights!=self.baseline || self.slots!=self.baseline_slots)
+        self.ready() && (self.weights!=self.baseline || self.slots!=self.baseline_slots
+            || self.colors!=self.baseline_colors)
     }
     pub fn can_undo(&self)->bool{!self.undo.is_empty()}
     pub fn can_redo(&self)->bool{!self.redo.is_empty()}
     fn snapshot(&self)->Snapshot {
-        Snapshot{weights:self.weights.clone(),slots:self.slots.clone()}
+        Snapshot{weights:self.weights.clone(),slots:self.slots.clone(),colors:self.colors.clone()}
     }
     fn push_undo(&mut self, before:Snapshot){
         self.undo.push(before);
@@ -82,13 +106,14 @@ impl TerrainPaint {
     }
     pub fn end(&mut self) {
         if let Some(before)=self.stroke.take(){
-            if before.weights!=self.weights || before.slots!=self.slots {self.push_undo(before);}
+            if before.weights!=self.weights || before.slots!=self.slots || before.colors!=self.colors {self.push_undo(before);}
         }
     }
     fn restore(&mut self, item:Snapshot){
         let changed_slots=self.slots!=item.slots;
         self.weights=item.weights;
         self.slots=item.slots;
+        self.colors=item.colors;
         if changed_slots{self.rebuild_pending=true;}
         self.revision=self.revision.wrapping_add(1);
     }
@@ -199,6 +224,94 @@ impl TerrainPaint {
         changed
     }
 
+    /// Paint existing WildStar macro-tint RGB without altering the unknown alpha.
+    /// Color mode and swatch are editor settings, not new AREA metadata.
+    pub fn color_brush(&mut self,world:Vec2,radius:f32,power:f32,
+        falloff:f32,dt:f32,restricted_cell:Option<usize>)->bool
+    {
+        if !self.colors_ready() || self.stroke.is_none(){return false;}
+        let center=(world-self.origin+Vec2::splat(256.0))*2.0;
+        let radius=(radius*2.0).max(1.0);
+        let x0=((center.x-radius).floor() as isize).max(0) as usize;
+        let x1=((center.x+radius).ceil() as isize).min((MAP_SIDE-1) as isize) as usize;
+        let z0=((center.y-radius).floor() as isize).max(0) as usize;
+        let z1=((center.y+radius).ceil() as isize).min((MAP_SIDE-1) as isize) as usize;
+        if x0>x1 || z0>z1{return false;}
+        let before=if self.color_mode==ColorMode::Smooth{Some(self.colors.clone())}else{None};
+        let mut changed=false;
+        for z in z0..=z1{
+            for x in x0..=x1{
+                let d=(Vec2::new(x as f32+0.5,z as f32+0.5)-center).length();
+                if d>=radius{continue;}
+                let cell=z/64*16+x/64;
+                if !self.present[cell] || !self.color_present[cell] ||
+                    restricted_cell.is_some_and(|only|only!=cell) {continue;}
+                let off=(z*MAP_SIDE+x)*4;
+                let amount=(power.clamp(0.0,2.0)*dt.clamp(0.0,0.1)*15.0
+                    *(1.0-d/radius).powf(1.0+4.0*falloff.clamp(0.0,1.0)))
+                    .clamp(0.0,1.0);
+                if amount<=0.0{continue;}
+                let original=[self.colors[off],self.colors[off+1],self.colors[off+2]];
+                let target=match self.color_mode{
+                    ColorMode::Color=>self.color,
+                    ColorMode::Darken=>original.map(|c|((c as f32)*0.4).round() as u8),
+                    ColorMode::Lighten=>original.map(|c|(c as f32+(255-c) as f32*0.6).round() as u8),
+                    ColorMode::Smooth=>{
+                        let src=before.as_ref().expect("smooth input");
+                        let mut sum=[0u32;3];
+                        let mut count=0u32;
+                        for nz in z.saturating_sub(1)..=(z+1).min(MAP_SIDE-1){
+                            for nx in x.saturating_sub(1)..=(x+1).min(MAP_SIDE-1){
+                                if nx/64!=x/64||nz/64!=z/64{continue;}
+                                let at=(nz*MAP_SIDE+nx)*4;
+                                for i in 0..3{sum[i]+=src[at+i] as u32;}
+                                count+=1;
+                            }
+                        }
+                        std::array::from_fn(|i|(sum[i]/count) as u8)
+                    },
+                };
+                for i in 0..3{
+                    let next=(original[i] as f32+
+                        (target[i] as f32-original[i] as f32)*amount).round() as u8;
+                    if next!=original[i] {self.colors[off+i]=next;changed=true;}
+                }
+            }
+        }
+        if changed{self.revision=self.revision.wrapping_add(1);}
+        changed
+    }
+
+    pub fn native_color_edits(&mut self,area:&RawArea)
+        ->Result<(Vec<(usize,usize,Vec<u8>)>,usize),String>
+    {
+        use wildstar_formats::area::color_write::{
+            plan_color_edits,ColorCellEdit,COLOR_BYTES,
+        };
+        self.end();
+        if !self.colors_ready(){return Ok((Vec::new(),0));}
+        let mut edits=Vec::new();
+        for cell in 0..256{
+            if !self.present[cell]{continue;}
+            let cx=(cell%16)*64;
+            let cz=(cell/16)*64;
+            let mut before=Vec::with_capacity(COLOR_BYTES);
+            let mut after=Vec::with_capacity(COLOR_BYTES);
+            for z in 0..64{
+                for x in 0..64{
+                    let off=((cz+z)*MAP_SIDE+cx+x)*4;
+                    before.extend_from_slice(&self.baseline_colors[off..off+4]);
+                    after.extend_from_slice(&self.colors[off..off+4]);
+                }
+            }
+            if before!=after{
+                edits.push(ColorCellEdit{index:cell,before,after});
+            }
+        }
+        let cells=edits.len();
+        Ok((plan_color_edits(area,&edits)?,cells))
+    }
+
     /// Build changes from just the modified cells; untouched cells and texels
     /// are left exactly as they appeared in the source AREA.
     pub fn native_texture_edits(&mut self,source:&RawArea)
@@ -286,6 +399,44 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         Ok(())
     }
 
+    /// Native color is RGB565 or BC2: compare after decompression and
+    /// reject significant lossy deviations instead of silently exporting them.
+    fn verify_native_color_fidelity(&self,area:&RawArea)->Result<(),String>{
+        if !self.colors_ready(){return Ok(());}
+        const MAX_COLOR_ERROR:i16=50;
+        for cell_index in 0..256{
+            if !self.present[cell_index]{continue;}
+            let (cx,cz)=(cell_index%16*64,cell_index/16*64);
+            let mut dirty=false;
+            for z in 0..64{
+                for x in 0..64{
+                    let o=((cz+z)*MAP_SIDE+cx+x)*4;
+                    if self.baseline_colors[o..o+3]!=self.colors[o..o+3]{
+                        dirty=true;break;
+                    }
+                }
+                if dirty{break;}
+            }
+            if !dirty{continue;}
+            let cell=area.cells[cell_index].as_ref().ok_or("Color validation missing cell")?;
+            for z in 0..64{
+                for x in 0..64{
+                    let o=((cz+z)*MAP_SIDE+cx+x)*4;
+                    let actual=cell.terrain_color(x,z).ok_or("Color validation missing RGB data")?;
+                    for channel in 0..3{
+                        let delta=actual[channel] as i16-self.colors[o+channel] as i16;
+                        if delta.abs()>MAX_COLOR_ERROR{
+                            return Err(format!(
+                                "AREA RGB export diverges by {} at cell {cell_index} pixel ({x},{z}), channel {channel}; export blocked",
+                                delta.abs()));
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Export a combined height+texture AREA into a NEW file. Supports only
     /// recognized native texture weight layouts. Unknown compressed companion
     /// formats (e.g. bit 19/20) fail closed BEFORE any file is created.
@@ -301,7 +452,9 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         if destination.exists(){
             return Err("Save As refuses to overwrite existing files".into());
         }
-        let (patches,changed_cells)=self.native_texture_edits(source)?;
+        let (mut patches,changed_cells)=self.native_texture_edits(source)?;
+        let (color_patches,color_cells)=self.native_color_edits(source)?;
+        patches.extend(color_patches);
         if height_edits.is_empty() && patches.is_empty(){
             return Err("No height or texture changes to export".into());
         }
@@ -333,6 +486,7 @@ pixel ({x},{z}), layer {channel}; export cancelled"
         }
         // All blocks/unknown payloads are validated inside with_cell_block_changes.
         self.verify_native_weight_fidelity(&reread)?;
+        self.verify_native_color_fidelity(&reread)?;
         let mut file=std::fs::OpenOptions::new().write(true).create_new(true)
             .open(destination).map_err(|e|format!("Cannot create {}: {e}",destination.display()))?;
         if let Err(error)=file.write_all(&bytes).and_then(|_|file.sync_all()){
@@ -340,7 +494,7 @@ pixel ({x},{z}), layer {channel}; export cancelled"
             let _=std::fs::remove_file(destination);
             return Err(format!("Cannot write AREA: {error}"));
         }
-        Ok((height_edits.len(),changed_cells))
+        Ok((height_edits.len(),changed_cells+color_cells))
     }
 
     /// Original AREA remains byte-for-byte unchanged: build only a transient

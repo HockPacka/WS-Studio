@@ -43,6 +43,46 @@ interpretation, wind, scatter distribution and instance orientation are not
 fully verified. **This is an editor preview implementing native table
 relationships, not a bit-identical reproduction of WildStar's placement.**
 
+## Native Clutter Painter, Undo/Redo and Save As
+
+The Clutter dock now includes **Paint native AREA Clutter data**. Its
+three modes edit only the already existing native per-cell 64×64 blocks:
+
+- **Preset** chooses a WorldLayer slot 0..3 and a preset 0..3, updating
+  only the corresponding two bits in **AREA Bit 27**. The other three
+  WorldLayer selectors in each pixel are byte-preserved.
+- **Exclude** sets only **Bit 16 mask bit 5 (0x20)** at a painted pixel,
+  suppressing vegetation there without modifying road/zone flags.
+- **Restore** clears only the same **0x20** mask bit, leaving all other
+  terrain flags intact.
+
+Brush radius is in world-space metres, and editable AREA cells are never
+silently created. If a cell has no matching native block, painting does
+nothing rather than inventing a block layout. The workspace keeps a maximum
+of 24 per-stroke Undo/Redo snapshots, with Ctrl+Z and Ctrl+Y when Clutter
+painting is active. **Save AREA As...** and **Export AREA Bundle...** include
+the Clutter edits alongside supported terrain heights and textures.
+Export uses the existing validated, non-overwriting native AREA writer and
+staged-bundle publisher. Bit 16/27 changes do not require inter-AREA ghost
+synchronization because the stored maps are exactly 64×64 per cell.
+
+The **Auto-regenerate after Terrain/Clutter edits** toggle defaults on.
+The current instance preview is rebuilt when the height grid, texture
+weights, or Clutter selectors/masks change **after the active stroke ends**,
+not on every mouse-move event. The preview samples unsaved WorldLayer
+assignments, painted weights, and native 16/27 changes from in-memory
+workspaces. WorldClutter.tbl metadata are cached while the indexed
+ClientData root is unchanged; per-instance Mesh and Material handles remain
+shared. Auto-regeneration is a full preview rebuild for now; a per-cell
+dirty-region incremental rebuild is still a later optimization.
+
+The native writer is in \`wildstar_formats/src/area/clutter_write.rs\` and
+the in-memory painter is \`GenesisRebuild/src/clutter_paint.rs\`. No
+original source data are overwritten. Source-bit preservation and
+validation tests reject missing cell blocks, illegal selectors, invalid
+coordinates and modifications to unrelated flags/blocks. The actual
+WildStar placement algorithm and dynamic wind remain unverified.
+
 ## Implementation and testing
 
 - \`wildstar_formats/src/tbl.rs\`: extracts four WorldLayer clutter IDs and

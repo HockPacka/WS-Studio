@@ -25,6 +25,52 @@ fn is_ghost_boundary(v:i32)->bool{
 fn sample_position(index:usize,rx:usize,rz:usize)->(i32,i32){
     ((index%16*16+rx) as i32-1,(index/16*16+rz) as i32-1)
 }
+/// Route modified source 257x257 height vertices to neighboring AREA tiles.
+/// The 19x19 native cell stores one extra sample outside each side of a tile:
+/// source x=0/1 => left neighbor x=256/257, x=255/256 => right -1/0.
+/// The same applies to z and to all four diagonal neighbors.
+/// Returns (tile delta X, tile delta Z) -> target extended samples.
+pub fn route_source_height_edges(
+    changes:&[(usize,usize,f32)]
+)->Result<BTreeMap<(i8,i8),Vec<HeightBorderSample>>,String>{
+    let mut routed=BTreeMap::<(i8,i8),Vec<HeightBorderSample>>::new();
+    let mut seen=BTreeSet::new();
+    for &(x,z,height) in changes{
+        if x>256 || z>256 {
+            return Err("AREA height seam: source vertex outside 257x257 grid".into());
+        }
+        quantize_height(height)?;
+        if !seen.insert((x,z)) {
+            return Err("AREA height seam: duplicate source height vertex".into());
+        }
+        let mut x_offsets=Vec::new();
+        let mut z_offsets=Vec::new();
+        if x<=1{x_offsets.push(-1i8);}
+        if x>=255{x_offsets.push(1i8);}
+        if z<=1{z_offsets.push(-1i8);}
+        if z>=255{z_offsets.push(1i8);}
+        for &dx in &x_offsets{
+            routed.entry((dx,0)).or_default().push(HeightBorderSample{
+                x:x as i32-dx as i32*256,z:z as i32,height,
+            });
+        }
+        for &dz in &z_offsets{
+            routed.entry((0,dz)).or_default().push(HeightBorderSample{
+                x:x as i32,z:z as i32-dz as i32*256,height,
+            });
+        }
+        for &dx in &x_offsets{
+            for &dz in &z_offsets{
+                routed.entry((dx,dz)).or_default().push(HeightBorderSample{
+                    x:x as i32-dx as i32*256,
+                    z:z as i32-dz as i32*256,height,
+                });
+            }
+        }
+    }
+    Ok(routed)
+}
+
 /// Return exact-size native Bit 0 replacements. Only accepts target samples
 /// on a tile's exterior border (including the -1 and +257 ghost margin);
 /// the neighbouring tile's ordinary interior is never edited.
@@ -127,6 +173,35 @@ mod tests{
         for &index in indices{cells[index]=Some(cell(index));}
         RawArea{version:0,compressed:false,original:Vec::new(),
             chunks:Vec::new(),cells,lod_prefix:None}
+    }
+    #[test]
+    fn routes_visible_and_ghost_samples_to_all_eight_adjacent_tiles(){
+        let changes=[
+            (0usize,0usize,11.0f32),
+            (1,1,12.0),
+            (255,255,13.0),
+            (256,256,14.0),
+            (7,129,15.0),
+        ];
+        let mapped=route_source_height_edges(&changes).unwrap();
+        assert_eq!(mapped.len(),8);
+        for &(x,z,h) in &[
+            (256,256,11.0),(257,257,12.0)
+        ]{
+            assert!(mapped[&(-1,-1)].contains(&HeightBorderSample{x,z,height:h}));
+        }
+        assert!(mapped[&(1,1)].contains(&HeightBorderSample{
+            x:-1,z:-1,height:13.0,
+        }));
+        assert!(mapped[&(1,1)].contains(&HeightBorderSample{
+            x:0,z:0,height:14.0,
+        }));
+        assert!(mapped[&(-1,0)].contains(&HeightBorderSample{
+            x:263,z:129,height:15.0,
+        })==false); // non-ghost x=7 must not be copied
+        assert_eq!(route_source_height_edges(&[(7,7,3.0)]).unwrap().len(),0);
+        assert!(route_source_height_edges(&[(257,0,0.0)]).is_err());
+        assert!(route_source_height_edges(&[(0,0,1.0),(0,0,2.0)]).is_err());
     }
     #[test]
     fn extends_height_seams_to_minus_one_and_plus_257(){

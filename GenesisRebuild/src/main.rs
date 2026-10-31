@@ -57,6 +57,7 @@ struct GenesisState {
     pending_load: Option<String>,
     area_inspector: bool,
     selected_cell: usize,
+    weight_research_report: Option<area::weight_research::AreaWeightResearch>,
     dock_visible: bool,
     floating_mode: bool,
     bottom_visible: bool,
@@ -98,6 +99,7 @@ impl Default for GenesisState {
             pending_load: None,
             area_inspector: false,
             selected_cell: 0,
+            weight_research_report: None,
             dock_visible: true,
             floating_mode: false,
             bottom_visible: true,
@@ -307,6 +309,7 @@ fn load_raw_area(
     match area::RawArea::from_path(Path::new(&path)) {
         Ok(tile)=>{
             paint.reset();
+            state.weight_research_report=None;
             loaded.preview_model=None;
             viewer.clear_preview();
             if !is_streaming {
@@ -2013,42 +2016,96 @@ fn dock_terrain_render(
         ui.label(format!("Bit 3: {bit3} cells | Bit 13: {bit13} cells | Both: {both}"));
         ui.label("Missing color source = neutral color, not an invented blend.");
         ui.collapsing("Bit 19/20 Weight Research (read-only)",|ui|{
-            let pairs=area.cells.iter().flatten().filter(|c|
-                c.block(19).is_some() && c.block(20).is_some()).count();
-            ui.label(format!("BC1 companion pairs: {pairs} cells"));
-            ui.label("Experimental decode as 17/18-style base + correction.");
-            if let Some(cell)=area.cells.get(state.selected_cell.min(255))
-                .and_then(Option::as_ref){
-                let mut n=0usize;
-                let mut error=0.0f32;
-                let mut maximum=0.0f32;
-                for z in (0..65).step_by(4){
-                    for x in (0..65).step_by(4){
-                        if let (Some(raw),Some(candidate))=(
-                            cell.normalized_weights(x,z),
-                            cell.candidate_weights_19_20(x,z)
-                        ){
-                            let total=raw.iter().map(|&v|v as f32).sum::<f32>();
-                            if total<=0.0{continue;}
-                            for layer in 0..4{
-                                let delta=(raw[layer] as f32/total-candidate[layer]).abs();
-                                error+=delta;
-                                maximum=maximum.max(delta);
-                                n+=1;
-                            }
+            use area::weight_research::CorrectionHypothesis;
+            let pairs=area.cells.iter().flatten()
+                .filter(|c|c.block(19).is_some() && c.block(20).is_some()).count();
+            ui.label(format!("19/20 BC1 pairs: {pairs} cells"));
+            ui.label("Full 65x65 scan, 4 hypotheses: direct/half correction, with/without BC1 coverage.");
+            ui.label("Includes BC1 three-color/transparent endpoint mode. Never writes native data.");
+            if ui.button("Analyze full AREA (read-only)").clicked(){
+                state.weight_research_report=Some(
+                    area::weight_research::AreaWeightResearch::inspect(area)
+                );
+                state.status="Bit 19/20 research finished (no AREA data modified)".into();
+            }
+            if let Some(report)=state.weight_research_report.as_ref(){
+                ui.separator();
+                ui.label(format!(
+                    "19/20: {} cells | With Bit29: {} | Compared: {} samples",
+                    report.present_pairs,report.paired_with_bit29,report.compared_samples
+                ));
+                if let Some(best)=report.best_model{
+                    ui.label(format!("Lowest aggregate MAE: {} (HYPOTHESIS only)",best.label()));
+                }else{
+                    ui.label("No comparable Bit29/19+20 samples in this AREA.");
+                }
+                egui::Grid::new("genesis_19_20_research")
+                    .striped(true).show(ui,|ui|{
+                        ui.strong("Model");
+                        ui.strong("MAE");
+                        ui.strong("Max");
+                        ui.strong("Within 10/255");
+                        ui.end_row();
+                        for model in CorrectionHypothesis::ALL{
+                            let m=report.aggregate[model.index()];
+                            ui.label(model.label());
+                            ui.label(if m.sample_count>0{format!("{:.5}",m.mean_abs_error)}
+                                else{"n/a".into()});
+                            ui.label(if m.sample_count>0{format!("{:.5}",m.max_abs_error)}
+                                else{"n/a".into()});
+                            ui.label(if m.sample_count>0{
+                                format!("{:.1}%",m.within_10_of_255 as f64*100.0
+                                    /m.sample_count as f64)
+                            }else{"n/a".into()});
+                            ui.end_row();
                         }
+                    });
+                if let Some(cell)=report.cells.iter()
+                    .find(|c|c.index==state.selected_cell.min(255)){
+                    ui.separator();
+                    ui.label(format!("Selected cell {}: {} compared samples",
+                        cell.index,cell.compared_samples));
+                    ui.label(format!(
+                        "3-color BC1 blocks base/correction: {}/{} | transparent samples: {}",
+                        cell.pair19_base_3color_blocks,
+                        cell.pair19_corr_3color_blocks,
+                        cell.pair19_base_transparent_samples
+                    ));
+                    if let Some(best)=cell.best_model{
+                        ui.label(format!("Selected cell best-fit: {}",best.label()));
                     }
                 }
-                if n>0{
-                    ui.label(format!("Cell {}: {} comparisons, mean diff {:.3}, max diff {:.3}",
-                        cell.index,n,error/n as f32,maximum));
-                    ui.label("Differences are research data, not proof of layout or parity.");
-                }else{
-                    ui.label("Selected cell: no comparable bit 29 / 19+20 samples.");
+                if ui.button("Export research CSV...").clicked(){
+                    let csv=report.csv();
+                    let target=rfd::FileDialog::new()
+                        .add_filter("CSV", &["csv"])
+                        .set_file_name("Genesis_Bit19_20_Research.csv")
+                        .save_file();
+                    if let Some(path)=target{
+                        state.status=if path.extension().and_then(|s|s.to_str())
+                            .is_some_and(|s|s.eq_ignore_ascii_case("csv")){
+                            match std::fs::OpenOptions::new().write(true)
+                                .create_new(true).open(&path){
+                                Ok(mut file)=>{
+                                    use std::io::Write;
+                                    match file.write_all(csv.as_bytes())
+                                        .and_then(|_|file.sync_all()){
+                                        Ok(())=>format!("Research CSV exported: {}",path.display()),
+                                        Err(e)=>{
+                                            drop(file);
+                                            let _=std::fs::remove_file(&path);
+                                            format!("Research CSV write failed: {e}")
+                                        }
+                                    }
+                                },
+                                Err(e)=>format!("CSV Save As blocked (no overwrite): {e}"),
+                            }
+                        }else{"Research CSV requires .csv extension".into()};
+                    }
                 }
             }
             ui.colored_label(egui::Color32::DARK_RED,
-                "Export of edited 19/20 weight pairs remains blocked.");
+                "No native Bit19/20 writer. Closest fit is not shader proof.");
         });
     }
     ui.separator();

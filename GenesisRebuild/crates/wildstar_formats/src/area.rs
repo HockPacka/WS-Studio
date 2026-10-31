@@ -4,6 +4,7 @@ use flate2::{Decompress, FlushDecompress, Status};
 use std::path::Path;
 pub mod metadata;
 pub mod weight_research;
+pub mod clutter_write;
 pub mod texture_write;
 pub mod color_write;
 pub mod cross_tile_write;

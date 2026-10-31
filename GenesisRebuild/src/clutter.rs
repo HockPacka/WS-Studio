@@ -4,8 +4,8 @@
 //! SAME Mesh and Material asset handles. Never create assets per instance.
 //!
 //! Native bit27 selector and bit16 (0x20) suppression mask are respected.
-//! WorldClutter.tbl weighted asset selection and density are NOT decoded yet;
-//! the editor selects one existing M3 model for an explicit diagnostic preview.
+//! The native path resolves WorldLayer / WorldClutter.tbl weighted M3 assets.
+//! A separate manually selected M3 diagnostic mode remains available.
 use bevy::prelude::*;
 use wildstar_formats::area::{HeightGrid,RawArea};
 
@@ -49,6 +49,7 @@ pub struct ClutterPreview {
     native_cells:crate::clutter_rebuild::CellPlacements,
     native_roots:std::collections::BTreeMap<usize,Vec<Entity>>,
     native_rendered:std::collections::BTreeMap<usize,usize>,
+    native_model_parts:std::collections::BTreeMap<String,(usize,usize)>,
     pub rebuilt_cells:usize,
     pub retained_cells:usize,
     pub last_spawned:usize,
@@ -170,6 +171,7 @@ fn destroy(commands:&mut Commands,preview:&mut ClutterPreview){
     preview.native_cells.clear();
     preview.native_roots.clear();
     preview.native_rendered.clear();
+    preview.native_model_parts.clear();
     preview.rebuilt_cells=0;
     preview.retained_cells=0;
     preview.last_spawned=0;
@@ -312,6 +314,7 @@ pub fn update_preview(
                                 continue;
                             };
                             let mut eligible=Vec::new();
+                            let mut excluded_parts=0usize;
                             for part in &model.parts{
                                 let Some(material)=materials.get(&part.material) else{
                                     continue;
@@ -319,15 +322,18 @@ pub fn update_preview(
                                 if matches!(material.alpha_mode,
                                     AlphaMode::Opaque|AlphaMode::Mask(_)){
                                     eligible.push(part.clone());
-                                }else{skipped_transparent+=1;}
+                                }else{
+                                    skipped_transparent+=1;
+                                    excluded_parts+=1;
+                                }
                             }
                             if eligible.is_empty(){
                                 missing_models+=1;
                                 continue;
                             }
                             loaded_models+=1;
-                            preview.parts_per_instance=preview.parts_per_instance
-                                .max(eligible.len());
+                            preview.native_model_parts.insert(path.clone(),
+                                (eligible.len(),excluded_parts));
                             for (cell,items) in cells{
                                 let center=Vec3::new(
                                     origin.x+(cell%16) as f32*32.0-240.0,
@@ -363,10 +369,19 @@ pub fn update_preview(
                                 preview.native_roots.entry(cell).or_default().push(root);
                             }
                         }
+                        let active_models=next_cells.values().flatten()
+                            .map(|p|p.model.as_str())
+                            .collect::<std::collections::BTreeSet<_>>();
+                        preview.native_model_parts.retain(|path,_|
+                            active_models.contains(path.as_str()));
+                        preview.parts_per_instance=preview.native_model_parts
+                            .values().map(|(n,_)|*n).max().unwrap_or(0);
+                        preview.opaque_parts=preview.native_model_parts
+                            .values().map(|(n,_)|*n).sum();
+                        preview.transparent_parts=preview.native_model_parts
+                            .values().map(|(_,n)|*n).sum();
                         preview.native_cells=next_cells;
                         preview.instances=preview.native_rendered.values().sum();
-                        preview.opaque_parts=loaded_models;
-                        preview.transparent_parts=skipped_transparent;
                         preview.last_camera=None; // recull freshly spawned cells
                         preview.status=format!(
                             "Native Clutter: {} / {} visible, {} cells rebuilt, {} retained, {} new instances, {} newly loaded M3s, {} unresolved, {} masked parts skipped. CPU placements remain full-tile to honor the global instance cap.",

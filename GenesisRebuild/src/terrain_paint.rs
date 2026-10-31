@@ -230,7 +230,7 @@ impl TerrainPaint {
         if let Some(handle)=self.previews.get(&id){return Some(handle.clone());}
         let index=client.index.as_ref()?;
         let asset=index.resolve(path)?;
-        let bytes=std::fs::read(asset).ok()?;
+        let bytes=std::fs::read(&asset.path).ok()?;
         let decoded=decode_tex(&bytes,128).ok()?;
         let mut pixels=Vec::with_capacity(48*48*4);
         for y in 0..48{

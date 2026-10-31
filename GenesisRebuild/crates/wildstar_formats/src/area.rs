@@ -3,6 +3,7 @@
 use flate2::{Decompress, FlushDecompress, Status};
 use std::path::Path;
 pub mod metadata;
+pub mod texture_write;
 pub use metadata::{AreaProp, ZoneSummary, block_description, block_expected_bytes};
 
 const BLOCK_SIZES: [usize;32] = [

@@ -1576,6 +1576,10 @@ fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea,
                     ui.monospace(format!("Tint: 0x{:08X}",prop.tint));
                     if let (Some(index),Some(path))=(client.index.as_ref(),prop.model_path.as_deref()){
                         ui.separator();
+                        if ui.button("View model separately").clicked() {
+                            state.pending_model_load = Some(path.to_owned());
+                            state.dock_tab = 10;
+                        }
                         for line in client.prop_models.report(index,path){ui.monospace(line);}
                     }
                 });

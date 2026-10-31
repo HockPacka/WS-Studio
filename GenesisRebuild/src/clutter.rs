@@ -12,6 +12,8 @@ use wildstar_formats::area::{HeightGrid,RawArea};
 use crate::{GenesisState,LoadedArea,OrbitCamera};
 use crate::client_data::ClientFiles;
 use crate::terrain_edit::TerrainEdit;
+use crate::terrain_paint::TerrainPaint;
+use crate::clutter_paint::ClutterPaint;
 
 const GRID:usize=257;
 const CELL_GRID:usize=16;
@@ -39,6 +41,9 @@ pub struct ClutterPreview {
     source:Option<std::path::PathBuf>,
     last_camera:Option<Vec3>,
     last_cutoff:f32,
+    last_height_revision:u64,
+    last_texture_revision:u64,
+    last_clutter_revision:u64,
 }
 pub(crate) fn next(random:&mut u32)->f32{
     *random^=*random<<13;
@@ -165,6 +170,8 @@ pub fn update_preview(
     state:Res<GenesisState>,
     loaded:Res<LoadedArea>,
     edit:Res<TerrainEdit>,
+    paint:Res<TerrainPaint>,
+    clutter_paint:Res<ClutterPaint>,
     client:Res<ClientFiles>,
     orbit:Res<OrbitCamera>,
     mut preview:ResMut<ClutterPreview>,
@@ -178,22 +185,36 @@ pub fn update_preview(
         preview.source=edit.source.clone();
         preview.status="Open a standalone AREA and select a native M3 model.".into();
     }
-    if state.clutter_preview_request!=preview.seen_request{
+    let revisions=(edit.revision,paint.revision,clutter_paint.revision);
+    let auto=state.clutter_auto_refresh && state.clutter_preview_enabled &&
+        !edit.stroking() && !paint.stroking() && !clutter_paint.stroking() &&
+        revisions!=(preview.last_height_revision,
+            preview.last_texture_revision,preview.last_clutter_revision);
+    if state.clutter_preview_request!=preview.seen_request || auto {
         preview.seen_request=state.clutter_preview_request;
+        preview.last_height_revision=revisions.0;
+        preview.last_texture_revision=revisions.1;
+        preview.last_clutter_revision=revisions.2;
         destroy(&mut commands,&mut preview);
         if !state.clutter_preview_enabled{
             preview.status="Clutter debug instancing preview disabled.".into();
-        }else if let (Some(area),Some(grid),Some(index))=
+        }else if let (Some(source),Some(grid),Some(index))=
             (loaded.tile.as_ref(),edit.grid(),client.index.as_ref())
         {
+            // Reflect unsaved layer reassignment, Clutter mask/selector paint,
+            // and sculpted terrain in the live instanced preview.
+            let area=if paint.ready(){paint.preview_area(source)}
+                else{source.clone()};
+            let area=clutter_paint.preview_area(&area);
             if state.clutter_native_mode {
                 let source=edit.source.as_deref().unwrap_or(std::path::Path::new(""));
                 match crate::clutter_native::load_catalog(index) {
                     Ok(catalog)=>{
-                        let native=crate::clutter_native::generate(
-                            area,&grid,&catalog,source,
+                        let native=crate::clutter_native::generate_with_paint(
+                            &area,&grid,&catalog,source,
                             state.clutter_density as usize,
-                            state.clutter_instance_limit as usize
+                            state.clutter_instance_limit as usize,
+                            paint.ready().then_some(paint.as_ref())
                         );
                         preview.rejected_by_mask=native.suppressed;
                         preview.rejected_by_weight=native.rejected_weights;
@@ -308,7 +329,7 @@ pub fn update_preview(
                         return;
                     }
                     let generated=placements(
-                        area,&grid,state.clutter_layer,state.clutter_selector,
+                        &area,&grid,state.clutter_layer,state.clutter_selector,
                         state.clutter_density as usize,
                         state.clutter_instance_limit as usize
                     );

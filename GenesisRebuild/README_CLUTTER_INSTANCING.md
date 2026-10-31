@@ -73,8 +73,28 @@ not on every mouse-move event. The preview samples unsaved WorldLayer
 assignments, painted weights, and native 16/27 changes from in-memory
 workspaces. WorldClutter.tbl metadata are cached while the indexed
 ClientData root is unchanged; per-instance Mesh and Material handles remain
-shared. Auto-regeneration is a full preview rebuild for now; a per-cell
-dirty-region incremental rebuild is still a later optimization.
+shared. Auto-regeneration is now **incremental at the Bevy entity level** for the
+native TBL-driven preview: Genesis recomputes deterministic placements, groups
+them by the original 32 m AREA cell, and compares each cell's new placement
+list with the last rendered list. Only changed cell roots (including cells
+that become empty) are despawned and respawned. Unchanged cells retain their
+exact Bevy `Entity` IDs and cached M3 mesh/material handles. This also catches
+neighboring cells affected indirectly by the **global instance budget**.
+Explicit **Build Native Instanced Clutter** and source/client changes retain
+a full reset path. Manual one-model preview remains a full rebuild.
+
+For correctness, **CPU candidate generation still scans all 256 AREA cells**
+on each completed change; the expensive entity creation and GPU resource
+updates are restricted to changed groups. A future optimization can reduce
+CPU work to dirty cells with deterministic per-cell quotas and explicit
+height-grid edge dependency tracking. No retail placement parity is claimed.
+
+The Clutter dock reports the most recent number of regenerated cells,
+retained cells and newly spawned instances, so you can verify that editing
+one cell does not rebuild unrelated plants. The independent
+`src/clutter_rebuild.rs` diff planner has regression tests covering
+unchanged instance preservation, modified cells, emptied cells and
+global-budget reallocations.
 
 The native writer is in \`wildstar_formats/src/area/clutter_write.rs\` and
 the in-memory painter is \`GenesisRebuild/src/clutter_paint.rs\`. No

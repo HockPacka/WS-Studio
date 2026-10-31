@@ -52,53 +52,197 @@ fn rgb_from_565(n:u16)->[f32;3] {
       ((n>>5)&63) as f32/63.0, (n&31) as f32/31.0]
 }
 
-/// Four-color BC1 block encoder. 4x4 texels and no alpha channel. Intentionally
-/// simple bounding-box / nearest-palette codec; the BC1 conversion is lossy.
-pub(super) fn bc1_encode(rgb:[[u8;3];16])->[u8;8] {
-    // Pick actual texels with the largest RGB distance. Component-wise
-    // min/max can produce a non-existent color (e.g. yellow for mixed red and
-    // green weights) and destroy otherwise exact two-color blocks.
-    let mut endpoints=(0usize,0usize);
-    let mut spread=0u32;
-    for i in 0..16{
-        for j in (i+1)..16{
-            let dist=(0..3).map(|c|{
-                let d=rgb[i][c] as i32-rgb[j][c] as i32;
-                (d*d) as u32
-            }).sum::<u32>();
-            if dist>spread{spread=dist;endpoints=(i,j);}
-        }
-    }
-    let mut a=rgb565(rgb[endpoints.0]);
-    let mut b=rgb565(rgb[endpoints.1]);
+/// Order endpoints into BC1's opaque four-colour mode. An equal pair would
+/// switch BC1 into three-colour/transparent mode, which is invalid for the
+/// terrain weights and for the RGB half of the BC2 writer.
+fn bc1_ordered(mut a:u16,mut b:u16)->(u16,u16){
     if a<b {std::mem::swap(&mut a,&mut b);}
     if a==b {
-        if a<65535{a+=1;}else{b-=1;}
+        if a<u16::MAX {a+=1;}else{b-=1;}
     }
-    let p0=rgb_from_565(a);
-    let p1=rgb_from_565(b);
+    (a,b)
+}
+
+/// Evaluate an encoded BC1 block against the actual 4x4 RGB targets with the
+/// normalized RGB565 interpolation used by the game client. Lower is better.
+fn bc1_evaluate(rgb:&[[u8;3];16],a:u16,b:u16)->(f64,u32){
+    let p0=rgb_from_565(a).map(|v|v as f64);
+    let p1=rgb_from_565(b).map(|v|v as f64);
     let palette=[
         p0,p1,
         std::array::from_fn(|c|(2.0*p0[c]+p1[c])/3.0),
         std::array::from_fn(|c|(p0[c]+2.0*p1[c])/3.0),
     ];
+    let mut total=0.0f64;
     let mut indices=0u32;
-    for (i,p) in rgb.iter().enumerate(){
-        let best=(0..4).min_by(|&a,&b|{
-            let dist=|j:usize|{
-                (0..3).map(|c|{
-                    let d=p[c] as f32/255.0-palette[j][c];
-                    d*d
-                }).sum::<f32>()
-            };
-            dist(a).total_cmp(&dist(b))
-        }).unwrap();
+    for (i,pixel) in rgb.iter().enumerate(){
+        let mut best=0usize;
+        let mut best_error=f64::INFINITY;
+        for index in 0..4usize {
+            let mut error=0.0f64;
+            for channel in 0..3 {
+                let diff=pixel[channel] as f64/255.0-palette[index][channel];
+                error+=diff*diff;
+            }
+            if error<best_error {best_error=error;best=index;}
+        }
+        total+=best_error;
         indices|=(best as u32)<<(i*2);
     }
+    (total,indices)
+}
+
+/// Least-squares RGB endpoints for a fixed assignment of the 16 pixels to
+/// the four BC1 palette entries. Both endpoints are quantized back to RGB565.
+fn bc1_fit_endpoints(rgb:&[[u8;3];16],indices:u32)->Option<(u16,u16)>{
+    let factors=[(1.0,0.0),(0.0,1.0),(2.0/3.0,1.0/3.0),
+        (1.0/3.0,2.0/3.0)];
+    let (mut aa,mut ab,mut bb)=(0.0,0.0,0.0);
+    let (mut ar,mut br)=([0.0f64;3],[0.0f64;3]);
+    for i in 0..16usize {
+        let (a,b)=factors[((indices>>(i*2))&3) as usize];
+        aa+=a*a;ab+=a*b;bb+=b*b;
+        for channel in 0..3 {
+            let t=rgb[i][channel] as f64/255.0;
+            ar[channel]+=t*a;
+            br[channel]+=t*b;
+        }
+    }
+    let det=aa*bb-ab*ab;
+    if det<=1e-9 {return None;}
+    let mut first=[0u8;3];
+    let mut second=[0u8;3];
+    for channel in 0..3 {
+        let x=((ar[channel]*bb-br[channel]*ab)/det).clamp(0.0,1.0);
+        let y=((br[channel]*aa-ar[channel]*ab)/det).clamp(0.0,1.0);
+        first[channel]=(x*255.0).round() as u8;
+        second[channel]=(y*255.0).round() as u8;
+    }
+    Some(bc1_ordered(rgb565(first),rgb565(second)))
+}
+
+fn bc1_mutate_565(value:u16,channel:usize,step:i32)->Option<u16>{
+    let (shift,mask) = match channel {
+        0=>(11u32,31i32),
+        1=>(5u32,63i32),
+        _=>(0u32,31i32),
+    };
+    let old=((value>>shift)&mask as u16) as i32;
+    let next=old+step;
+    if next<0||next>mask{return None;}
+    Some((value & !((mask as u16)<<shift))|((next as u16)<<shift))
+}
+
+/// Deterministic four-colour BC1 RGB encoder shared by weight maps (bit 17)
+/// and the RGB half of BC2/DXT3 terrain colors (bit 13).
+///
+/// Seeds with actual farthest-apart pixels, per-channel bounds and PCA extrema;
+/// iteratively fits endpoints by least squares and finally optimizes nearby
+/// RGB565 codes. Every candidate is evaluated against the complete 4x4 block,
+/// and the initial farthest-pixel candidate is retained unless SSE decreases.
+/// This minimizes visible changes in neighbouring pixels inside dirty blocks.
+pub(super) fn bc1_encode(rgb:[[u8;3];16])->[u8;8]{
+    let mut farthest=(0usize,0usize);
+    let mut spread=0i64;
+    for i in 0..16 {
+        for j in (i+1)..16 {
+            let dist=(0..3).map(|c|{
+                let d=rgb[i][c] as i64-rgb[j][c] as i64;
+                d*d
+            }).sum::<i64>();
+            if dist>spread {spread=dist;farthest=(i,j);}
+        }
+    }
+    let mut low=[255u8;3];
+    let mut high=[0u8;3];
+    let mut mean=[0.0f64;3];
+    for pixel in &rgb {
+        for c in 0..3 {
+            low[c]=low[c].min(pixel[c]);
+            high[c]=high[c].max(pixel[c]);
+            mean[c]+=pixel[c] as f64/16.0;
+        }
+    }
+    let mut covariance=[[0.0f64;3];3];
+    for pixel in &rgb {
+        for c in 0..3 {
+            for k in 0..3 {
+                covariance[c][k]+=(pixel[c] as f64-mean[c])
+                    *(pixel[k] as f64-mean[k]);
+            }
+        }
+    }
+    let mut direction=[1.0f64,1.0,1.0];
+    for _ in 0..8 {
+        let next=std::array::from_fn::<_,3,_>(|c|{
+            (0..3).map(|k|covariance[c][k]*direction[k]).sum::<f64>()
+        });
+        let magnitude=next.iter().map(|v|v*v).sum::<f64>().sqrt();
+        if magnitude<1e-10 {break;}
+        direction=next.map(|v|v/magnitude);
+    }
+    let project=|pixel:&[u8;3]|->f64{
+        (0..3).map(|c|(pixel[c] as f64-mean[c])*direction[c]).sum()
+    };
+    let mut ext=(0usize,0usize);
+    for i in 1..16 {
+        if project(&rgb[i])<project(&rgb[ext.0]) {ext.0=i;}
+        if project(&rgb[i])>project(&rgb[ext.1]) {ext.1=i;}
+    }
+    let seeds=[
+        bc1_ordered(rgb565(rgb[farthest.0]),rgb565(rgb[farthest.1])),
+        bc1_ordered(rgb565(low),rgb565(high)),
+        bc1_ordered(rgb565(rgb[ext.0]),rgb565(rgb[ext.1])),
+    ];
+    let mut best_pair=seeds[0];
+    let mut best=bc1_evaluate(&rgb,best_pair.0,best_pair.1);
+    for seed in seeds {
+        let mut pair=seed;
+        for _ in 0..9 {
+            let assessment=bc1_evaluate(&rgb,pair.0,pair.1);
+            if assessment.0<best.0 {
+                best=assessment;
+                best_pair=pair;
+            }
+            let Some(fitted)=bc1_fit_endpoints(&rgb,assessment.1) else {break;};
+            if fitted==pair {break;}
+            pair=fitted;
+        }
+        let assessment=bc1_evaluate(&rgb,pair.0,pair.1);
+        if assessment.0<best.0 {
+            best=assessment;
+            best_pair=pair;
+        }
+    }
+    // Quantized endpoint refinement: the exact least-squares float solution
+    // may lie between RGB565 codes, so probe neighbouring endpoint codes.
+    for _ in 0..3 {
+        let mut improved=false;
+        for endpoint in 0..2 {
+            for channel in 0..3 {
+                for shift in [-1,1] {
+                    let current=if endpoint==0{best_pair.0}else{best_pair.1};
+                    let Some(near)=bc1_mutate_565(current,channel,shift) else {continue;};
+                    let pair=if endpoint==0 {
+                        bc1_ordered(near,best_pair.1)
+                    }else{
+                        bc1_ordered(best_pair.0,near)
+                    };
+                    let assessment=bc1_evaluate(&rgb,pair.0,pair.1);
+                    if assessment.0+1e-12<best.0 {
+                        best=assessment;
+                        best_pair=pair;
+                        improved=true;
+                    }
+                }
+            }
+        }
+        if !improved {break;}
+    }
     let mut out=[0u8;8];
-    out[0..2].copy_from_slice(&a.to_le_bytes());
-    out[2..4].copy_from_slice(&b.to_le_bytes());
-    out[4..8].copy_from_slice(&indices.to_le_bytes());
+    out[0..2].copy_from_slice(&best_pair.0.to_le_bytes());
+    out[2..4].copy_from_slice(&best_pair.1.to_le_bytes());
+    out[4..8].copy_from_slice(&best.1.to_le_bytes());
     out
 }
 /// BC1 signed-weight correction neutral RGB565 = 0x7BEF.

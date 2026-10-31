@@ -7,6 +7,7 @@ pub mod texture_write;
 pub mod color_write;
 pub mod cross_tile_write;
 pub mod height_border;
+pub mod bundle_io;
 pub use metadata::{AreaProp, ZoneSummary, block_description, block_expected_bytes};
 
 const BLOCK_SIZES: [usize;32] = [

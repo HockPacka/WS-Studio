@@ -372,7 +372,6 @@ pub fn update_preview(
                             preview.retained_cells,preview.last_spawned,
                             loaded_models,missing_models,skipped_transparent
                         );
-                        );
                     }
             }else{
             let path=state.clutter_model_path.trim();

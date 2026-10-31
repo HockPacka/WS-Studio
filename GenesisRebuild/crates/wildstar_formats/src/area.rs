@@ -188,6 +188,148 @@ impl RawArea {
     pub fn all_water_bodies(&self) -> Vec<WaterBody> {
         self.cells.iter().flatten().flat_map(|c| c.water_bodies()).collect()
     }
+    /// Build a new AREA byte stream, patching height samples in affected cells only.
+    /// All unknown payloads, unrelated chunks, and untouched compressed streams
+    /// are copied byte-for-byte. Changes use global 257x257 mesh coordinates.
+    /// Editing an absent cell or a missing height vertex is rejected.
+    pub fn with_height_changes(&self, changes: &[(usize, usize, f32)]) -> Result<Vec<u8>, String> {
+        use std::collections::{BTreeMap, HashMap};
+        use flate2::{Compression, write::ZlibEncoder};
+        use std::io::Write;
+
+        if changes.is_empty() { return Ok(self.original.clone()); }
+        let mut samples = HashMap::<usize,u16>::new();
+        for &(x,z,height) in changes {
+            if x > 256 || z > 256 || !height.is_finite() {
+                return Err("AREA: invalid height sample position/value".into());
+            }
+            let cell_x = if x == 256 { 15 } else { x / 16 };
+            let cell_z = if z == 256 { 15 } else { z / 16 };
+            if self.cells[cell_z * 16 + cell_x].as_ref()
+                .and_then(|cell|cell.block(0)).is_none() {
+                return Err(format!("AREA: height sample ({x},{z}) belongs to a missing cell"));
+            }
+            let raw = ((height + 2048.0) * 8.0).round().clamp(0.0, 65535.0) as u16;
+            samples.insert(z * 257 + x, raw);
+        }
+        let mut patch_by_cell = BTreeMap::<usize,Vec<(usize,u16)>>::new();
+        for cell in self.cells.iter().flatten() {
+            let Some(block) = cell.block(0) else { continue; };
+            for rz in 0..19usize {
+                for rx in 0..19usize {
+                    let gx = cell.index % 16 * 16 + rx;
+                    let gz = cell.index / 16 * 16 + rz;
+                    // Stored sample (1,1) is the first visible mesh vertex;
+                    // include the one-sample ghost border when it belongs to this tile.
+                    let Some(gx) = gx.checked_sub(1) else { continue; };
+                    let Some(gz) = gz.checked_sub(1) else { continue; };
+                    if gx > 256 || gz > 256 { continue; }
+                    let Some(&raw) = samples.get(&(gz * 257 + gx)) else { continue; };
+                    let offset = (rz * 19 + rx) * 2;
+                    let old = block.get(offset..offset + 2)
+                        .ok_or("AREA: height block truncated")?;
+                    if old != raw.to_le_bytes() {
+                        patch_by_cell.entry(cell.index).or_default().push((offset, raw));
+                    }
+                }
+            }
+        }
+        if patch_by_cell.is_empty() { return Ok(self.original.clone()); }
+        let mut output = self.original.get(..8).ok_or("AREA: missing header")?.to_vec();
+        let mut found = std::collections::BTreeSet::new();
+        for chunk in &self.chunks {
+            if &chunk.id != b"KNHC" && &chunk.id != b"CHNK" {
+                let end = chunk.file_offset + 8 + chunk.data.len();
+                output.extend_from_slice(self.original.get(chunk.file_offset..end)
+                    .ok_or("AREA: invalid original chunk offset")?);
+                continue;
+            }
+            let input = chunk.data.as_slice();
+            let mut rebuilt = Vec::with_capacity(input.len());
+            let mut pos = 0usize;
+            let mut last = 0usize;
+            let mut first = true;
+            while pos < input.len() {
+                let word = read_u32(input, pos)?;
+                let start = pos;
+                pos += 4;
+                let delta = (word >> 24) as usize;
+                let len = (word & 0x00ff_ffff) as usize;
+                if len > 1_048_576 { return Err("AREA: unreasonable cell payload".into()); }
+                let (decoded, end) = if self.compressed {
+                    let mut data = vec![0u8; len];
+                    let mut decoder = Decompress::new(true);
+                    let status = decoder.decompress(&input[pos..], &mut data, FlushDecompress::Finish)
+                        .map_err(|err| format!("AREA: zlib write scan failed: {err}"))?;
+                    if status != Status::StreamEnd || decoder.total_out() != len as u64 {
+                        return Err("AREA: compressed cell length mismatch".into());
+                    }
+                    (data, pos + decoder.total_in() as usize)
+                } else {
+                    let end = pos.checked_add(len).ok_or("AREA: cell size overflow")?;
+                    (input.get(pos..end).ok_or("AREA: truncated cell")?.to_vec(), end)
+                };
+                if end > input.len() { return Err("AREA: cell stream overrun".into()); }
+                pos = end;
+                if self.compressed && first {
+                    // First compressed record holds the LOD prefix, not a cell.
+                    rebuilt.extend_from_slice(&input[start..end]);
+                    first = false;
+                    continue;
+                }
+                first = false;
+                let index = last.checked_add(delta).ok_or("AREA: cell index overflow")?;
+                if index >= 256 { return Err("AREA: invalid cell index".into()); }
+                last = index + 1;
+                if let Some(patches) = patch_by_cell.get(&index) {
+                    let mut altered = decoded;
+                    let flags = read_u32(&altered, 0)?;
+                    if flags & 1 == 0 { return Err("AREA: target cell has no height block".into()); }
+                    for &(offset, raw) in patches {
+                        let range = altered.get_mut(4 + offset..4 + offset + 2)
+                            .ok_or("AREA: target height offset out of bounds")?;
+                        range.copy_from_slice(&raw.to_le_bytes());
+                    }
+                    if self.compressed {
+                        rebuilt.extend_from_slice(&input[start..start+4]);
+                        let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+                        encoder.write_all(&altered).map_err(|e| e.to_string())?;
+                        rebuilt.extend(encoder.finish().map_err(|e| e.to_string())?);
+                    } else {
+                        rebuilt.extend_from_slice(&input[start..start+4]);
+                        rebuilt.extend_from_slice(&altered);
+                    }
+                    found.insert(index);
+                } else {
+                    rebuilt.extend_from_slice(&input[start..end]);
+                }
+            }
+            output.extend_from_slice(&chunk.id);
+            output.extend_from_slice(&u32::try_from(rebuilt.len())
+                .map_err(|_| "AREA: chunk exceeds u32 size")?.to_le_bytes());
+            output.extend_from_slice(&rebuilt);
+        }
+        if found.len() != patch_by_cell.len() {
+            return Err("AREA: not all edited cells occurred in the source stream".into());
+        }
+        let verified = Self::from_bytes(output.clone())?;
+        for (&index, patches) in &patch_by_cell {
+            let cell = verified.cells[index].as_ref().ok_or("AREA: edited cell vanished")?;
+            let block = cell.block(0).ok_or("AREA: edited height block vanished")?;
+            for &(offset, raw) in patches {
+                if block.get(offset..offset + 2) != Some(raw.to_le_bytes().as_slice()) {
+                    return Err("AREA: exported height verification failed".into());
+                }
+            }
+        }
+        for (before, after) in self.chunks.iter().zip(verified.chunks.iter()) {
+            if before.id != after.id || ((&before.id != b"KNHC" && &before.id != b"CHNK") && before.data != after.data) {
+                return Err("AREA: unrelated chunk changed during export".into());
+            }
+        }
+        Ok(output)
+    }
+
     pub fn prop_count(&self)->usize{
         self.chunks.iter().filter(|c|&c.id==b"pORP")
             .filter_map(|c|c.data.get(0..4))

@@ -14,6 +14,7 @@ use crate::client_data::ClientFiles;
 use crate::terrain_edit::TerrainEdit;
 use crate::terrain_paint::TerrainPaint;
 use crate::clutter_paint::ClutterPaint;
+use crate::clutter_wind::{WindMaterial,WindMaterialCache,is_wind_vegetation,lod_range};
 
 const GRID:usize=257;
 const CELL_GRID:usize=16;
@@ -200,7 +201,12 @@ pub fn update_preview(
     mut meshes:ResMut<Assets<Mesh>>,
     mut materials:ResMut<Assets<StandardMaterial>>,
     mut images:ResMut<Assets<Image>>,
+    mut wind_materials:ResMut<Assets<WindMaterial>>,
+    mut wind_cache:ResMut<WindMaterialCache>,
 ){
+    wind_cache.synchronize(&mut wind_materials,
+        state.clutter_wind_strength,state.clutter_wind_speed,
+        state.clutter_wind_direction);
     // Always dispose previous tile's entities, even when preview is off.
     if preview.source!=edit.source {
         destroy(&mut commands,&mut preview);
@@ -400,12 +406,39 @@ pub fn update_preview(
                                         rotation:Quat::from_rotation_y(item.yaw),
                                         scale:Vec3::splat(item.scale.clamp(0.05,10.0)),
                                     };
-                                    for part in &eligible{
-                                        let child=commands.spawn((
-                                            Mesh3d(part.mesh.clone()),
-                                            MeshMaterial3d(part.material.clone()),
-                                            transform,
-                                        )).id();
+                                    let wind_enabled=state.clutter_wind_enabled &&
+                                        is_wind_vegetation(&path);
+                                    for (part_number,part) in eligible.iter().enumerate(){
+                                        let lod=lod_range(part_number,
+                                            state.clutter_lod_distance,
+                                            state.clutter_view_distance);
+                                        let child=if wind_enabled {
+                                            if let Some(wind)=wind_cache.get_or_create(
+                                                &part.material,&materials,
+                                                &mut wind_materials,
+                                                state.clutter_wind_strength,
+                                                state.clutter_wind_speed,
+                                                state.clutter_wind_direction
+                                            ){
+                                                commands.spawn((
+                                                    Mesh3d(part.mesh.clone()),
+                                                    MeshMaterial3d(wind),
+                                                    transform,lod,
+                                                )).id()
+                                            }else{
+                                                commands.spawn((
+                                                    Mesh3d(part.mesh.clone()),
+                                                    MeshMaterial3d(part.material.clone()),
+                                                    transform,lod,
+                                                )).id()
+                                            }
+                                        }else{
+                                            commands.spawn((
+                                                Mesh3d(part.mesh.clone()),
+                                                MeshMaterial3d(part.material.clone()),
+                                                transform,lod,
+                                            )).id()
+                                        };
                                         commands.entity(root).add_child(child);
                                     }
                                 }
@@ -491,12 +524,28 @@ pub fn update_preview(
                                 translation:xyz,rotation,
                                 scale:Vec3::splat(item.scale),
                             };
-                            for part in &eligible{
-                                let instance=commands.spawn((
-                                    Mesh3d(part.mesh.clone()),
-                                    MeshMaterial3d(part.material.clone()),
-                                    t,
-                                )).id();
+                            let wind_enabled=state.clutter_wind_enabled &&
+                                is_wind_vegetation(path);
+                            for (part_number,part) in eligible.iter().enumerate(){
+                                let lod=lod_range(part_number,
+                                    state.clutter_lod_distance,
+                                    state.clutter_view_distance);
+                                let instance=if wind_enabled {
+                                    if let Some(handle)=wind_cache.get_or_create(
+                                        &part.material,&materials,&mut wind_materials,
+                                        state.clutter_wind_strength,
+                                        state.clutter_wind_speed,state.clutter_wind_direction
+                                    ){
+                                        commands.spawn((Mesh3d(part.mesh.clone()),
+                                            MeshMaterial3d(handle),t,lod)).id()
+                                    }else{
+                                        commands.spawn((Mesh3d(part.mesh.clone()),
+                                            MeshMaterial3d(part.material.clone()),t,lod)).id()
+                                    }
+                                }else{
+                                    commands.spawn((Mesh3d(part.mesh.clone()),
+                                        MeshMaterial3d(part.material.clone()),t,lod)).id()
+                                };
                                 commands.entity(root).add_child(instance);
                             }
                             preview.instances+=1;

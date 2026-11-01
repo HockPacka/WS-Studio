@@ -83,6 +83,58 @@ neighboring cells affected indirectly by the **global instance budget**.
 Explicit **Build Native Instanced Clutter** and source/client changes retain
 a full reset path. Manual one-model preview remains a full rebuild.
 
+## GPU Wind + distance LOD (Bevy 0.20.1)
+
+The Clutter dock now offers an optional **GPU Wind (vegetation only)** mode,
+default on. Source M3 parts with vegetation-like virtual paths (grass, plant,
+shrub, leaf, flower, bush, fern, reed, vine, foliage) use a **shared
+`ExtendedMaterial<StandardMaterial, WindExtension>`**. The original material
+retains its textures, alpha mode and standard PBR parameters. The WESL shader
+`assets/shaders/clutter_wind.wesl` is derived from the Bevy 0.20.1
+`mesh.wesl` vertex layout and applies an animated XZ displacement to
+model tips. It samples `globals.time` from GPU view bindings, uses a stable
+world-space root phase per instance and scales movement with the vertex's
+positive local Y. The CPU does not animate individual Transform components.
+
+The extension cache maps each original StandardMaterial asset ID to **one**
+wind material handle, so tens of thousands of identical vegetation parts
+can continue using Bevy's automatic GPU instancing. Wind strength, speed and
+direction sliders update shared GPU uniforms **only on a parameter change**,
+without respawning plants or replacing their handles. Rocks/crystals and
+unrecognized M3 paths retain the original static material.
+
+Distance-LOD uses Bevy's built-in per-Mesh3d `VisibilityRange`, not
+per-vertex CPU logic. A model's first eligible (opaque/masked) mesh part
+remains to the configured **Group view distance** and fades out in the final
+14% of that range. Secondary M3 parts use **Secondary M3 parts disappear
+after distance** and fade out earlier through Bevy's dithered visibility
+ranges. This can reduce rendered mesh parts in complex multi-part models,
+but it **does not create simplified low-polygon LOD meshes**. Single-part
+models only get distance-fade/culling; a proper multi-resolution LOD chain
+will require imported LOD meshes or separate impostors. Changing GPU Wind
+enabled/disabled or the LOD threshold explicitly rebuilds the preview;
+changing wind parameters only updates uniforms.
+
+**Important correctness/verification limits:**
+- Wind is a **research preview**. WildStar original vertex wind masks,
+  anchoring, gust timing and direction have not been decoded. The shader
+  assumes vegetation vertices are rooted near positive local-Y=0.
+  Assets with different pivots may animate incorrectly.
+- The wind shader currently overrides only the *forward* vertex shader.
+  To avoid detached shadow passes, wind-preview materials **do not cast
+  shadows**. A matching wind-deformed shadow/depth prepass is still needed
+  before full lighting parity can be claimed.
+- GPU shader compilation, visual appearance, and actual draw-call / FPS
+  improvements are **not verified** by headless `cargo check` CI. Validate
+  with the running Windows editor, render captures, and representative
+  high-density grassy AREA files before using in production.
+- Instancing is automatic Bevy 0.20.1 behavior for compatible materials,
+  not a custom compute-scatter implementation. Alpha-blended parts remain
+  outside this instancing fast path.
+
+Source files: `src/clutter_wind.rs` and
+`assets/shaders/clutter_wind.wesl`.
+
 ## Hybrid CPU/GPU regeneration
 
 After completing a brush stroke, the CPU uses **per-cell input fingerprints**

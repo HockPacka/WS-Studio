@@ -70,6 +70,30 @@ impl M3Blend {
             5=>Self::Multiply,6=>Self::Multiply2x,_=>Self::Special}
     }
 }
+/// One native 0x128-byte WildStar M3 material-layer description.
+/// Animation DP tracks are currently sampled at their first value; keeping
+/// every layer allows the viewport to render more than the first albedo map.
+#[derive(Debug,Clone)]
+pub struct M3MaterialLayer {
+    pub color_texture:Option<usize>,
+    pub normal_texture:Option<usize>,
+    pub class:u32,
+    pub type_id:u32,
+    /// The original five mode selectors; their exact shader semantics
+    /// are still not fully reverse engineered.
+    pub modes:[u32;5],
+    pub opacity:f32,
+    pub gloss:f32,
+    pub glow:f32,
+    pub color_mod:[f32;3],
+}
+impl Default for M3MaterialLayer {
+    fn default()->Self{
+        Self{color_texture:None,normal_texture:None,class:3,type_id:0,
+            modes:[0;5],opacity:1.0,gloss:0.0,glow:0.0,color_mod:[1.0;3]}
+    }
+}
+
 #[derive(Debug,Clone)]
 pub struct M3Material {
     pub blend:M3Blend,
@@ -84,6 +108,8 @@ pub struct M3Material {
     /// HDR colour multiplier of the first layer.
     pub color_mod:[f32;3],
     pub layer_count:u32,
+    /// Up to four original layer records, in source order.
+    pub layers:Vec<M3MaterialLayer>,
     /// Texture index of the first layer (`None` = no texture).
     pub color_texture:Option<usize>,
     pub normal_texture:Option<usize>,
@@ -91,7 +117,7 @@ pub struct M3Material {
 impl Default for M3Material {
     fn default()->Self{
         Self{blend:M3Blend::Opaque,material_type:0,flags:0,opacity:1.0,gloss:0.0,glow:0.0,
-            color_mod:[1.0;3],layer_count:0,color_texture:None,normal_texture:None}
+            color_mod:[1.0;3],layer_count:0,layers:Vec::new(),color_texture:None,normal_texture:None}
     }
 }
 /// A native M3 DPointer keyframe track. The track index determines its type:
@@ -318,21 +344,42 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
                 .ok_or("material layers out of bounds")?;
             mat.layer_count=dc as u32;
             let tex=|v:u16|if v==0xFFFF{None}else{Some(v as usize)};
-            mat.color_texture=u16_at(d,p).and_then(tex);
-            mat.normal_texture=u16_at(d,p+2).and_then(tex);
-            // First key of a layer parameter track; value arrays are relative to align16(end of the layers).
+            // DP value offsets of every layer are relative to the same
+            // 16-byte-aligned end of this material's entire layer array.
             let nbase=align16(desc_base+doff as usize+dc as usize*0x128);
-            let first=|dp:usize,n:usize|->Option<Vec<f32>>{
-                if u64_at(d,p+dp)?==0{return None;}
-                let at=range(len,nbase,u64_at(d,p+dp+0x10)?,1,n*4)?;
-                let v:Vec<f32>=(0..n).map(|k|f32_at(d,at+k*4).unwrap_or(f32::NAN)).collect();
-                v.iter().all(|x|x.is_finite()).then_some(v)
-            };
-            if let Some(v)=first(0x60,1){mat.opacity=v[0].clamp(0.0,1.0);}
-            if let Some(v)=first(0x30,1){mat.gloss=v[0].clamp(0.0,4.0);}
-            if let Some(v)=first(0x48,1){mat.glow=v[0].clamp(0.0,4.0);}
-            if let Some(v)=first(0x108,3).filter(|v|v.iter().all(|x|(0.0..64.0).contains(x))){
-                mat.color_mod=[v[0],v[1],v[2]];
+            for layer_index in 0..dc as usize {
+                let lp=p+layer_index*0x128;
+                let mut layer=M3MaterialLayer{
+                    color_texture:u16_at(d,lp).and_then(tex),
+                    normal_texture:u16_at(d,lp+2).and_then(tex),
+                    class:u32_at(d,lp+0x120).unwrap_or(3),
+                    type_id:u32_at(d,lp+0x124).unwrap_or(0),
+                    ..Default::default()
+                };
+                for (j,mode) in layer.modes.iter_mut().enumerate(){
+                    *mode=u32_at(d,lp+0x04+j*4).unwrap_or(0);
+                }
+                let first=|dp:usize,n:usize|->Option<Vec<f32>>{
+                    if u64_at(d,lp+dp)?==0{return None;}
+                    let at=range(len,nbase,u64_at(d,lp+dp+0x10)?,1,n*4)?;
+                    let v:Vec<f32>=(0..n).map(|k|f32_at(d,at+k*4).unwrap_or(f32::NAN)).collect();
+                    v.iter().all(|x|x.is_finite()).then_some(v)
+                };
+                if let Some(v)=first(0x60,1){layer.opacity=v[0].clamp(0.0,1.0);}
+                if let Some(v)=first(0x30,1){layer.gloss=v[0].clamp(0.0,4.0);}
+                if let Some(v)=first(0x48,1){layer.glow=v[0].clamp(0.0,4.0);}
+                if let Some(v)=first(0x108,3).filter(|v|v.iter().all(|x|(0.0..64.0).contains(x))){
+                    layer.color_mod=[v[0],v[1],v[2]];
+                }
+                mat.layers.push(layer);
+            }
+            if let Some(first)=mat.layers.first(){
+                mat.color_texture=first.color_texture;
+                mat.normal_texture=first.normal_texture;
+                mat.opacity=first.opacity;
+                mat.gloss=first.gloss;
+                mat.glow=first.glow;
+                mat.color_mod=first.color_mod;
             }
         }
         m.materials.push(mat);
@@ -488,6 +535,53 @@ mod tests {
         put(&mut d,me+8,&3u32.to_le_bytes());put(&mut d,me+12,&3u32.to_le_bytes());
         put(&mut d,me+0x16,&0u16.to_le_bytes());
         d
+    }
+    #[test]
+    fn retains_four_layer_records_and_secondary_parameter_tracks(){
+        let mut d=sample();
+        let old_geo=HEADER_END+u64_at(&d,0x258).unwrap() as usize;
+        // Relocate geometry, leaving space for three more 0x128-byte
+        // layer descriptions and for the shared DP payload.
+        let extra=0x480usize;
+        d.splice(old_geo..old_geo,std::iter::repeat_n(0u8,extra));
+        put(&mut d,0x258,&((old_geo+extra-HEADER_END) as u64).to_le_bytes());
+        let mat=HEADER_END+0x30;
+        put(&mut d,mat+0x20,&4u64.to_le_bytes());
+        let layers=mat+0x30;
+        // Material 0 has 4 layers, each layer owns its own texture IDs.
+        for n in 0..4 {
+            let lp=layers+n*0x128;
+            put(&mut d,lp,&(if n==2{0xFFFFu16}else{0u16}).to_le_bytes());
+            put(&mut d,lp+2,&(if n==1{0u16}else{0xFFFFu16}).to_le_bytes());
+            put(&mut d,lp+0x120,&3u32.to_le_bytes());
+            put(&mut d,lp+0x124,&(n as u32).to_le_bytes());
+            put(&mut d,lp+0x08,&(n as u32+1).to_le_bytes());
+        }
+        let lp=layers+0x128;
+        let values=align16(layers+4*0x128);
+        put(&mut d,lp+0x60,&1u64.to_le_bytes());
+        put(&mut d,lp+0x60+0x10,&0u64.to_le_bytes());
+        put(&mut d,values,&0.25f32.to_le_bytes());
+        let model=read_m3(&d).unwrap();
+        let mat=&model.materials[0];
+        assert_eq!(mat.layer_count,4);
+        assert_eq!(mat.layers.len(),4);
+        assert_eq!(mat.layers[0].color_texture,Some(0));
+        assert_eq!(mat.layers[1].normal_texture,Some(0));
+        assert_eq!(mat.layers[2].color_texture,None);
+        assert_eq!(mat.layers[3].type_id,3);
+        assert_eq!(mat.layers[1].modes[1],2);
+        assert_eq!(mat.layers[1].opacity,0.25);
+        assert_eq!(mat.opacity,1.0);
+        assert_eq!(model.vertices.len(),3);
+        assert_eq!(model.visible_indices(),vec![0,1,2]);
+    }
+    #[test]
+    fn rejects_more_than_four_material_layers(){
+        let mut d=sample();
+        let mat=HEADER_END+0x30;
+        put(&mut d,mat+0x20,&5u64.to_le_bytes());
+        assert!(read_m3(&d).is_err());
     }
     #[test]
     fn reads_geometry_textures_and_materials(){

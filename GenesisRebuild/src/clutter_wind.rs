@@ -65,7 +65,7 @@ impl WindMaterialCache{
         self.last=Some(packed);
         let new=WindExtension::new(strength,speed,direction);
         for handle in self.cached.values(){
-            if let Some(material)=assets.get_mut(handle){
+            if let Some(mut material)=assets.get_mut(handle){
                 material.extension=new.clone();
             }
         }

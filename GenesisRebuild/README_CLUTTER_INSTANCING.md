@@ -83,11 +83,44 @@ neighboring cells affected indirectly by the **global instance budget**.
 Explicit **Build Native Instanced Clutter** and source/client changes retain
 a full reset path. Manual one-model preview remains a full rebuild.
 
-For correctness, **CPU candidate generation still scans all 256 AREA cells**
-on each completed change; the expensive entity creation and GPU resource
-updates are restricted to changed groups. A future optimization can reduce
-CPU work to dirty cells with deterministic per-cell quotas and explicit
-height-grid edge dependency tracking. No retail placement parity is claimed.
+## Hybrid CPU/GPU regeneration
+
+After completing a brush stroke, the CPU uses **per-cell input fingerprints**
+to compare native WorldLayer IDs, original weight blocks, Bit16 no-clutter
+flags, Bit27 selectors, the edited 65×65 RGBA weight grid and the edited
+17×17 height grid of each 32 m cell. Boundary vertices are deliberately
+included in both adjacent cell fingerprints to detect shared sculpt seams.
+
+Only cells whose fingerprint changed run the expensive deterministic
+WorldClutter candidate generator again. Candidate lists are cached
+independently for all 256 cells, so even when an early cell uses a greater
+share of the global maximum-instance budget, Genesis can recombine the
+same original cell-order outputs **without regenerating unchanged cells**.
+The existing diff planner then updates only the Bevy entities in cells
+whose clipped placements actually changed.
+
+The **GPU** still handles compatible opaque/cutout mesh drawing via
+Bevy's automatic instancing (same Mesh/Material handles), together with
+its standard frustum culling. The CPU retains source-format decoding,
+deterministic placement, native mask and density rules, and cell visibility
+grouping. **This is not a custom GPU compute-shader scatter system.**
+Bevy performs the render batching; exact hardware draw calls require
+a real GPU capture and have not been measured.
+
+Fingerprint checks still visit all 256 cells and read their relevant input
+bytes, but do not re-run the expensive random scatter, weighted M3 selection,
+or terrain height interpolation for unaffected cells. No unnecessary second
+full-AREA clone is made when overlaying Clutter paint on the in-memory
+texture preview. The Clutter dock reports separate **CPU regenerated
+cells** and **GPU-facing instanced groups rebuilt/retained** values.
+
+Tests in `src/clutter_rebuild.rs` cover dirty 32 m cells and shared
+height-grid boundaries. Native generator tests ensure separately computed
+cell batches agree with the previous full scan and obey global instance
+limits. The Editor test targets are compiled in Windows CI; they still need
+runtime execution and real terrain stress measurements.
+
+No retail placement parity is claimed.
 
 The Clutter dock reports the most recent number of regenerated cells,
 retained cells and newly spawned instances, so you can verify that editing

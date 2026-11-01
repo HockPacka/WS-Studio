@@ -50,6 +50,9 @@ pub struct ClutterPreview {
     native_roots:std::collections::BTreeMap<usize,Vec<Entity>>,
     native_rendered:std::collections::BTreeMap<usize,usize>,
     native_model_parts:std::collections::BTreeMap<String,(usize,usize)>,
+    native_signatures:Vec<Option<u64>>,
+    native_candidates:Vec<crate::clutter_native::NativeGenerated>,
+    pub cpu_recalculated_cells:usize,
     pub rebuilt_cells:usize,
     pub retained_cells:usize,
     pub last_spawned:usize,
@@ -172,6 +175,9 @@ fn destroy(commands:&mut Commands,preview:&mut ClutterPreview){
     preview.native_roots.clear();
     preview.native_rendered.clear();
     preview.native_model_parts.clear();
+    preview.native_signatures.clear();
+    preview.native_candidates.clear();
+    preview.cpu_recalculated_cells=0;
     preview.rebuilt_cells=0;
     preview.retained_cells=0;
     preview.last_spawned=0;
@@ -250,19 +256,57 @@ pub fn update_preview(
                     }
                 }
                 if let Some(catalog)=preview.cached_catalog.as_ref(){
-                        let native=crate::clutter_native::generate_with_paint(
-                            &area,&grid,catalog,source,
-                            state.clutter_density as usize,
-                            state.clutter_instance_limit as usize,
-                            paint.ready().then_some(paint.as_ref())
-                        );
-                        preview.rejected_by_mask=native.suppressed;
-                        preview.rejected_by_weight=native.rejected_weights;
-                        preview.rejected_by_selector=native.rejected_preset+
-                            native.rejected_density+native.rejected_asset;
-                        preview.rejected_by_slope=native.rejected_slope;
-                        let total_candidates=native.placements.len();
-                        let next_cells=crate::clutter_rebuild::by_cell(native.placements);
+                        // CPU: cache deterministic candidates for every 32 m
+                        // cell. Changes to painted weights, native masks and
+                        // shared 17x17 height vertices invalidate only their
+                        // dependent cells, not all 256 cell generators.
+                        if preview.native_candidates.len()!=256 {
+                            preview.native_candidates=(0..256)
+                                .map(|_|crate::clutter_native::NativeGenerated::default())
+                                .collect();
+                            preview.native_signatures=vec![None;256];
+                        }
+                        let live_paint=paint.ready().then_some(paint.as_ref());
+                        let mut recalculated=0usize;
+                        for cell in 0..256 {
+                            let signature=crate::clutter_rebuild::fingerprint(
+                                &area,&grid,live_paint,cell);
+                            if preview.native_signatures[cell]!=Some(signature) {
+                                preview.native_candidates[cell]=
+                                    crate::clutter_native::generate_cell_with_paint(
+                                        &area,&grid,catalog,source,cell,
+                                        state.clutter_density as usize,live_paint);
+                                preview.native_signatures[cell]=Some(signature);
+                                recalculated+=1;
+                            }
+                        }
+                        preview.cpu_recalculated_cells=recalculated;
+                        // Respect the exact previous global cap and native
+                        // cell order WITHOUT regenerating cached cell RNG.
+                        // A changed early cell can evict later visible cells;
+                        // the entity diff below handles those evictions.
+                        let mut placements=Vec::new();
+                        let limit=state.clutter_instance_limit as usize;
+                        let mut masked=0usize;
+                        let mut rejected_weights=0usize;
+                        let mut rejected_selector=0usize;
+                        let mut rejected_slope=0usize;
+                        for item in &preview.native_candidates {
+                            if placements.len()>=limit {break;}
+                            masked+=item.suppressed;
+                            rejected_weights+=item.rejected_weights;
+                            rejected_selector+=item.rejected_preset+
+                                item.rejected_density+item.rejected_asset;
+                            rejected_slope+=item.rejected_slope;
+                            let remaining=limit-placements.len();
+                            placements.extend(item.placements.iter().take(remaining).cloned());
+                        }
+                        preview.rejected_by_mask=masked;
+                        preview.rejected_by_weight=rejected_weights;
+                        preview.rejected_by_selector=rejected_selector;
+                        preview.rejected_by_slope=rejected_slope;
+                        let total_candidates=placements.len();
+                        let next_cells=crate::clutter_rebuild::by_cell(placements);
                         let plan=crate::clutter_rebuild::diff(
                             &preview.native_cells,&next_cells);
                         // A changed cell removes only its own root entities.
@@ -384,8 +428,9 @@ pub fn update_preview(
                         preview.instances=preview.native_rendered.values().sum();
                         preview.last_camera=None; // recull freshly spawned cells
                         preview.status=format!(
-                            "Native Clutter: {} / {} visible, {} cells rebuilt, {} retained, {} new instances, {} newly loaded M3s, {} unresolved, {} masked parts skipped. CPU placements remain full-tile to honor the global instance cap.",
-                            preview.instances,total_candidates,preview.rebuilt_cells,
+                            "Hybrid Clutter: {} / {} visible, CPU regenerated {} / 256 cells, GPU instance groups rebuilt {} and retained {}, {} new objects, {} new M3 models, {} unresolved, {} masked parts skipped.",
+                            preview.instances,total_candidates,
+                            preview.cpu_recalculated_cells,preview.rebuilt_cells,
                             preview.retained_cells,preview.last_spawned,
                             loaded_models,missing_models,skipped_transparent
                         );

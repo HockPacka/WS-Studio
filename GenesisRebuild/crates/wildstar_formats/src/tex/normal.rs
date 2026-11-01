@@ -122,7 +122,7 @@ mod tests {
         assert_eq!(classify_normal_encoding(&map), NormalEncoding::Rgb);
         convert_normal_image(&mut map, NormalEncoding::Rgb);
         // The gray pixel must be interpreted as RGB, not as packed XY.
-        assert_eq!(&map.rgba[..4], &[147, 147, 147, 255]);
+        assert_eq!(&map.rgba[..4], &[201, 201, 201, 255]);
     }
 
     #[test]

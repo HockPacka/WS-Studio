@@ -2079,7 +2079,10 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
     ui.label("Maximum instances");
     ui.add(egui::Slider::new(&mut state.clutter_instance_limit,0..=8192));
     ui.label("Group view distance (m)");
-    ui.add(egui::Slider::new(&mut state.clutter_view_distance,32.0..=1024.0));
+    if ui.add(egui::Slider::new(&mut state.clutter_view_distance,32.0..=1024.0))
+        .changed() && state.clutter_preview_enabled {
+        state.clutter_preview_request=state.clutter_preview_request.wrapping_add(1);
+    }
     ui.label("Secondary M3 parts disappear after distance (m)");
     if ui.add(egui::Slider::new(&mut state.clutter_lod_distance,8.0..=512.0))
         .changed() && state.clutter_preview_enabled {

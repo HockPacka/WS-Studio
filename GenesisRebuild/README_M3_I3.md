@@ -126,3 +126,26 @@ CI: `cargo test -p wildstar_formats`,
 `cargo check -p genesis`, `cargo check -p genesis --tests`.
 Dies prüft den Rust-Code, nicht die GPU-WESL-Pipeline. Die Laufzeitvorschau
 muss mit Originalmodellen auf Windows/GPU überprüft werden.
+
+## WildStar Sky -> PBR lighting preview (Phase 1)
+
+`sky.rs` reads ambient/sun/fog parameters from the active `.sky` and blends
+adjacent WorldSky zones. The evaluated `Ambient` colour now drives Bevy's
+`GlobalAmbientLight` (previously only the sky dome). The direction and colour
+of `SunDiffuse` are applied to the directional light, while the editor's
+**Environment** dock offers separate preview-only multipliers for ambient and
+sun illuminance and an opt-in **3-cascade / 600 m directional shadow** setting.
+Shadows are off by default to preserve previous performance; sky dome and
+celestial meshes are excluded as shadow casters, and GPU-wind foliage remains
+unshadowed until its shadow-pass vertex deformation is implemented.
+
+Zone blending now includes the `HorizonFogMod` colour (in linear space),
+so distance fog and background colour do not snap to white when two `.sky`
+records blend. These options do not change `.sky` or AREA data.
+
+**Not retail parity:** Ambient brightness is a tunable approximate mapping
+from Sky Ambient to Bevy cd/m², and separate `SunSpecular` shading, light
+probes, cloud shadows, original exposure/tonemapping and wind-aware shadow
+passes are still unimplemented. A Rust CI check does not compile WESL shaders
+on a real GPU. Test shadows/colour and performance on a Windows graphics
+backend using original assets before claiming visual parity.

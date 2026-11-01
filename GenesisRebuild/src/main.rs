@@ -24,6 +24,7 @@ mod water;
 mod sky;
 use bevy::prelude::*;
 use bevy::pbr::ExtendedMaterial;
+use bevy::light::{CascadeShadowConfigBuilder, NotShadowCaster};
 use bevy::camera::Viewport;
 use std::path::Path;
 use bevy_egui::{egui, EguiContexts, EguiGlobalSettings, EguiPlugin,
@@ -89,6 +90,10 @@ struct GenesisState {
     dock_tab: usize,
     bottom_tab: usize,
     time_of_day: f32,
+    /// Render-preview controls: never write to native .sky/.area assets.
+    shadow_preview_enabled: bool,
+    ambient_light_scale: f32,
+    sun_light_scale: f32,
     terrain_view: usize,
     area_standalone: bool,
     terrain_save_dialog: bool,
@@ -148,6 +153,9 @@ impl Default for GenesisState {
             dock_tab: 0,
             bottom_tab: 0,
             time_of_day: 12.0,
+            shadow_preview_enabled: false,
+            ambient_light_scale: 1.0,
+            sun_light_scale: 1.0,
             terrain_view: 5,
             area_standalone: true,
             terrain_save_dialog: false,
@@ -280,6 +288,14 @@ fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>,
             ..default()
         },
         Transform::from_xyz(100.,650.,150.).looking_at(Vec3::ZERO,Vec3::Y),
+        // Three cascades cover near props and terrain without drawing
+        // a single wastefully huge shadow map over streamed zones.
+        CascadeShadowConfigBuilder {
+            num_cascades: 3,
+            first_cascade_far_bound: 96.0,
+            maximum_distance: 600.0,
+            ..default()
+        }.build(),
     ));
     let mut root_arg=None;
     let mut area_arg=None;
@@ -2388,6 +2404,21 @@ fn dock_environment(ui: &mut egui::Ui, state: &mut GenesisState, sky_mgr: &sky::
     ui.label(egui::RichText::new("Time of Day").strong().size(9.0));
     ui.add(egui::Slider::new(&mut state.time_of_day, 0.0..=24.0)
         .show_value(true).custom_formatter(|v, _| format!("{v:04.1} h")));
+    ui.separator();
+    ui.label(egui::RichText::new("Sky Lighting Preview").strong().size(9.0));
+    ui.checkbox(&mut state.shadow_preview_enabled, "Directional shadows (3 cascades / 600 m)");
+    ui.add(egui::Slider::new(&mut state.ambient_light_scale, 0.0..=2.0)
+        .text("Sky ambient intensity"));
+    ui.add(egui::Slider::new(&mut state.sun_light_scale, 0.0..=2.0)
+        .text("Sun illuminance"));
+    if let Some(eval) = sky_mgr.current_evaluated.as_ref() {
+        ui.small(format!("Sun elevation: {:.1} deg | Fog: {:.0} - {:.0} m",
+            eval.sun_elevation_deg, eval.fog_start, eval.fog_end));
+        ui.small("SunSpecular is parsed but does not yet override Bevy PBR specular.");
+    } else {
+        ui.small("Load ClientData and an AREA to sample native .sky lighting.");
+    }
+    ui.small("Read-only visual settings; original .sky and AREA data stay unchanged.");
     ui.separator();
     ui.label(egui::RichText::new("Current Sky Context").strong().size(9.0));
     if let Some(zone) = sky_mgr.current_zone_id {

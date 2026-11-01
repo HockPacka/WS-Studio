@@ -6,6 +6,7 @@
 use bevy::asset::RenderAssetUsages;
 use bevy::camera::ClearColorConfig;
 use bevy::color::Color;
+use bevy::light::NotShadowCaster;
 use bevy::math::{Vec3, Vec4};
 use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy::prelude::*;
@@ -157,6 +158,7 @@ pub fn blend_evaluated_skies(entries: &[(EvaluatedSky, f32)]) -> EvaluatedSky {
     let mut sun_spec = Vec4::ZERO;
     let mut sun_dir = Vec3::ZERO;
     let mut night_amb = Vec4::ZERO;
+    let mut fog_colour = Vec4::ZERO;
     let mut fog_start = 0.0;
     let mut fog_end = 0.0;
     let mut sky_start = 0.0;
@@ -176,6 +178,8 @@ pub fn blend_evaluated_skies(entries: &[(EvaluatedSky, f32)]) -> EvaluatedSky {
 
         let na = sky.night_ambient.to_linear();
         night_amb += Vec4::new(na.red, na.green, na.blue, na.alpha) * norm;
+        let fc = sky.horizon_fog_mod.to_linear();
+        fog_colour += Vec4::new(fc.red, fc.green, fc.blue, fc.alpha) * norm;
 
         sun_dir += sky.sun_direction * norm;
         fog_start += sky.fog_start * norm;
@@ -189,6 +193,9 @@ pub fn blend_evaluated_skies(entries: &[(EvaluatedSky, f32)]) -> EvaluatedSky {
     blended.sun_diffuse_color = Color::linear_rgba(sun_diff.x, sun_diff.y, sun_diff.z, sun_diff.w);
     blended.sun_specular_color = Color::linear_rgba(sun_spec.x, sun_spec.y, sun_spec.z, sun_spec.w);
     blended.night_ambient = Color::linear_rgba(night_amb.x, night_amb.y, night_amb.z, night_amb.w);
+    // This colour drives both camera background and distance-fog, so it must
+    // blend alongside sun/ambient when crossing WorldSky zone boundaries.
+    blended.horizon_fog_mod = Color::linear_rgba(fog_colour.x, fog_colour.y, fog_colour.z, fog_colour.w);
     blended.sun_direction = sun_dir.normalize_or_zero();
     blended.fog_start = fog_start;
     blended.fog_end = fog_end;
@@ -407,6 +414,7 @@ pub fn rebuild_skybox(
     });
     let dome_ent = commands.spawn((
         SkyboxDome,
+        NotShadowCaster,
         Mesh3d(meshes.add(dome_mesh)),
         MeshMaterial3d(dome_mat),
         Transform::default(),
@@ -447,6 +455,7 @@ pub fn rebuild_skybox(
             let mat_handle = materials.add(mat);
             part_materials.push(mat_handle.clone());
             let child = commands.spawn((
+                NotShadowCaster,
                 Mesh3d(meshes.add(mesh)),
                 MeshMaterial3d(mat_handle),
                 Transform::default(),
@@ -485,6 +494,7 @@ pub fn update_sky_lighting(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut images: ResMut<Assets<Image>>,
     mut lights: Query<(&mut DirectionalLight, &mut Transform), (With<GenesisSun>, Without<crate::GenesisCamera>, Without<SkyboxRoot>)>,
+    mut ambient: ResMut<GlobalAmbientLight>,
     dome_q: Query<&MeshMaterial3d<StandardMaterial>, With<SkyboxDome>>,
 ) {
     let Some(index) = client.index.as_ref() else { return; };
@@ -557,7 +567,15 @@ pub fn update_sky_lighting(
 
         for (mut light, mut transform) in lights.iter_mut() {
             apply_sky_to_sun_light(&eval, &mut light, &mut transform);
+            light.illuminance = 8500.0 * state.sun_light_scale.clamp(0.0, 2.0);
+            light.shadow_maps_enabled = state.shadow_preview_enabled;
         }
+        // WildStar Sky Ambient was previously used only to colour the dome.
+        // Feed the same sampled colour to Bevy's PBR illumination for terrain,
+        // M3/I3 props and streamed geometry. Brightness is a preview calibration
+        // in cd/m², not a claim about the retail client's exact exposure.
+        ambient.color = eval.ambient_color;
+        ambient.brightness = 100.0 * state.ambient_light_scale.clamp(0.0, 2.0);
         // Update dome color
         for dome_mat_handle in dome_q.iter() {
             if let Some(mut mat) = materials.get_mut(&dome_mat_handle.0) {
@@ -655,6 +673,34 @@ pub fn update_camera_fog(
 mod tests {
     use super::*;
     use wildstar_formats::sky::Track;
+
+    #[test]
+    fn mixed_sky_zones_blend_fog_color_in_linear_space() {
+        let mut first=EvaluatedSky::default();
+        first.horizon_fog_mod=Color::srgb(0.0,0.0,1.0);
+        let mut second=EvaluatedSky::default();
+        second.horizon_fog_mod=Color::srgb(1.0,0.0,0.0);
+        let blended=blend_evaluated_skies(&[(first,1.0),(second,3.0)]);
+        let colour=blended.horizon_fog_mod.to_linear();
+        assert!((colour.red-0.75).abs()<1e-5);
+        assert!((colour.green).abs()<1e-5);
+        assert!((colour.blue-0.25).abs()<1e-5);
+    }
+
+    #[test]
+    fn sky_applies_sun_color_and_preserves_shadow_toggle() {
+        let mut eval=EvaluatedSky::default();
+        eval.sun_diffuse_color=Color::srgb(0.2,0.4,0.6);
+        let mut light=DirectionalLight {
+            shadow_maps_enabled:true,
+            ..default()
+        };
+        let mut transform=Transform::default();
+        apply_sky_to_sun_light(&eval,&mut light,&mut transform);
+        assert_eq!(light.color,eval.sun_diffuse_color);
+        assert!(light.shadow_maps_enabled);
+        assert!(transform.rotation.is_finite());
+    }
 
     #[test]
     fn evaluates_sky_and_sun_direction() {

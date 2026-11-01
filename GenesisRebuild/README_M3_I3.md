@@ -60,3 +60,23 @@ cargo run -p wildstar_formats --example dump_model -- Avatus.m3
 ```
 
 > **Verifikationsstand:** Parser-Unit-Tests decken nun die M3-Zweitkanäle, M3-Bonetracks (inkl. Quaternion-Interpolation) und I3-Passkodierung ab. Original-WildStar-GPU-Vergleich, Animationsplayback und vollständige Sondermaterialien sind weiterhin nicht nachgewiesen.
+
+### UV-basierte Tangenten für Normalmaps (Render-Parität)
+
+Die Modellvorschau und alle instanziierten Props/Clutter-Modelle erzeugen ihre
+Tangenten jetzt aus M3-/I3-Positionen, **UV0**, Dreiecksindizes und
+Vertexnormalen statt aus einer pauschalen Weltachsen-Heuristik. Dabei werden
+Tangenten an der Vertexnormalen orthogonalisiert und das Vorzeichen der
+Bitangente für gespiegelte UV-Inseln in `tangent.w` gespeichert. Fehlende
+oder degenerierte UV-Dreiecke bekommen eine endliche orthogonale
+Fallback-Tangente; fehlerhafte Vertex-Streams werden abgelehnt.
+
+Die Berechnung liegt unabhängig von Bevy in
+`crates/wildstar_formats/src/tangents.rs` mit Unit-Tests für reguläre UVs,
+gespiegelte UVs, degenerierte UVs und fehlerhafte Indexdaten. Testaufruf:
+`cargo test -p wildstar_formats tangents`.
+
+**Grenzen:** Das repariert die geometrische Tangentenbasis, aber bestätigt
+weder die korrekte WildStar-Normalmap-Packing-Erkennung noch die Normal-Y-
+Konvention oder GPU-Bildparität. Für gegenüberliegend gespiegelte UV-Inseln,
+die dieselben Vertex-Indizes teilen, ist zusätzlich ein Seam-Split nötig.

@@ -7,5 +7,6 @@ pub mod i3;
 pub mod m3;
 pub mod sky;
 pub mod tbl;
+pub mod tangents;
 pub mod tex;
 pub mod zone;

@@ -86,16 +86,19 @@ pub(crate) struct CachedModel {
     pub(crate) parts: Vec<ModelPart>,
 }
 
+/// Build a tangent frame from the original M3/I3 triangles and UV0.
+/// Bevy's normal mapper needs the signed UV-handedness in tangent.w.
 pub(crate) fn generate_fast_tangents(mesh: &mut Mesh) {
-    let Some(normals) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL).and_then(|a| a.as_float3()) else { return; };
-    let mut tangents = Vec::with_capacity(normals.len());
-    for &n in normals {
-        let normal = Vec3::from_array(n);
-        let up = if normal.y.abs() > 0.9 { Vec3::Z } else { Vec3::Y };
-        let t = up.cross(normal).normalize_or_zero();
-        tangents.push([t.x, t.y, t.z, 1.0]);
+    let tangents = {
+        let Some(positions) = mesh.attribute(Mesh::ATTRIBUTE_POSITION).and_then(|a| a.as_float3()) else { return; };
+        let Some(normals) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL).and_then(|a| a.as_float3()) else { return; };
+        let Some(uvs) = mesh.attribute(Mesh::ATTRIBUTE_UV_0).and_then(|a| a.as_float2()) else { return; };
+        let Some(Indices::U32(indices)) = mesh.indices() else { return; };
+        wildstar_formats::tangents::generate_tangents(positions, normals, uvs, indices)
+    };
+    if let Some(tangents) = tangents {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
     }
-    mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
 }
 
 /// Decoded prop models, textures and metadata reports by virtual path.

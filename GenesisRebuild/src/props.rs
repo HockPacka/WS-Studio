@@ -11,7 +11,7 @@ use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerD
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use wildstar_formats::area::AreaProp;
 use wildstar_formats::assets::{virtual_key, AssetIndex};
-use wildstar_formats::tex::decode_tex;
+use wildstar_formats::tex::{decode_tex, normal::decode_normal_tex};
 use wildstar_formats::{i3, m3};
 
 /// Model files above this size are not loaded synchronously.
@@ -413,18 +413,13 @@ impl PropModelCache {
             return hit.clone();
         }
         let handle = read_asset(index, path)
-            .and_then(|data| decode_tex(&data, MAX_TEXTURE_SIZE).ok())
+            .and_then(|data| decode_normal_tex(&data, MAX_TEXTURE_SIZE).ok())
+            .map(|(image, _encoding)| image)
             .filter(|t| t.width > 8 && t.height > 8)
             .map(|t| {
-                // DXT5nm (x in alpha, y in green) and RGB maps both end up as RGB tangent-space normals.
-                let mut rgba = t.rgba;
-                for px in rgba.chunks_exact_mut(4) {
-                    let n = crate::terrain_material::unpack_normal([px[0], px[1], px[2], px[3]]);
-                    for c in 0..3 {
-                        px[c] = ((n[c] * 0.5 + 0.5) * 255.0).clamp(0.0, 255.0).round() as u8;
-                    }
-                    px[3] = 255;
-                }
+                // Packing is selected once per source image, never per texel.
+                // Normal maps must remain in linear colour space.
+                let rgba = t.rgba;
                 let mut image = Image::new(
                     Extent3d { width: t.width as u32, height: t.height as u32, depth_or_array_layers: 1 },
                     TextureDimension::D2,

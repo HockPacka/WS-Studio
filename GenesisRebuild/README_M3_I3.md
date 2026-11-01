@@ -80,3 +80,20 @@ gespiegelte UVs, degenerierte UVs und fehlerhafte Indexdaten. Testaufruf:
 weder die korrekte WildStar-Normalmap-Packing-Erkennung noch die Normal-Y-
 Konvention oder GPU-Bildparität. Für gegenüberliegend gespiegelte UV-Inseln,
 die dieselben Vertex-Indizes teilen, ist zusätzlich ein Seam-Split nötig.
+
+### Konsistente M3/I3-Normalmap-Kanäle
+
+`crates/wildstar_formats/src/tex/normal.rs` verarbeitet Modell-Normalmaps
+jetzt **pro Textur** statt mit unterschiedlichen Vermutungen für jeden Pixel.
+Eine konservative Erkennung unterscheidet RGB-Normalmaps von
+DXT5nm-artigen Alpha/Green-Normalmaps (X in Alpha, Y in Grün). Aus X/Y wird Z
+rekonstruiert; das Ergebnis wird in lineares `Rgba8Unorm` konvertiert.
+Die Entscheidung bleibt für alle Pixel derselben Textur konstant, auch wenn
+einzelne Pixel neutrales Grau oder Alpha=255 enthalten.
+
+Neue Unit-Tests prüfen das nichtflackernde Layout, gepackte Normalen,
+ausserhalb des Einheitskreises liegende XY-Werte und defekte TEX-Daten.
+**Einschränkung:** Die Klassifikation ist eine Heuristik, keine vollständige
+Entschlüsselung des Original-WildStar-Shader-Flags. RGB ist der sichere
+Fallback bei unklaren Daten. Terrain-Normalmaps verwenden weiterhin
+ihren eigenen Decoder und sind durch diese Änderung nicht betroffen.

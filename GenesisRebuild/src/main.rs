@@ -2082,8 +2082,9 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
     ui.label(format!("Instances: {} | Mesh parts/instance: {}",
         preview.instances,preview.parts_per_instance));
     ui.label(format!(
-        "Last rebuild: {} changed cells, {} retained cells, {} new instances",
-        preview.rebuilt_cells,preview.retained_cells,preview.last_spawned
+        "CPU cells regenerated: {} / 256 | GPU instanced groups rebuilt: {} | retained: {} | new instances: {}",
+        preview.cpu_recalculated_cells,preview.rebuilt_cells,
+        preview.retained_cells,preview.last_spawned
     ));
     ui.label(format!("Opaque/masked parts: {} | transparent excluded: {}",
         preview.opaque_parts,preview.transparent_parts));

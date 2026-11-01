@@ -15,9 +15,9 @@ Ein `.i3`-Bauwerk besteht aus `X.i3` plus je einer `X.<Sector>.i3` pro Sektor (`
 
 ## Im Editor
 `props.rs` ersetzt den Platzhalter-Würfel eines Props durch das echte Mesh, wenn `.m3`/`.i3` im ClientData-Index
-gefunden wird (Cache pro Pfad, max. 48 neue Modelle pro Tile-Spawn, Dateien > 64 MiB werden übersprungen).
-Nicht lesbare Modelle behalten den Würfel.
-Props werden pro Material in Teilmeshes zerlegt; der Texturpfad (M3: erste Material-Ebene, I3: Material-Set `Default_Pass` wenn vorhanden, sonst 0) wird über den Index aufgelöst und mit dem `.tex`-Decoder (max. 512 px) als Farbtextur gesetzt. Fehlt die Textur, bleibt die Einfärbung.
+gefunden wird (Cache pro Pfad, Model-Load-Budget pro Spawn-Aufruf: 256, Dateien > 64 MiB werden übersprungen).
+Nicht lesbare oder deferred Modelle behalten einen versteckten Transform-/Marker-Eintrag, damit die Hierarchie nachvollziehbar bleibt.
+Props werden pro Material in Teilmeshes zerlegt. M3 nutzt Layer 0 als Basismaterial und kann zusätzliche Farblayer 1–3 mit dem Alpha-Over-Previewshader überlagern; I3 verwendet das Material-Set `Default_Pass`, falls vorhanden, sonst das erste Set. Texturen werden über den ClientData-Index und den `.tex`-Decoder (max. 512 px) aufgelöst. Fehlen Texturen, greift die definierte Basisfarbe bzw. ein inaktiver Overlay-Slot.
 
 ### Direkte Modellvorschau
 Im File-Menü **Open Model (.m3/.i3)...** wählen (oder **Open Model...** im oberen Toolbar). Die Datei muss in den aktuell indexierten `ClientData`-/`ClientDataEN`-Ordnern liegen. Genesis zeigt FEDI-Modelle mit ihren FEDS-Sektoren, einzelne FEDS-Dateien und M3-Modelle im 3D-Viewport, setzt den Kamera-Fokus anhand der Bounds und zeigt die Metadaten im Objects-Dock. Beim Wechsel in die Modellvorschau wird das laufende World Streaming beendet; die Dateien werden nicht verändert.

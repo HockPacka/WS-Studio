@@ -45,7 +45,7 @@ pub struct ClutterPreview {
     last_texture_revision:u64,
     last_clutter_revision:u64,
     catalog_root:String,
-    cached_catalog:Option<crate::clutter_native::Catalog>,
+    cached_catalog:Option<std::sync::Arc<crate::clutter_native::Catalog>>,
     native_cells:crate::clutter_rebuild::CellPlacements,
     native_roots:std::collections::BTreeMap<usize,Vec<Entity>>,
     native_rendered:std::collections::BTreeMap<usize,usize>,
@@ -249,13 +249,16 @@ pub fn update_preview(
                 }
                 if preview.cached_catalog.is_none(){
                     match crate::clutter_native::load_catalog(index){
-                        Ok(db)=>preview.cached_catalog=Some(db),
+                        Ok(db)=>preview.cached_catalog=Some(std::sync::Arc::new(db)),
                         Err(error)=>preview.status=format!(
                             "Native clutter database unavailable: {error}"
                         ),
                     }
                 }
-                if let Some(catalog)=preview.cached_catalog.as_ref(){
+                // Clone the Arc handle, NOT the actual TBL database, so
+                // Rust can mutably update the independent cell cache.
+                let catalog=preview.cached_catalog.clone();
+                if let Some(catalog)=catalog{
                         // CPU: cache deterministic candidates for every 32 m
                         // cell. Changes to painted weights, native masks and
                         // shared 17x17 height vertices invalidate only their
@@ -274,7 +277,7 @@ pub fn update_preview(
                             if preview.native_signatures[cell]!=Some(signature) {
                                 preview.native_candidates[cell]=
                                     crate::clutter_native::generate_cell_with_paint(
-                                        &area,&grid,catalog,source,cell,
+                                        &area,&grid,catalog.as_ref(),source,cell,
                                         state.clutter_density as usize,live_paint);
                                 preview.native_signatures[cell]=Some(signature);
                                 recalculated+=1;

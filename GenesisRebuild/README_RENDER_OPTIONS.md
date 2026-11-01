@@ -1,5 +1,7 @@
 # Genesis Terrain Render Options
 
+**Render-Branch-Überblick:** [RENDER_PARITY_STATUS.md](RENDER_PARITY_STATUS.md) · **Prüfliste:** [RENDER_PARITY_QA_CHECKLIST.md](RENDER_PARITY_QA_CHECKLIST.md)
+
 This is an editor **preview-only** feature for the native WildStar `.area` WorldLayer renderer. It changes neither source data nor the output of native `Save AREA As`.
 
 ## Where to find it

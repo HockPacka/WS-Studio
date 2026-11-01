@@ -1,5 +1,7 @@
 # .m3 und .i3 lesen
 
+**Branch-Dokumentation / Abnahme:** [Render-Parity-Status](RENDER_PARITY_STATUS.md) · [Render-/GPU-QA-Checkliste](RENDER_PARITY_QA_CHECKLIST.md)
+
 Native Rust-Reader in `crates/wildstar_formats` (keine DLL, kein JSON). Portiert aus WS-Tools
 (`wowdecomp/Engine/Source/Model3/M3Reader.cpp`, `Struct3/I3Reader.cpp`, `docs/m3_format_spec.md`, `docs/i3_dgn_format.md`).
 
@@ -47,7 +49,7 @@ Prüfen ohne ClientData: `GENESIS_PROP_MODEL=Avatus.m3 GENESIS_PROP_DEMO=out.png
 Im Objects-Dock zeigt jeder Prop-Eintrag alle Modell-Metadaten (Vertices, Dreiecke, Bounds, Bones, Clips, Texturen, Sektoren, Portale, Material-Sets). Jeder referenzierte Pfad wird gegen den ClientData-Index geprüft und mit `[OK]` bzw. `[MISSING]` markiert.
 
 ## Noch offen
-- Skinfx-Texturen, Mehrschicht-Materialien (4 Layer, Layer-Gewichte aus Vertexfarbe 1) und Material-Varianten (`Aurin_Autumn`); nur Layer 0 wird gerendert.
+- Skinfx-Texturen, originale 4-Layer-Blendgewichte/Masks aus Vertexfarbe 1 und Material-Varianten (`Aurin_Autumn`); Layer 1–3 besitzen einen **Alpha-Over-Vorschaushader**, der noch keine originale WildStar-Blendlogik abbildet.
 - Animierte Material-Parameter (nur der erste Key), Parallax/Height, originalgetreues I3-Vertexfarb-Blending und UV1-abhängige Spezialshader.
 - Skelette: Die acht nativen Keyframe-Tracks pro M3-Bone werden nun dekodiert (Scale-Half3, Quaternion-i16 und Translation-f32), inklusive Zeitstempeln und Interpolations-API. **GPU-/CPU-Skinning und tatsächliches Abspielen der Clips fehlen noch**; Modelle werden weiterhin statisch dargestellt. Alternative Pose-Layers 1/3/5/7 sind nur als Rohtracks verfügbar.
 - M3: Spezial-Emittersysteme, Ribbon-Rendering, Licht- und Kamera-Entities sowie sekundäre Animations-Pose-Layer-Interpretation fehlen.

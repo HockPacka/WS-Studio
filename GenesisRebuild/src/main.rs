@@ -16,6 +16,7 @@ mod terrain_bundle;
 mod clutter;
 mod clutter_native;
 mod clutter_rebuild;
+mod clutter_wind;
 mod clutter_paint;
 mod terrain_material;
 mod water;
@@ -57,6 +58,11 @@ struct GenesisState {
     clutter_density: u32,
     clutter_instance_limit: u32,
     clutter_view_distance: f32,
+    clutter_lod_distance: f32,
+    clutter_wind_enabled: bool,
+    clutter_wind_strength: f32,
+    clutter_wind_speed: f32,
+    clutter_wind_direction: Vec2,
     zone_panel: bool,
     grid: bool, palette_index: usize, texture_index: usize,
     tint: terrain_splat::TintSettings,
@@ -111,6 +117,11 @@ impl Default for GenesisState {
             clutter_density: 24,
             clutter_instance_limit: 2048,
             clutter_view_distance: 180.0,
+            clutter_lod_distance: 90.0,
+            clutter_wind_enabled: true,
+            clutter_wind_strength: 0.13,
+            clutter_wind_speed: 1.5,
+            clutter_wind_direction: Vec2::new(0.8,0.6),
             zone_panel: false,
             grid: false, palette_index: 0, texture_index: 0,
             tint: terrain_splat::TintSettings::default(),
@@ -799,6 +810,8 @@ fn main() {
         }))
         .add_plugins(EguiPlugin::default())
         .add_plugins(terrain_splat::TerrainSplatPlugin)
+        .add_plugins(MaterialPlugin::<clutter_wind::WindMaterial>::default())
+        .insert_resource(clutter_wind::WindMaterialCache::default())
         .add_systems(Startup, setup_scene)
         .add_systems(Update, (client_data::poll_system, load_raw_area, load_model_preview,
             prop_viewer::update,
@@ -2067,6 +2080,31 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
     ui.add(egui::Slider::new(&mut state.clutter_instance_limit,0..=8192));
     ui.label("Group view distance (m)");
     ui.add(egui::Slider::new(&mut state.clutter_view_distance,32.0..=1024.0));
+    ui.label("Secondary M3 parts disappear after distance (m)");
+    if ui.add(egui::Slider::new(&mut state.clutter_lod_distance,8.0..=512.0))
+        .changed() && state.clutter_preview_enabled {
+        state.clutter_preview_request=state.clutter_preview_request.wrapping_add(1);
+    }
+    ui.separator();
+    if ui.checkbox(&mut state.clutter_wind_enabled,
+        "GPU Wind (vegetation only)").changed() &&
+        state.clutter_preview_enabled {
+        state.clutter_preview_request=state.clutter_preview_request.wrapping_add(1);
+    }
+    if state.clutter_wind_enabled {
+        ui.add(egui::Slider::new(&mut state.clutter_wind_strength,0.0..=1.2)
+            .text("Wind displacement (m)"));
+        ui.add(egui::Slider::new(&mut state.clutter_wind_speed,0.0..=5.0)
+            .text("Wind frequency"));
+        ui.horizontal(|ui|{
+            ui.label("Wind direction");
+            ui.add(egui::DragValue::new(&mut state.clutter_wind_direction.x)
+                .speed(0.05).range(-1.0..=1.0));
+            ui.add(egui::DragValue::new(&mut state.clutter_wind_direction.y)
+                .speed(0.05).range(-1.0..=1.0));
+        });
+    }
+    ui.small("Bevy automatic instancing + GPU vertex wind. LOD is per M3 part (not simplified geometry). Actual draw calls require GPU profiling.");
     ui.horizontal(|ui|{
         if ui.button(if state.clutter_native_mode {"Build Native Instanced Clutter"}
             else {"Build Manual Instanced Preview"}).clicked(){

@@ -235,9 +235,9 @@ pub fn update_preview(
         {
             // Reflect unsaved layer reassignment, Clutter mask/selector paint,
             // and sculpted terrain in the live instanced preview.
-            let area=if paint.ready(){paint.preview_area(source)}
+            let mut area=if paint.ready(){paint.preview_area(source)}
                 else{source.clone()};
-            let area=clutter_paint.preview_area(&area);
+            clutter_paint.apply_preview(&mut area);
             if state.clutter_native_mode {
                 let source=edit.source.as_deref().unwrap_or(std::path::Path::new(""));
                 if preview.catalog_root!=client.root_text{

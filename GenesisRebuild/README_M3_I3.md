@@ -97,3 +97,32 @@ ausserhalb des Einheitskreises liegende XY-Werte und defekte TEX-Daten.
 Entschlüsselung des Original-WildStar-Shader-Flags. RGB ist der sichere
 Fallback bei unklaren Daten. Terrain-Normalmaps verwenden weiterhin
 ihren eigenen Decoder und sind durch diese Änderung nicht betroffen.
+
+## Native M3 Layer 1–3: PBR Preview Shader
+
+Der M3-Reader speichert alle **bis zu vier** ursprünglichen Material-Layer
+(`0x128` Bytes pro Layer), einschließlich Farb-/Normal-Texture-ID, Layer-Klasse,
+Material-Type-ID, fünf Modus-Worten und den ersten Parameter-Keys für
+Opacity/Gloss/Glow/Color-Mod. Die ursprünglichen Layer-0-Felder bleiben
+kompatibel zu bereits vorhandenem Code.
+
+Für Modelle mit decodierbaren Farbtexturen in Layer 1–3 nutzt die
+Modelvorschau und das AREA-Prop-Rendering
+`src/m3_layers.rs` / `src/m3_layers.wesl`. Die
+`ExtendedMaterial<StandardMaterial, M3LayerExtension>` erhält Normalmaps,
+Alpha-Modus und Beleuchtung des Basismaterials. Layer 1–3 werden im
+Pixel-Shader in Originalreihenfolge auf UV0 per Alpha-Over zusammengesetzt.
+Nur vorhandene Farbtexturen aktivieren einen Layer. Fehlende Layer haben
+transparente Dummy-Bindings und verschieben andere Slots nicht.
+
+**Noch nicht Retail-paritätisch:** Alpha-Over ist eine bewusst konservative
+Vorschau, keine belegte Deutung der fünf M3-Mode-Wörter. Originale Masken,
+Color1-Gewichte, Layer-Normalmaps 1–3, UV1-Abhängigkeit, Spezialshader und
+Materialanimation bleiben offen. Der separate Clutter-Wind-Shader benutzt
+zurzeit weiterhin das Basismaterial; Clutter wird nicht heimlich auf die
+noch nicht kombinierte Wind+Layer-Shader-Pipeline umgeschaltet.
+
+CI: `cargo test -p wildstar_formats`,
+`cargo check -p genesis`, `cargo check -p genesis --tests`.
+Dies prüft den Rust-Code, nicht die GPU-WESL-Pipeline. Die Laufzeitvorschau
+muss mit Originalmodellen auf Windows/GPU überprüft werden.

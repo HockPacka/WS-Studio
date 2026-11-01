@@ -200,6 +200,7 @@ pub fn update_preview(
     mut preview:ResMut<ClutterPreview>,
     mut meshes:ResMut<Assets<Mesh>>,
     mut materials:ResMut<Assets<StandardMaterial>>,
+    mut layered_materials:ResMut<Assets<crate::m3_layers::M3LayerMaterial>>,
     mut images:ResMut<Assets<Image>>,
     mut wind_materials:ResMut<Assets<WindMaterial>>,
     mut wind_cache:ResMut<WindMaterialCache>,
@@ -360,7 +361,7 @@ pub fn update_preview(
                                 continue;
                             }
                             let Some(model)=client.prop_models.load(
-                                index,&mut meshes,&mut materials,&mut images,
+                                index,&mut meshes,&mut materials,&mut layered_materials,&mut images,
                                 &path,&mut model_budget
                             ) else {
                                 missing_models+=1;
@@ -475,7 +476,7 @@ pub fn update_preview(
             let path=state.clutter_model_path.trim();
             let mut budget=1;
             match client.prop_models.load(
-                index,&mut meshes,&mut materials,&mut images,path,&mut budget
+                index,&mut meshes,&mut materials,&mut layered_materials,&mut images,path,&mut budget
             ){
                 Some(model)=>{
                     let mut eligible=Vec::new();

@@ -5,6 +5,7 @@ use wildstar_formats::zone::{MapDiscovery, ZoneTileCoords};
 mod area_ui;
 mod client_data;
 mod props;
+mod m3_layers;
 mod prop_viewer;
 mod terrain_splat;
 mod splat_demo;
@@ -315,6 +316,7 @@ fn load_raw_area(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut layered_materials: ResMut<Assets<m3_layers::M3LayerMaterial>>,
     mut terrain_materials: ResMut<Assets<terrain_splat::TerrainMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
@@ -491,7 +493,7 @@ fn load_raw_area(
                             loaded.water_entity=Some(water_ent);
                         }
 
-                        loaded.prop_entities=props::spawn_props(&mut commands, &loaded.props, &mut meshes, &mut materials, &mut images,
+                        loaded.prop_entities=props::spawn_props(&mut commands, &loaded.props, &mut meshes, &mut materials, &mut layered_materials, &mut images,
                             client.index.as_ref(), &client.prop_models);
 
                         state.status=format!(
@@ -528,6 +530,7 @@ fn load_model_preview(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut layered_materials: ResMut<Assets<m3_layers::M3LayerMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     let Some(requested) = state.pending_model_load.take() else { return; };
@@ -556,7 +559,7 @@ fn load_model_preview(
         return;
     }
     match props::spawn_model_preview(&mut commands, &mut meshes, &mut materials,
-        &mut images, index, &client.prop_models, &virtual_path) {
+        &mut layered_materials, &mut images, index, &client.prop_models, &virtual_path) {
         Ok(scene) => {
             let min = scene.min;
             let max = scene.max;
@@ -810,6 +813,7 @@ fn main() {
         }))
         .add_plugins(EguiPlugin::default())
         .add_plugins(terrain_splat::TerrainSplatPlugin)
+        .add_plugins(m3_layers::M3LayerPlugin)
         .add_plugins(MaterialPlugin::<clutter_wind::WindMaterial>::default())
         .insert_resource(clutter_wind::WindMaterialCache::default())
         .add_systems(Startup, setup_scene)

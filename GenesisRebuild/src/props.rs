@@ -13,6 +13,7 @@ use wildstar_formats::area::AreaProp;
 use wildstar_formats::assets::{virtual_key, AssetIndex};
 use wildstar_formats::tex::{decode_tex, normal::decode_normal_tex};
 use wildstar_formats::{i3, m3};
+use crate::m3_layers::{M3LayerMaterial, extension_for};
 
 /// Model files above this size are not loaded synchronously.
 const MAX_MODEL_BYTES: u64 = 64 * 1024 * 1024;
@@ -68,10 +69,19 @@ pub(crate) struct PartMaterial {
     pub(crate) glow: f32,
     pub(crate) color_mod: [f32; 3],
     pub(crate) is_effect: bool,
+    pub(crate) overlays: Vec<MaterialOverlay>,
+}
+
+/// Colour overlay record from the original M3 material layer table.
+#[derive(Clone, Debug)]
+pub(crate) struct MaterialOverlay {
+    pub(crate) colour: Option<String>,
+    pub(crate) opacity: f32,
+    pub(crate) color_mod: [f32; 3],
 }
 impl PartMaterial {
     fn plain(color: Option<String>, normal: Option<String>) -> Self {
-        Self { color, normal, blend: PropBlend::Opaque, opacity: 1.0, gloss: 0.0, glow: 0.0, color_mod: [1.0; 3], is_effect: false }
+        Self { color, normal, blend: PropBlend::Opaque, opacity: 1.0, gloss: 0.0, glow: 0.0, color_mod: [1.0; 3], is_effect: false, overlays: Vec::new() }
     }
 }
 
@@ -79,6 +89,8 @@ impl PartMaterial {
 pub(crate) struct ModelPart {
     pub(crate) mesh: Handle<Mesh>,
     pub(crate) material: Handle<StandardMaterial>,
+    /// Uses the GPU multi-layer shader for M3 props/viewer when present.
+    pub(crate) layered: Option<Handle<M3LayerMaterial>>,
 }
 
 #[derive(Clone)]
@@ -281,6 +293,11 @@ pub(crate) fn m3_geometry(data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial
                 glow: m.glow,
                 color_mod: m.color_mod,
                 is_effect,
+                overlays: m.layers.iter().skip(1).take(3).map(|layer| MaterialOverlay {
+                    colour: name(layer.color_texture),
+                    opacity: layer.opacity,
+                    color_mod: layer.color_mod,
+                }).collect(),
             };
             (g, material)
         })
@@ -439,6 +456,7 @@ impl PropModelCache {
         index: &AssetIndex,
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<StandardMaterial>,
+        layered_materials: &mut Assets<M3LayerMaterial>,
         images: &mut Assets<Image>,
         path: &str,
         budget: &mut usize,
@@ -468,9 +486,22 @@ impl PropModelCache {
                     if normal.is_some() {
                         generate_fast_tangents(&mut mesh);
                     }
+                    let base = standard_material(kind, &desc, color, normal);
+                    let extra: Vec<_> = desc.overlays.iter().take(3).map(|layer| {
+                        (layer.colour.as_deref().and_then(|t| self.texture(index, images, t)),
+                         layer.opacity, layer.color_mod)
+                    }).collect();
+                    let layered = if kind == ModelKind::M3 {
+                        extension_for(images, &extra).map(|extension| {
+                            layered_materials.add(ExtendedMaterial {
+                                base: base.clone(), extension,
+                            })
+                        })
+                    } else { None };
                     ModelPart {
                         mesh: meshes.add(mesh),
-                        material: materials.add(standard_material(kind, &desc, color, normal)),
+                        material: materials.add(base),
+                        layered,
                     }
                 })
                 .collect(),
@@ -526,6 +557,13 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
                 for (i, mat) in m.materials.iter().enumerate().take(64) {
                     out.push(format!("Material {i}: {:?}, {} layers | opacity {:.2}, gloss {:.2}, glow {:.2}, color {:?}",
                         mat.blend, mat.layer_count, mat.opacity, mat.gloss, mat.glow, mat.color_mod));
+                    for (layer_index, layer) in mat.layers.iter().enumerate() {
+                        let path = layer.color_texture.and_then(|idx| m.textures.get(idx));
+                        out.push(format!("  Layer {layer_index}: color={} [{}], normal={:?}, class={}, type={}, modes={:?}, opacity={:.2}",
+                            path.map(|t|t.name.as_str()).unwrap_or("<none>"),
+                            path.map(|t|found(index,&t.name)).unwrap_or("none"),
+                            layer.normal_texture, layer.class, layer.type_id, layer.modes, layer.opacity));
+                    }
                 }
                 for (i, mesh) in m.meshes.iter().enumerate().take(64) {
                     out.push(format!("Mesh {i}: {} triangles | material {} | group {} | {}",
@@ -594,6 +632,7 @@ pub fn spawn_model_preview(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    layered_materials: &mut Assets<M3LayerMaterial>,
     images: &mut Assets<Image>,
     index: &AssetIndex,
     cache: &PropModelCache,
@@ -617,17 +656,20 @@ pub fn spawn_model_preview(
         }
     };
     let mut budget = 1;
-    let model = cache.load(index, meshes, materials, images, path, &mut budget)
+    let model = cache.load(index, meshes, materials, layered_materials, images, path, &mut budget)
         .ok_or("Model has no drawable parts (or sector files could not be loaded)")?;
     let center = (Vec3::from_array(min) + Vec3::from_array(max)) * 0.5;
     let root = commands.spawn((Transform::from_translation(center), Visibility::default())).id();
     let mut entities = vec![root];
     let mut parts = Vec::new();
     for part in &model.parts {
-        let child = commands.spawn((
-            Mesh3d(part.mesh.clone()), MeshMaterial3d(part.material.clone()),
-            Transform::from_translation(-center),
-        )).id();
+        let child = if let Some(layered) = &part.layered {
+            commands.spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(layered.clone()),
+                Transform::from_translation(-center))).id()
+        } else {
+            commands.spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(part.material.clone()),
+                Transform::from_translation(-center))).id()
+        };
         commands.entity(root).add_child(child);
         entities.push(child);
         parts.push(child);
@@ -640,6 +682,7 @@ pub fn spawn_props(
     props: &[AreaProp],
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    layered_materials: &mut Assets<M3LayerMaterial>,
     images: &mut Assets<Image>,
     index: Option<&AssetIndex>,
     cache: &PropModelCache,
@@ -665,15 +708,19 @@ pub fn spawn_props(
 
         let model = index
             .zip(prop.model_path.as_deref())
-            .and_then(|(index, path)| cache.load(index, meshes, materials, images, path, &mut budget));
+            .and_then(|(index, path)| cache.load(index, meshes, materials, layered_materials, images, path, &mut budget));
         match model {
             Some(model) => {
                 let root = commands.spawn((transform, Visibility::default(), marker)).id();
                 entities.push(root);
                 for part in &model.parts {
-                    let child = commands
-                        .spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(part.material.clone()), Transform::default()))
-                        .id();
+                    let child = if let Some(layered) = &part.layered {
+                        commands.spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(layered.clone()),
+                            Transform::default())).id()
+                    } else {
+                        commands.spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(part.material.clone()),
+                            Transform::default())).id()
+                    };
                     commands.entity(root).add_child(child);
                     entities.push(child);
                 }

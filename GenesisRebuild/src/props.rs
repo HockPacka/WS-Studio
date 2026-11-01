@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
+use bevy::mesh::{Indices, Mesh, PrimitiveTopology, VertexAttributeValues};
 use bevy::prelude::*;
 use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
@@ -92,7 +92,7 @@ pub(crate) fn generate_fast_tangents(mesh: &mut Mesh) {
     let tangents = {
         let Some(positions) = mesh.attribute(Mesh::ATTRIBUTE_POSITION).and_then(|a| a.as_float3()) else { return; };
         let Some(normals) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL).and_then(|a| a.as_float3()) else { return; };
-        let Some(uvs) = mesh.attribute(Mesh::ATTRIBUTE_UV_0).and_then(|a| a.as_float2()) else { return; };
+        let Some(VertexAttributeValues::Float32x2(uvs)) = mesh.attribute(Mesh::ATTRIBUTE_UV_0) else { return; };
         let Some(Indices::U32(indices)) = mesh.indices() else { return; };
         wildstar_formats::tangents::generate_tangents(positions, normals, uvs, indices)
     };

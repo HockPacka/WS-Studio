@@ -128,8 +128,9 @@ impl ClutterPaint {
         if changed{self.revision=self.revision.wrapping_add(1);}
         changed
     }
-    pub fn preview_area(&self,source:&RawArea)->RawArea{
-        let mut result=source.clone();
+    /// Overlay the editable native mask/selector bytes onto an existing
+    /// in-memory AREA preview without cloning the whole AREA a second time.
+    pub fn apply_preview(&self,result:&mut RawArea){
         for (&(index,bit),bytes) in &self.blocks{
             if let Some(cell)=result.cells.get_mut(index).and_then(Option::as_mut){
                 if let Some(block)=cell.blocks.get_mut(bit).and_then(Option::as_mut){
@@ -137,6 +138,10 @@ impl ClutterPaint {
                 }
             }
         }
+    }
+    pub fn preview_area(&self,source:&RawArea)->RawArea{
+        let mut result=source.clone();
+        self.apply_preview(&mut result);
         result
     }
     pub fn edits(&self)->Vec<ClutterEdit>{

@@ -147,7 +147,11 @@ impl TerrainPaint {
         let total=rgba.iter().map(|&v|v as f32).sum::<f32>();
         (total>0.0).then(||rgba[slot] as f32/total)
     }
+    /// Reserved for context-sensitive paint toolbar undo state.
+    #[allow(dead_code)]
     pub fn can_undo(&self)->bool{!self.undo.is_empty()}
+    /// Reserved for context-sensitive paint toolbar redo state.
+    #[allow(dead_code)]
     pub fn can_redo(&self)->bool{!self.redo.is_empty()}
     fn snapshot(&self)->Snapshot {
         Snapshot{weights:self.weights.clone(),slots:self.slots.clone(),colors:self.colors.clone()}

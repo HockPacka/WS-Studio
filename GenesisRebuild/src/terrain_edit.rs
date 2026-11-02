@@ -43,8 +43,14 @@ impl TerrainEdit {
             ..default()
         };
     }
+    /// Reserved for enabling/disabling context-sensitive Undo in a future inspector.
+    #[allow(dead_code)]
     pub fn can_undo(&self) -> bool { !self.undo.is_empty() }
+    /// Reserved for enabling/disabling context-sensitive Redo in a future inspector.
+    #[allow(dead_code)]
     pub fn can_redo(&self) -> bool { !self.redo.is_empty() }
+    /// Reserved for the pending-changes indicator and save-state UI.
+    #[allow(dead_code)]
     pub fn has_changes(&self) -> bool {
         self.is_ready() && self.heights != self.baseline
     }

@@ -104,6 +104,8 @@ fn choose_asset(preset:&WorldClutter,roll:f32)->Option<&ClutterAsset>{
 /// Candidate budget uses 1/8 of the documented source worker count, limited
 /// by the UI. This prevents constructing tens of thousands of entities in
 /// one editor frame while retaining density ratios and weighted M3 choices.
+/// Whole-tile facade preserved for future batch preview/CLI generation.
+#[allow(dead_code)]
 pub fn generate(
     area:&RawArea,grid:&HeightGrid,catalog:&Catalog,source:&Path,
     trials_per_cell:usize,instance_limit:usize,
@@ -116,6 +118,8 @@ pub fn generate(
 /// Global cap is applied only when collecting outputs. Individual cell RNG
 /// streams are independent and can be cached/recomputed without affecting
 /// placements in other cells.
+/// Whole-tile facade preserved for a future all-cells rebuild action.
+#[allow(dead_code)]
 pub fn generate_with_paint(
     area:&RawArea,grid:&HeightGrid,catalog:&Catalog,source:&Path,
     trials_per_cell:usize,instance_limit:usize,paint:Option<&TerrainPaint>,

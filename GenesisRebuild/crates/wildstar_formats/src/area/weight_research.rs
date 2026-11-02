@@ -45,7 +45,6 @@ impl CorrectionHypothesis {
 struct BC1Sample {
     rgb:[f32;3],
     coverage:f32,
-    three_color:bool,
 }
 /// Decode both BC1 endpoint orders, including index 3 transparent in the
 /// three-color mode. The fourth layer is implicit: max(0,1-sum(rgb)).
@@ -73,7 +72,7 @@ fn bc1_sample(block:&[u8],x:usize,z:usize)->Option<BC1Sample>{
         _ if three=>([0.0;3],0.0),
         _=>(std::array::from_fn(|i|(p[i]+2.0*q[i])/3.0),1.0),
     };
-    Some(BC1Sample{rgb,coverage,three_color:three})
+    Some(BC1Sample{rgb,coverage})
 }
 fn sample_pair(
     cell:&AreaCell,base_bit:usize,correction_bit:usize,
@@ -349,7 +348,6 @@ mod tests{
         let b=bc1_sample(&block,1,0).unwrap();
         let mid=bc1_sample(&block,2,0).unwrap();
         let transparent=bc1_sample(&block,3,0).unwrap();
-        assert!(a.three_color);
         assert_eq!(a.rgb,[0.0,0.0,1.0]);
         assert_eq!(b.rgb,[1.0,0.0,0.0]);
         assert_eq!(mid.rgb,[0.5,0.0,0.5]);
@@ -358,7 +356,6 @@ mod tests{
         block[..2].copy_from_slice(&0xF800u16.to_le_bytes());
         block[2..4].copy_from_slice(&0x001Fu16.to_le_bytes());
         let opaque=bc1_sample(&block,3,0).unwrap();
-        assert!(!opaque.three_color);
         assert_eq!(opaque.coverage,1.0);
         assert!(opaque.rgb[0]>0.0&&opaque.rgb[2]>0.0);
     }

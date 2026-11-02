@@ -72,11 +72,15 @@ impl ClutterPaint {
         self.revision=self.revision.wrapping_add(1);
         true
     }
+    /// Read-only accessor for future clutter mask inspect/debug UI.
+    #[allow(dead_code)]
     pub fn mask_at(&self,cell:usize,x:usize,z:usize)->Option<bool>{
         (x<64&&z<64).then(||self.blocks.get(&(cell,16)))
             .flatten().and_then(|raw|raw.get(z*64+x))
             .map(|v|v&0x20!=0)
     }
+    /// Read-only accessor for future per-layer clutter selector inspection.
+    #[allow(dead_code)]
     pub fn selector_at(&self,cell:usize,x:usize,z:usize,slot:usize)->Option<u8>{
         if x>=64||z>=64||slot>=4{return None;}
         self.blocks.get(&(cell,27)).and_then(|raw|raw.get(z*64+x))
@@ -139,6 +143,8 @@ impl ClutterPaint {
             }
         }
     }
+    /// Convenience overlay for a future in-memory clutter-only preview path.
+    #[allow(dead_code)]
     pub fn preview_area(&self,source:&RawArea)->RawArea{
         let mut result=source.clone();
         self.apply_preview(&mut result);

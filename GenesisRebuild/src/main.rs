@@ -25,7 +25,7 @@ mod sky;
 mod genesis_icons;
 use bevy::prelude::*;
 use bevy::pbr::ExtendedMaterial;
-use bevy::light::{CascadeShadowConfigBuilder, NotShadowCaster};
+use bevy::light::CascadeShadowConfigBuilder;
 use bevy::camera::Viewport;
 use std::path::Path;
 use bevy_egui::{egui, EguiContexts, EguiGlobalSettings, EguiPlugin,

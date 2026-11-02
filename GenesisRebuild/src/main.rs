@@ -22,6 +22,7 @@ mod clutter_paint;
 mod terrain_material;
 mod water;
 mod sky;
+mod genesis_icons;
 use bevy::prelude::*;
 use bevy::pbr::ExtendedMaterial;
 use bevy::light::{CascadeShadowConfigBuilder, NotShadowCaster};
@@ -1182,8 +1183,7 @@ fn command(state: &mut GenesisState, name: &'static str) {
         _ => {}
     }
 }
-fn icon(ui: &mut egui::Ui, state: &mut GenesisState, name: &'static str,
-        glyph: &str, rgb: [u8;3]) {
+fn icon(ui: &mut egui::Ui, state: &mut GenesisState, name: &'static str) {
     let (rect, response) = ui.allocate_exact_size(egui::vec2(26.0, 26.0), egui::Sense::click());
     let selected = state.active == name;
     ui.painter().rect_filled(rect, 0.0, if selected {
@@ -1191,27 +1191,13 @@ fn icon(ui: &mut egui::Ui, state: &mut GenesisState, name: &'static str,
     } else { PAPER });
     ui.painter().rect_stroke(rect, 0.0, egui::Stroke::new(0.6, EDGE),
                              egui::StrokeKind::Inside);
-    ui.painter().rect_filled(rect.shrink(3.5), 1.5,
-        egui::Color32::from_rgb(rgb[0], rgb[1], rgb[2]));
-    ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, glyph,
-        egui::FontId::monospace(11.5), egui::Color32::WHITE);
+    genesis_icons::paint(ui, name, rect.shrink(3.3));
     if response.on_hover_text(name).clicked() { command(state, name); }
 }
-const ICONS: &[(&str, &str, [u8; 3])] = &[
-    ("Select", "A", [145, 83, 98]),
-    ("Translate", "+", [76, 147, 152]),
-    ("Rotate", "R", [204, 133, 65]),
-    ("Scale", "#", [133, 113, 179]),
-    ("Terrain Sculpt", "SC", [149, 119, 96]),
-    ("Terrain Paint", "PT", [87, 159, 109]),
-    ("Clutter", "CL", [81, 151, 88]),
-    ("Props", "PR", [151, 128, 82]),
-    ("Water", "W", [71, 150, 197]),
-    ("Environment", "EV", [97, 154, 190]),
-    ("Zones", "ZN", [164, 121, 173]),
-    ("3D AREA View", "3D", [59, 121, 166]),
-    ("Object List", "Q", [137, 162, 86]),
-    ("AREA Inspector", "IN", [171, 130, 75]),
+const ICONS: &[&str] = &[
+    "Select", "Translate", "Rotate", "Scale", "Terrain Sculpt",
+    "Terrain Paint", "Clutter", "Props", "Water", "Environment",
+    "Zones", "3D AREA View", "Object List", "AREA Inspector",
 ];
 // Classic Genesis chrome: menu header, multiple toolbars and bottom workspace.
 // All layout regions are nested in the top-level CentralPanel and therefore resize.
@@ -1251,7 +1237,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                 ] {
                     ui.menu_button(egui::RichText::new(title).size(10.0),|ui| {
                         for &entry in entries {
-                            if ui.button(entry).clicked() {
+                            if genesis_icons::menu_item(ui, entry).clicked() {
                                 command(state,entry);
                                 ui.close();
                             }
@@ -1288,11 +1274,11 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = 2.0;
-                        for (i, &(name, glyph, color)) in ICONS.iter().enumerate() {
+                        for (i, &name) in ICONS.iter().enumerate() {
                             if matches!(i, 4 | 7 | 11) {
                                 ui.separator();
                             }
-                            icon(ui, state, name, glyph, color);
+                            icon(ui, state, name);
                         }
                     });
                 });

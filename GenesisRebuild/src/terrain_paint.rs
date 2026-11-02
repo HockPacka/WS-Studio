@@ -228,8 +228,8 @@ impl TerrainPaint {
     }
     /// Paint a selected WorldLayer ID. Cells without that ID are skipped,
     /// preventing accidental painting of another material on a cell boundary.
-    pub fn brush(&mut self,world:Vec2,id:u32,radius:f32,power:f32,falloff:f32,
-                 dt:f32,restricted_cell:Option<usize>)->bool {
+    pub fn brush(&mut self,world:Vec2,id:u32,radius:f32,power:f32,
+                 hardness:f32,falloff:f32,dt:f32,restricted_cell:Option<usize>)->bool {
         if !self.ready() || self.stroke.is_none(){return false;}
         let center=(world-self.origin+Vec2::splat(256.0))*2.0;
         let r=(radius*2.0).max(1.0);
@@ -250,7 +250,7 @@ impl TerrainPaint {
                 let mut current=[0u8;4];
                 let off=(z*MAP_SIDE+x)*4;
                 current.copy_from_slice(&self.weights[off..off+4]);
-                let influence=(1.0-d/r).powf(1.0+4.0*falloff.clamp(0.0,1.0));
+                let influence=crate::brush_profile::influence(d,r,hardness,falloff);
                 let amount=power.clamp(0.0,2.0)*dt.clamp(0.0,0.1)*influence*450.0;
                 if amount<=0.0{continue;}
                 let old=current[slot] as f32;
@@ -287,7 +287,7 @@ impl TerrainPaint {
     /// Paint existing WildStar macro-tint RGB without altering the unknown alpha.
     /// Color mode and swatch are editor settings, not new AREA metadata.
     pub fn color_brush(&mut self,world:Vec2,radius:f32,power:f32,
-        falloff:f32,dt:f32,restricted_cell:Option<usize>)->bool
+        hardness:f32,falloff:f32,dt:f32,restricted_cell:Option<usize>)->bool
     {
         if !self.colors_ready() || self.stroke.is_none(){return false;}
         let center=(world-self.origin+Vec2::splat(256.0))*2.0;
@@ -308,7 +308,7 @@ impl TerrainPaint {
                     restricted_cell.is_some_and(|only|only!=cell) {continue;}
                 let off=(z*MAP_SIDE+x)*4;
                 let amount=(power.clamp(0.0,2.0)*dt.clamp(0.0,0.1)*15.0
-                    *(1.0-d/radius).powf(1.0+4.0*falloff.clamp(0.0,1.0)))
+                    *crate::brush_profile::influence(d,radius,hardness,falloff))
                     .clamp(0.0,1.0);
                 if amount<=0.0{continue;}
                 let original=[self.colors[off],self.colors[off+1],self.colors[off+2]];
@@ -907,7 +907,7 @@ mod tests{
         assert_eq!(p.cell_at(Vec2::new(-247.0,-247.0)),Some(0));
         assert_eq!(p.cell_at(Vec2::new(0.0,0.0)),None);
         p.begin();
-        assert!(p.brush(Vec2::new(-248.0,-248.0),2,5.0,2.0,0.3,0.1,None));
+        assert!(p.brush(Vec2::new(-248.0,-248.0),2,5.0,2.0,0.58,0.3,0.1,None));
         p.end();
         assert!(p.dirty());
         assert!(p.can_undo());
@@ -917,7 +917,7 @@ mod tests{
         assert!(p.redo());
         assert!(p.dirty());
         p.begin();
-        assert!(!p.brush(Vec2::ZERO,2,4.0,2.0,0.5,0.1,None));
+        assert!(!p.brush(Vec2::ZERO,2,4.0,2.0,0.58,0.5,0.1,None));
         p.end();
     }
     #[test]
@@ -954,7 +954,7 @@ mod tests{
         painter.color=[200,30,120];
         painter.begin();
         assert!(painter.color_brush(Vec2::new(-248.0,-248.0),4.0,
-            2.0,0.3,0.1,None));
+            2.0,0.58,0.3,0.1,None));
         painter.end();
         assert!(painter.dirty());
         assert_eq!(painter.colors[3],255,"BC2 alpha channel must never be painted");
@@ -995,7 +995,7 @@ mod tests{
         assert!(!paint.dirty(),"Preview selection must not change native data");
         paint.color=[42,61,103];
         paint.begin();
-        assert!(paint.color_brush(Vec2::new(-255.5,-255.5),2.0,2.0,0.4,0.1,None));
+        assert!(paint.color_brush(Vec2::new(-255.5,-255.5),2.0,2.0,0.58,0.4,0.1,None));
         paint.end();
         let edited=paint.render_tint(2);
         assert_eq!(&edited[0..3],&paint.colors[0..3]);
@@ -1007,7 +1007,7 @@ mod tests{
         let mut p=TerrainPaint::default();
         assert!(!p.ready());
         p.begin();
-        assert!(!p.brush(Vec2::ZERO,0,5.0,1.0,0.5,0.016,None));
+        assert!(!p.brush(Vec2::ZERO,0,5.0,1.0,0.58,0.5,0.016,None));
         assert!(!p.dirty());
         assert!(!p.undo());
     }

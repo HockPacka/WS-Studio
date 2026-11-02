@@ -23,6 +23,7 @@ mod terrain_material;
 mod water;
 mod sky;
 mod genesis_icons;
+mod brush_profile;
 use bevy::prelude::*;
 use bevy::pbr::ExtendedMaterial;
 use bevy::light::CascadeShadowConfigBuilder;
@@ -42,7 +43,7 @@ struct GenesisState {
     active: &'static str,
     sculpt_tool: &'static str,
     paint_tool: &'static str,
-    brush_size: f32, power: f32, falloff: f32,
+    brush_size: f32, power: f32, hardness: f32, falloff: f32,
     mode: usize,
     circle: usize,
     restricted: bool,
@@ -108,7 +109,7 @@ impl Default for GenesisState {
             scene: 0, active: "Terrain Sculpt",
             sculpt_tool: "Height Brush",
             paint_tool: "Texture Brush",
-            brush_size: 0.75, power: 1.0, falloff: 0.58,
+            brush_size: 0.75, power: 1.0, hardness: 0.58, falloff: 0.58,
             mode: 0, circle: 0, restricted: false, custom_tip: false,
             color_panel: true, color_palette: true, texture_panel: false,
             clutter_panel: false, prop_panel: false, object_list: false,
@@ -1362,6 +1363,17 @@ fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAr
         });
 }
 
+/// Two concentric rings: outer radius and inner full-strength hardness core.
+fn paint_brush_rings(ui:&egui::Ui, pointer:egui::Pos2, radius:f32,
+                     hardness:f32, tint:egui::Color32){
+    ui.painter().circle_stroke(pointer,radius,egui::Stroke::new(1.4,tint));
+    let h=hardness.clamp(0.0,1.0);
+    if (0.04..=0.96).contains(&h){
+        ui.painter().circle_stroke(pointer,radius*h,
+            egui::Stroke::new(1.1,egui::Color32::from_rgba_unmultiplied(250,250,250,215)));
+    }
+}
+
 fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             previews:&Viewports,orbit:&mut OrbitCamera,loaded:&LoadedArea,
             streaming:&streaming::WorldStreaming,
@@ -1405,14 +1417,14 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                         let point=Vec2::new(hit.x,hit.z);
                                         edit.begin_stroke(point);
                                         let signed_power=if shift {-state.power}else{state.power};
-                                        edit.brush(point,radius,signed_power,state.falloff,dt,mode);
+                                        edit.brush(point,radius,signed_power,state.hardness,state.falloff,dt,mode);
                                     }
                                     // Screen-space guide; actual brush influence uses metres.
                                     let pixel_radius=(radius /
                                         (orbit.origin()-hit).length().max(1.0) *
                                         rect.height()*1.20).clamp(4.0,160.0);
-                                    ui.painter().circle_stroke(pointer,pixel_radius,
-                                        egui::Stroke::new(1.3,egui::Color32::from_rgb(250,209,99)));
+                                    paint_brush_rings(ui,pointer,pixel_radius,state.hardness,
+                                        egui::Color32::from_rgb(250,209,99));
                                 }
                             }
                         }
@@ -1441,18 +1453,18 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                             if paint.colors_ready(){
                                                 paint.begin();
                                                 paint.color_brush(world,radius,state.power.abs(),
-                                                    state.falloff,dt,restricted);
+                                                    state.hardness,state.falloff,dt,restricted);
                                             }
                                         }else if let Some(id)=paint.selected_id{
                                             paint.begin();
                                             paint.brush(world,id,radius,state.power.abs(),
-                                                state.falloff,dt,restricted);
+                                                state.hardness,state.falloff,dt,restricted);
                                         }
                                     }
                                     let visual_radius=(radius/(orbit.origin()-hit).length().max(1.0)
                                         *rect.height()*1.20).clamp(4.0,160.0);
-                                    ui.painter().circle_stroke(pointer,visual_radius,
-                                        egui::Stroke::new(1.3,egui::Color32::from_rgb(110,224,151)));
+                                    paint_brush_rings(ui,pointer,visual_radius,state.hardness,
+                                        egui::Color32::from_rgb(110,224,151));
                                 }
                             }
                         }
@@ -1788,6 +1800,7 @@ fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState) {
     ui.label(egui::RichText::new(format!("Active Tool: {}", state.sculpt_tool)).strong().size(9.5).color(INK));
     row_slider(ui, "Size", &mut state.brush_size, 0.1..=5.0);
     row_slider(ui, "Power", &mut state.power, -2.0..=2.0);
+    row_slider(ui,"Hardness",&mut state.hardness,0.0..=1.0);
     row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
     ui.horizontal_wrapped(|ui| {
         for (i, title) in ["Circle", "Chunk", "Selection"].iter().enumerate() {
@@ -1890,6 +1903,7 @@ fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea,
             ui.label(egui::RichText::new("Texture Layer Splatting").strong().size(9.5).color(INK));
             row_slider(ui, "Size", &mut state.brush_size, 0.01..=5.0);
             row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
+            row_slider(ui,"Hardness",&mut state.hardness,0.0..=1.0);
             row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
             ui.separator();
             paint.browser(ui,client,state.selected_cell,&mut state.texture_index);
@@ -1925,6 +1939,7 @@ fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea,
             ui.label(egui::RichText::new("Color Brush Properties").strong().size(9.5).color(INK));
             row_slider(ui, "Size", &mut state.brush_size, 0.01..=5.0);
             row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
+            row_slider(ui,"Hardness",&mut state.hardness,0.0..=1.0);
             row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
             ui.horizontal(|ui|{
                 ui.label("RGB Brush");
@@ -2747,6 +2762,7 @@ fn floating_panels(ctx: &egui::Context, state: &mut GenesisState) {
                 ui.set_min_width(174.0);
                 row_slider(ui,"Size",&mut state.brush_size,0.01..=2.0);
                 row_slider(ui,"Power",&mut state.power,0.0..=2.0);
+                row_slider(ui,"Hardness",&mut state.hardness,0.0..=1.0);
                 row_slider(ui,"F/O",&mut state.falloff,0.0..=1.0);
                 ui.horizontal(|ui| {
                     ui.radio_value(&mut state.circle,0,"Circle");
@@ -2844,6 +2860,7 @@ fn floating_panels(ctx: &egui::Context, state: &mut GenesisState) {
             .show(ctx,|ui| {
                 row_slider(ui,"Size",&mut state.brush_size,0.01..=2.);
                 row_slider(ui,"Power",&mut state.power,0.0..=2.);
+                row_slider(ui,"Hardness",&mut state.hardness,0.0..=1.0);
                 row_slider(ui,"F/O",&mut state.falloff,0.0..=1.);
                 ui.separator();
                 ui.label(egui::RichText::new("Land Texture Layers").strong().size(9.));

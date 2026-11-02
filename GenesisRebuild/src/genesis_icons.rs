@@ -70,6 +70,7 @@ fn select(name: &str) -> Option<(Icon, Color32)> {
         "Dock Properties" | "Float Properties" | "Hide Properties" |
         "Bottom Workspace" | "Header Toolbars" => (Window, STEEL),
         "Choose Client Root..." => (Folder, STEEL),
+        "ClientData Settings..." => (Settings, STEEL),
         "UI 80%" | "UI 100%" | "UI 125%" | "UI 150%" => (Settings, STEEL),
         "About Genesis" => (Help, STEEL),
         "Keyboard Shortcuts" => (Keyboard, STEEL),

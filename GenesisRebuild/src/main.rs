@@ -315,8 +315,8 @@ fn setup_scene(mut commands: Commands, mut state: ResMut<GenesisState>,
         state.area_path=path.clone();
         state.pending_load=Some(path);
     }
-    // A regular editor launch opens the client setup first; AREA files are
-    // chosen explicitly using the native Windows Explorer dialog.
+    // Normal editor startup never prompts for ClientData. A saved client
+    // root still indexes automatically; optional setup lives under Settings.
 
 }
 fn load_raw_area(
@@ -337,8 +337,8 @@ fn load_raw_area(
     mut terrain_materials: ResMut<Assets<terrain_splat::TerrainMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    // Never load an AREA before its WildStar client asset root is indexed.
-    if !client.ready(){return;}
+    // Standalone .area terrain is decoded without ClientData; referenced
+    // WorldLayers, textures and props are only resolved when an index exists.
     let Some(path)=state.pending_load.take() else {return;};
     sky_mgr.current_sky_id = None;
     let path_buf = Path::new(&path);
@@ -1022,20 +1022,16 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
     if state.floating_mode { floating_panels(ctx, &mut state); }
     area_inspector_panel(ctx, &mut state, &loaded);
     if state.change_client_root {
-        client.setup_open=true;
+        client.settings_open=true;
         state.change_client_root=false;
     }
     if state.open_area_dialog {
-        // Native Microsoft Windows Explorer file picker, not a hand-typed path.
+        // Native file picker works offline, too. Only asset resolution/zone
+        // streaming require a configured ClientData root.
         state.open_area_dialog=false;
-        if client.ready() {
-            if let Some(file)=client.choose_area(&state.area_path) {
-                state.area_path=file.to_string_lossy().into_owned();
-                state.pending_load=Some(state.area_path.clone());
-            }
-        } else {
-            client.setup_open=true;
-            state.status="Select and index the WildStar client root before opening AREA.".into();
+        if let Some(file)=client.choose_area(&state.area_path) {
+            state.area_path=file.to_string_lossy().into_owned();
+            state.pending_load=Some(state.area_path.clone());
         }
     }
     if state.open_model_dialog {
@@ -1049,8 +1045,8 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 state.pending_model_load = Some(file.to_string_lossy().into_owned());
             }
         } else {
-            client.setup_open = true;
-            state.status = "Index ClientData before opening a model.".into();
+            client.settings_open = true;
+            state.status = "For M3/I3 assets, configure Settings > ClientData Settings...".into();
         }
     }
     if state.open_area_path_dialog {
@@ -1063,19 +1059,15 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 ui.add(egui::TextEdit::singleline(&mut state.area_path)
                     .desired_width((ctx.content_rect().width()-60.).clamp(150.,485.)));
                 if ui.button("Load AREA").clicked() {
-                    if client.ready(){
-                        state.pending_load=Some(state.area_path.clone());
-                        state.open_area_path_dialog=false;
-                    }else{
-                        client.setup_open=true;
-                    }
+                    state.pending_load=Some(state.area_path.clone());
+                    state.open_area_path_dialog=false;
                 }
             });
         if !open{state.open_area_path_dialog=false;}
     }
     zone_browser_dialog(ctx, &mut state, streaming.as_mut(), &client, orbit.as_mut(), &mut commands,
         loaded.as_mut(), viewer.as_mut(), edit.as_mut(), paint.as_mut());
-    client_data::startup_prompt(ctx,&mut client);
+    client_data::settings_panel(ctx,&mut client);
     Ok(())
 }
 fn command(state: &mut GenesisState, name: &'static str) {
@@ -1176,7 +1168,7 @@ fn command(state: &mut GenesisState, name: &'static str) {
             state.floating_mode = false;
         },
         "Open AREA by path..." => state.open_area_path_dialog = true,
-        "Choose Client Root..." => state.change_client_root = true,
+        "Choose Client Root..." | "ClientData Settings..." => state.change_client_root = true,
         "Grimvault Preview" => { state.scene = 0; state.raw_view = false; }
         "Aurora Preview" => { state.scene = 1; state.raw_view = false; }
         "Blue Forest Preview" => { state.scene = 2; state.raw_view = false; }
@@ -1209,7 +1201,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing.x=5.0;
                 for (title, entries) in [
-                    ("File",&["New","Open Zone (World Streaming)...","Open AREA...","Open Model (.m3/.i3)...","Open AREA by path...","Choose Client Root...",
+                    ("File",&["New","Open Zone (World Streaming)...","Open AREA...","Open Model (.m3/.i3)...","Open AREA by path...",
                         "Save","Save As","Save Package","Exit"][..]),
                     ("Edit",&["Undo","Redo","Cut","Copy","Paste","Delete","Select","Align Selection"][..]),
                     ("View",&["3D AREA View","Land Wireframe","Object Wireframe","Land Chunk Grid",
@@ -1232,7 +1224,8 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                     ("Window",&["Dock Properties","Float Properties","Hide Properties",
                         "Bottom Workspace","Header Toolbars","Color Brush Properties",
                         "Color Palette","Texture Brush Properties","Clutter Preset",
-                        "Object List","Prop Viewer","AREA Inspector","Choose Client Root...","Named Region Editor"][..]),
+                        "Object List","Prop Viewer","AREA Inspector","Named Region Editor"][..]),
+                    ("Settings",&["ClientData Settings..."][..]),
                     ("Help",&["About Genesis","Keyboard Shortcuts"][..]),
                 ] {
                     ui.menu_button(egui::RichText::new(title).size(10.0),|ui| {
@@ -1768,8 +1761,8 @@ fn dock_panels(
                                 &mut state.pending_model_load);
                         },
                         _ => {
-                            if ui.button("Choose Client Root...").clicked() {
-                                command(state, "Choose Client Root...");
+                            if ui.button("ClientData Settings...").clicked() {
+                                command(state, "ClientData Settings...");
                             }
                             client_data::asset_summary(ui, client, loaded.tile.as_ref());
                         }
@@ -2645,7 +2638,7 @@ fn zone_browser_dialog(
     }
     if !client.ready() {
         state.open_zone_dialog = false;
-        state.status = "Please setup ClientData before opening zones.".to_string();
+        state.status = "World streaming requires Settings > ClientData Settings...".to_string();
         return;
     }
 

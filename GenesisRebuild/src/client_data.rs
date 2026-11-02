@@ -11,7 +11,7 @@ use wildstar_formats::assets::{AssetIndex,AssetRoots};
 #[derive(Resource)]
 pub struct ClientFiles {
     pub root_text:String,
-    pub setup_open:bool,
+    pub settings_open:bool,
     pub scanning:bool,
     pub status:String,
     pub index:Option<AssetIndex>,
@@ -23,9 +23,9 @@ impl Default for ClientFiles {
     fn default()->Self{
         Self{
             root_text:String::new(),
-            setup_open:true,
+            settings_open:false,
             scanning:false,
-            status:"Select WildStar root containing ClientData (and ClientDataEN).".into(),
+            status:"ClientData not configured (optional). Open Settings > ClientData Settings... to configure.".into(),
             index:None,
             receiver:Mutex::new(None),
             prop_models:Default::default(),
@@ -63,8 +63,8 @@ impl ClientFiles {
         let roots=match AssetRoots::discover(Path::new(self.root_text.trim())){
             Ok(roots)=>roots,
             Err(error)=>{
-                self.index=None;
-                self.setup_open=true;
+                // Keep the last successfully indexed root if the new text is invalid.
+                // Invalid input must not block the editor or destroy a usable index.
                 self.status=format!("Invalid WildStar root: {error}");
                 return;
             }
@@ -73,7 +73,6 @@ impl ClientFiles {
         self.status=format!("Indexing ClientData and ClientDataEN in {} …",
             roots.selected.display());
         self.scanning=true;
-        self.setup_open=true;
         self.index=None;
         let (tx,rx)=mpsc::channel();
         *self.receiver.lock().expect("asset receiver lock")=Some(rx);
@@ -96,19 +95,26 @@ impl ClientFiles {
                     index.file_count(),index.scanned[0],index.scanned[1]);
                 if let Some(roots)=index.roots.as_ref(){save_root(&roots.selected);}
                 self.index=Some(index);
-                self.setup_open=false;
                 *self.receiver.lock().expect("asset receiver lock")=None;
             }
             Some(Err(TryRecvError::Disconnected))=>{
                 self.scanning=false;
                 self.status="Asset indexing stopped unexpectedly. Choose the root again.".into();
-                self.setup_open=true;
                 *self.receiver.lock().expect("asset receiver lock")=None;
             }
             _=>{}
         }
     }
     pub fn ready(&self)->bool{self.index.is_some() && !self.scanning}
+    /// Disconnect the optional asset root; never touch the game installation.
+    pub fn clear_root(&mut self){
+        if self.scanning{return;}
+        self.root_text.clear();
+        self.index=None;
+        self.prop_models=Default::default();
+        self.status="ClientData disconnected. Standalone AREA editing remains available.".into();
+        if let Some(path)=settings_file(){let _=std::fs::remove_file(path);}
+    }
     pub fn choose_root(&mut self){
         let mut picker=FileDialog::new()
             .set_title("WildStar Client-Root auswählen (ClientData / ClientDataEN)");
@@ -140,41 +146,59 @@ impl ClientFiles {
 }
 pub fn poll_system(mut assets:ResMut<ClientFiles>){assets.poll();}
 
-pub fn startup_prompt(ctx:&egui::Context,assets:&mut ClientFiles){
-    if !assets.setup_open{return;}
-    egui::Window::new("Genesis – WildStar ClientData einrichten")
-        .id(egui::Id::new("genesis-client-root-setup"))
-        .collapsible(false)
+
+pub fn settings_panel(ctx:&egui::Context,assets:&mut ClientFiles){
+    if !assets.settings_open{return;}
+    let mut open=assets.settings_open;
+    egui::Window::new("Genesis – Editor Settings")
+        .id(egui::Id::new("genesis-editor-settings"))
+        .open(&mut open)
         .resizable(true)
-        .default_size(egui::vec2(560.,215.))
+        .default_size(egui::vec2(560.,225.))
         .default_pos(ctx.content_rect().center()-egui::vec2(280.,110.))
         .show(ctx,|ui|{
-            ui.heading("WildStar-Clientverzeichnis auswählen");
-            ui.label("Genesis durchsucht ClientData und ClientDataEN nach .area-Abhängigkeiten.");
-            ui.label("Wähle den Spiel-Root, WoWClient oder direkt ClientData.");
+            ui.heading("WildStar ClientData");
+            ui.label("Optional: Genesis can start and edit standalone AREA terrain without a ClientData root.");
+            ui.label("For textured terrain, M3/I3 assets, TBL references and world streaming, select the game data folder.");
             ui.horizontal(|ui|{
                 ui.add_enabled_ui(!assets.scanning,|ui|{
                     ui.add(egui::TextEdit::singleline(&mut assets.root_text)
-                        .desired_width(ui.available_width().max(120.)-110.));
-                    if ui.button("Durchsuchen…").clicked(){assets.choose_root();}
+                        .desired_width((ui.available_width()-110.).max(120.))
+                        .hint_text("WildStar root or ClientData directory"));
+                    if ui.button("Browse...").clicked(){assets.choose_root();}
                 });
             });
             ui.horizontal(|ui|{
                 if ui.add_enabled(!assets.scanning,
-                    egui::Button::new("Ordner prüfen und indexieren")).clicked(){
+                    egui::Button::new("Validate and index")).clicked(){
                     assets.begin_scan();
                 }
-                if assets.ready() && ui.button("Weiter zum Editor").clicked(){
-                    assets.setup_open=false;
+                if ui.add_enabled(!assets.scanning && (assets.ready() || !assets.root_text.is_empty()),
+                    egui::Button::new("Disconnect")).clicked(){
+                    assets.clear_root();
                 }
                 if assets.scanning{ui.spinner();}
             });
             ui.separator();
             ui.label(&assets.status);
             ui.label(egui::RichText::new(
-                "Nur Lesezugriff. Der Root wird unter LOCALAPPDATA/GenesisRebuild gespeichert.")
-                .small());
+                "Read-only ClientData access. The selected path is saved per user in LOCALAPPDATA/GenesisRebuild; no paths are stored inside the game client."
+            ).small());
         });
+    assets.settings_open=open;
+}
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+    #[test]
+    fn unconfigured_client_root_does_not_force_setup_dialog(){
+        let client=ClientFiles::default();
+        assert!(!client.settings_open);
+        assert!(!client.scanning);
+        assert!(!client.ready());
+        assert!(client.root_text.is_empty());
+    }
 }
 pub fn asset_summary(ui:&mut egui::Ui,assets:&ClientFiles,
                      area:Option<&wildstar_formats::area::RawArea>){

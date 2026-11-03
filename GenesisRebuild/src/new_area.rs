@@ -80,6 +80,7 @@ pub fn show(ctx:&egui::Context,open:&mut bool,options:&mut Options)->Option<Path
     if !*open{return None;}
     let mut visible=*open;
     let mut submit=false;
+    let mut cancel=false;
     egui::Window::new("New AREA")
         .id(egui::Id::new("genesis-new-area"))
         .collapsible(false).resizable(true)
@@ -131,10 +132,10 @@ pub fn show(ctx:&egui::Context,open:&mut bool,options:&mut Options)->Option<Path
             ).small());
             ui.horizontal(|ui|{
                 if ui.button("Create AREA").clicked(){submit=true;}
-                if ui.button("Cancel").clicked(){visible=false;}
+                if ui.button("Cancel").clicked(){cancel=true;}
             });
         });
-    *open=visible;
+    *open=visible && !cancel;
     if submit {
         match options.create(){
             Ok(path)=>{*open=false;options.error.clear();return Some(path);}

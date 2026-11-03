@@ -11,6 +11,12 @@ pub struct M3Vertex {
     pub pos:[f32;3],
     pub normal:[f32;3],
     pub uv:[f32;2],
+    /// Optional second half-float UV channel, used by detail/lightmap shaders.
+    pub uv1:[f32;2],
+    /// Color0: the WildStar vertex shader multiplies RGB by two (0x80 = 1.0).
+    pub color0:[u8;4],
+    /// Extra material/color channel (includes secondary texture coordinates).
+    pub color1:[u8;4],
     pub bone_idx:[u8;4],
     pub bone_weight:[u8;4],
 }
@@ -64,6 +70,30 @@ impl M3Blend {
             5=>Self::Multiply,6=>Self::Multiply2x,_=>Self::Special}
     }
 }
+/// One native 0x128-byte WildStar M3 material-layer description.
+/// Animation DP tracks are currently sampled at their first value; keeping
+/// every layer allows the viewport to render more than the first albedo map.
+#[derive(Debug,Clone)]
+pub struct M3MaterialLayer {
+    pub color_texture:Option<usize>,
+    pub normal_texture:Option<usize>,
+    pub class:u32,
+    pub type_id:u32,
+    /// The original five mode selectors; their exact shader semantics
+    /// are still not fully reverse engineered.
+    pub modes:[u32;5],
+    pub opacity:f32,
+    pub gloss:f32,
+    pub glow:f32,
+    pub color_mod:[f32;3],
+}
+impl Default for M3MaterialLayer {
+    fn default()->Self{
+        Self{color_texture:None,normal_texture:None,class:3,type_id:0,
+            modes:[0;5],opacity:1.0,gloss:0.0,glow:0.0,color_mod:[1.0;3]}
+    }
+}
+
 #[derive(Debug,Clone)]
 pub struct M3Material {
     pub blend:M3Blend,
@@ -78,6 +108,8 @@ pub struct M3Material {
     /// HDR colour multiplier of the first layer.
     pub color_mod:[f32;3],
     pub layer_count:u32,
+    /// Up to four original layer records, in source order.
+    pub layers:Vec<M3MaterialLayer>,
     /// Texture index of the first layer (`None` = no texture).
     pub color_texture:Option<usize>,
     pub normal_texture:Option<usize>,
@@ -85,9 +117,44 @@ pub struct M3Material {
 impl Default for M3Material {
     fn default()->Self{
         Self{blend:M3Blend::Opaque,material_type:0,flags:0,opacity:1.0,gloss:0.0,glow:0.0,
-            color_mod:[1.0;3],layer_count:0,color_texture:None,normal_texture:None}
+            color_mod:[1.0;3],layer_count:0,layers:Vec::new(),color_texture:None,normal_texture:None}
     }
 }
+/// A native M3 DPointer keyframe track. The track index determines its type:
+/// 0..=3 half3 scale, 4..=5 quaternion, 6..=7 float3 translation.
+#[derive(Debug,Clone,Default)]
+pub struct M3BoneTrack {
+    pub times_ms:Vec<u32>,
+    /// xyz for scales/translations, xyzw for quaternion rotation.
+    pub values:Vec<[f32;4]>,
+}
+impl M3BoneTrack {
+    pub fn sample(&self,time_ms:u32,rotation:bool)->Option<[f32;4]>{
+        let count=self.times_ms.len();
+        if count==0||count!=self.values.len(){return None;}
+        if count==1||time_ms<=self.times_ms[0]{return Some(self.values[0]);}
+        if time_ms>=self.times_ms[count-1]{return Some(self.values[count-1]);}
+        let hi=self.times_ms.partition_point(|&t|t<=time_ms);
+        let lo=hi-1;
+        let duration=self.times_ms[hi]-self.times_ms[lo];
+        if duration==0{return Some(self.values[hi]);}
+        let t=(time_ms-self.times_ms[lo]) as f32/duration as f32;
+        let a=self.values[lo];
+        let mut b=self.values[hi];
+        // Rotate along the quaternion's shortest arc.
+        if rotation && (0..4).map(|i|a[i]*b[i]).sum::<f32>()<0.0 {
+            for v in &mut b{*v = -*v;}
+        }
+        let mut v=[0.0;4];
+        for i in 0..4{v[i]=a[i]+(b[i]-a[i])*t;}
+        if rotation{
+            let len=v.iter().map(|v|v*v).sum::<f32>().sqrt();
+            if len>1e-8{for c in &mut v{*c/=len;}}
+        }
+        Some(v)
+    }
+}
+
 #[derive(Debug,Clone)]
 pub struct M3Bone {
     pub model_bone_id:u16,
@@ -97,6 +164,8 @@ pub struct M3Bone {
     pub pivot:[f32;3],
     /// World bind matrix as stored (row-vector convention).
     pub bind_world:[f32;16],
+    /// Native tracks (primary 0/2/4/6; alternate 1/3/5/7).
+    pub tracks:[M3BoneTrack;8],
 }
 #[derive(Debug,Clone)]
 pub struct M3Clip {
@@ -122,6 +191,11 @@ pub struct M3Model {
     pub bounds_max:[f32;3],
 }
 impl M3Model {
+    /// Sample a bone track directly on the model's shared millisecond timeline.
+    pub fn sample_bone_track(&self,bone:usize,track:usize,time_ms:u32)->Option<[f32;4]>{
+        let values=self.bones.get(bone)?.tracks.get(track)?;
+        values.sample(time_ms,track==4||track==5)
+    }
     pub fn triangle_count(&self)->usize{self.indices.len()/3}
     pub fn bounds_size(&self)->[f32;3]{
         [self.bounds_max[0]-self.bounds_min[0],self.bounds_max[1]-self.bounds_min[1],
@@ -182,8 +256,42 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
 
     let (n,a)=ap(0x180).filter(|&(n,a)|n<=len as u64&&a as u64+n*0x160<=len as u64)
         .ok_or("bones out of bounds")?;
+    // Bone DPointer offsets are relative to the aligned end of the full bone table.
+    let track_base=align16(a+n as usize*0x160);
     for i in 0..n as usize{
         let o=a+i*0x160;
+        let mut tracks:[M3BoneTrack;8]=std::array::from_fn(|_|M3BoneTrack::default());
+        for (ti,track) in tracks.iter_mut().enumerate(){
+            let p=o+0x10+ti*0x18;
+            let count=u64_at(d,p).unwrap_or(0);
+            if count==0{continue;}
+            if count>1_000_000{return Err("bone animation has too many keys".into());}
+            let stride=if ti<4{6}else if ti<6{8}else{12};
+            let key=u64_at(d,p+8).ok_or("bone animation key pointer missing")?;
+            let value=u64_at(d,p+16).ok_or("bone animation value pointer missing")?;
+            let ka=range(len,track_base,key,count,4).ok_or("bone animation keys out of bounds")?;
+            let va=range(len,track_base,value,count,stride).ok_or("bone animation values out of bounds")?;
+            for k in 0..count as usize{
+                let time=u32_at(d,ka+k*4).ok_or("bone animation key missing")?;
+                if track.times_ms.last().is_some_and(|&prev|time<prev){
+                    return Err("bone animation keys are not ordered".into());
+                }
+                track.times_ms.push(time);
+                let at=va+k*stride;
+                let mut out=[0.0;4];
+                if ti<4{
+                    for j in 0..3{out[j]=half_to_f32(u16_at(d,at+j*2).unwrap_or(0));}
+                }else if ti<6{
+                    for j in 0..4{out[j]=(u16_at(d,at+j*2).unwrap_or(0) as i16) as f32/16384.0;}
+                }else{
+                    for j in 0..3{out[j]=f32_at(d,at+j*4).unwrap_or(0.0);}
+                }
+                if out.iter().any(|v|!v.is_finite()){
+                    return Err("non-finite bone animation value".into());
+                }
+                track.values.push(out);
+            }
+        }
         let mut bind_world=[0f32;16];
         for (k,v) in bind_world.iter_mut().enumerate(){*v=f32_at(d,o+0xD0+k*4).unwrap_or(0.0);}
         m.bones.push(M3Bone{
@@ -191,7 +299,7 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
             parent:u16_at(d,o+4).unwrap_or(0xFFFF) as i16,
             hash:u32_at(d,o+8).unwrap_or(0),
             pivot:[bind_world[12],bind_world[13],bind_world[14]],
-            bind_world,
+            bind_world,tracks,
         });
     }
 
@@ -236,21 +344,42 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
                 .ok_or("material layers out of bounds")?;
             mat.layer_count=dc as u32;
             let tex=|v:u16|if v==0xFFFF{None}else{Some(v as usize)};
-            mat.color_texture=u16_at(d,p).and_then(tex);
-            mat.normal_texture=u16_at(d,p+2).and_then(tex);
-            // First key of a layer parameter track; value arrays are relative to align16(end of the layers).
+            // DP value offsets of every layer are relative to the same
+            // 16-byte-aligned end of this material's entire layer array.
             let nbase=align16(desc_base+doff as usize+dc as usize*0x128);
-            let first=|dp:usize,n:usize|->Option<Vec<f32>>{
-                if u64_at(d,p+dp)?==0{return None;}
-                let at=range(len,nbase,u64_at(d,p+dp+0x10)?,1,n*4)?;
-                let v:Vec<f32>=(0..n).map(|k|f32_at(d,at+k*4).unwrap_or(f32::NAN)).collect();
-                v.iter().all(|x|x.is_finite()).then_some(v)
-            };
-            if let Some(v)=first(0x60,1){mat.opacity=v[0].clamp(0.0,1.0);}
-            if let Some(v)=first(0x30,1){mat.gloss=v[0].clamp(0.0,4.0);}
-            if let Some(v)=first(0x48,1){mat.glow=v[0].clamp(0.0,4.0);}
-            if let Some(v)=first(0x108,3).filter(|v|v.iter().all(|x|(0.0..64.0).contains(x))){
-                mat.color_mod=[v[0],v[1],v[2]];
+            for layer_index in 0..dc as usize {
+                let lp=p+layer_index*0x128;
+                let mut layer=M3MaterialLayer{
+                    color_texture:u16_at(d,lp).and_then(tex),
+                    normal_texture:u16_at(d,lp+2).and_then(tex),
+                    class:u32_at(d,lp+0x120).unwrap_or(3),
+                    type_id:u32_at(d,lp+0x124).unwrap_or(0),
+                    ..Default::default()
+                };
+                for (j,mode) in layer.modes.iter_mut().enumerate(){
+                    *mode=u32_at(d,lp+0x04+j*4).unwrap_or(0);
+                }
+                let first=|dp:usize,n:usize|->Option<Vec<f32>>{
+                    if u64_at(d,lp+dp)?==0{return None;}
+                    let at=range(len,nbase,u64_at(d,lp+dp+0x10)?,1,n*4)?;
+                    let v:Vec<f32>=(0..n).map(|k|f32_at(d,at+k*4).unwrap_or(f32::NAN)).collect();
+                    v.iter().all(|x|x.is_finite()).then_some(v)
+                };
+                if let Some(v)=first(0x60,1){layer.opacity=v[0].clamp(0.0,1.0);}
+                if let Some(v)=first(0x30,1){layer.gloss=v[0].clamp(0.0,4.0);}
+                if let Some(v)=first(0x48,1){layer.glow=v[0].clamp(0.0,4.0);}
+                if let Some(v)=first(0x108,3).filter(|v|v.iter().all(|x|(0.0..64.0).contains(x))){
+                    layer.color_mod=[v[0],v[1],v[2]];
+                }
+                mat.layers.push(layer);
+            }
+            if let Some(first)=mat.layers.first(){
+                mat.color_texture=first.color_texture;
+                mat.normal_texture=first.normal_texture;
+                mat.opacity=first.opacity;
+                mat.gloss=first.gloss;
+                mat.glow=first.glow;
+                mat.color_mod=first.color_mod;
             }
         }
         m.materials.push(mat);
@@ -272,25 +401,27 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
 
         // Field order is sequential; the sum of field sizes must equal the vertex size.
         let mut off=0usize;
-        let (mut pos_off,mut nor_off,mut bi_off,mut bw_off,mut uv_off)=(None,None,None,None,None);
+        let (mut pos_off,mut nor_off,mut bi_off,mut bw_off,mut uv_off,mut uv1_off,mut c0_off,mut c1_off)=
+            (None,None,None,None,None,None,None,None);
         match types[0]{1=>{pos_off=Some(off);off+=12;},2=>{pos_off=Some(off);off+=6;},_=>{}}
         if types[1]==3{off+=2;}
         if types[2]==3{nor_off=Some(off);off+=2;}
         if types[3]==3{off+=2;}
         if types[4]==4{bi_off=Some(off);off+=4;}
         if types[5]==4{bw_off=Some(off);off+=4;}
-        if types[6]==4{off+=4;}
-        if types[7]==4{off+=4;}
+        if types[6]==4{c0_off=Some(off);off+=4;}
+        if types[7]==4{c1_off=Some(off);off+=4;}
         if types[8]==5{uv_off=Some(off);off+=4;}
-        if types[9]==5{off+=4;}
+        if types[9]==5{uv1_off=Some(off);off+=4;}
         if types[10]==6{off+=1;}
-        if vsize!=0&&off!=vsize{return Err("vertex layout size mismatch".into());}
+        if off!=vsize{return Err("vertex layout size mismatch".into());}
 
         let va=range(len,gb,vdo,vcount as u64,vsize).ok_or("vertex data out of bounds")?;
         let base=m.vertices.len();
         for v in 0..vcount{
             let p=va+v*vsize;
-            let mut out=M3Vertex{normal:[0.0,1.0,0.0],bone_weight:[255,0,0,0],..Default::default()};
+            let mut out=M3Vertex{normal:[0.0,1.0,0.0],color0:[128,128,128,255],
+                bone_weight:[255,0,0,0],..Default::default()};
             if let Some(o)=pos_off{
                 for k in 0..3{
                     out.pos[k]=if types[0]==1{f32_at(d,p+o+k*4).unwrap_or(0.0)}
@@ -301,6 +432,11 @@ pub fn read_m3(d:&[u8])->Result<M3Model,String>{
             if let Some(o)=uv_off{
                 out.uv=[half_to_f32(u16_at(d,p+o).unwrap_or(0)),half_to_f32(u16_at(d,p+o+2).unwrap_or(0))];
             }
+            if let Some(o)=uv1_off{
+                out.uv1=[half_to_f32(u16_at(d,p+o).unwrap_or(0)),half_to_f32(u16_at(d,p+o+2).unwrap_or(0))];
+            }
+            if let Some(o)=c0_off{out.color0.copy_from_slice(&d[p+o..p+o+4]);}
+            if let Some(o)=c1_off{out.color1.copy_from_slice(&d[p+o..p+o+4]);}
             if let Some(o)=bi_off{out.bone_idx.copy_from_slice(&d[p+o..p+o+4]);}
             if let Some(o)=bw_off{out.bone_weight.copy_from_slice(&d[p+o..p+o+4]);}
             m.vertices.push(out);
@@ -401,6 +537,53 @@ mod tests {
         d
     }
     #[test]
+    fn retains_four_layer_records_and_secondary_parameter_tracks(){
+        let mut d=sample();
+        let old_geo=HEADER_END+u64_at(&d,0x258).unwrap() as usize;
+        // Relocate geometry, leaving space for three more 0x128-byte
+        // layer descriptions and for the shared DP payload.
+        let extra=0x480usize;
+        d.splice(old_geo..old_geo,std::iter::repeat_n(0u8,extra));
+        put(&mut d,0x258,&((old_geo+extra-HEADER_END) as u64).to_le_bytes());
+        let mat=HEADER_END+0x30;
+        put(&mut d,mat+0x20,&4u64.to_le_bytes());
+        let layers=mat+0x30;
+        // Material 0 has 4 layers, each layer owns its own texture IDs.
+        for n in 0..4 {
+            let lp=layers+n*0x128;
+            put(&mut d,lp,&(if n==2{0xFFFFu16}else{0u16}).to_le_bytes());
+            put(&mut d,lp+2,&(if n==1{0u16}else{0xFFFFu16}).to_le_bytes());
+            put(&mut d,lp+0x120,&3u32.to_le_bytes());
+            put(&mut d,lp+0x124,&(n as u32).to_le_bytes());
+            put(&mut d,lp+0x08,&(n as u32+1).to_le_bytes());
+        }
+        let lp=layers+0x128;
+        let values=align16(layers+4*0x128);
+        put(&mut d,lp+0x60,&1u64.to_le_bytes());
+        put(&mut d,lp+0x60+0x10,&0u64.to_le_bytes());
+        put(&mut d,values,&0.25f32.to_le_bytes());
+        let model=read_m3(&d).unwrap();
+        let mat=&model.materials[0];
+        assert_eq!(mat.layer_count,4);
+        assert_eq!(mat.layers.len(),4);
+        assert_eq!(mat.layers[0].color_texture,Some(0));
+        assert_eq!(mat.layers[1].normal_texture,Some(0));
+        assert_eq!(mat.layers[2].color_texture,None);
+        assert_eq!(mat.layers[3].type_id,3);
+        assert_eq!(mat.layers[1].modes[1],2);
+        assert_eq!(mat.layers[1].opacity,0.25);
+        assert_eq!(mat.opacity,1.0);
+        assert_eq!(model.vertices.len(),3);
+        assert_eq!(model.visible_indices(),vec![0,1,2]);
+    }
+    #[test]
+    fn rejects_more_than_four_material_layers(){
+        let mut d=sample();
+        let mat=HEADER_END+0x30;
+        put(&mut d,mat+0x20,&5u64.to_le_bytes());
+        assert!(read_m3(&d).is_err());
+    }
+    #[test]
     fn reads_geometry_textures_and_materials(){
         let m=read_m3(&sample()).unwrap();
         assert_eq!(m.vertices.len(),3);
@@ -434,6 +617,62 @@ mod tests {
         assert!(m.visible_indices().is_empty());
         m.meshes[0].group = 0xFFFF; // unassigned
         assert!(m.meshes[0].is_visible_default(&m.mesh_display));
+    }
+    #[test]
+    fn preserves_both_uvs_and_vertex_colours(){
+        let mut d=sample();
+        let geo=HEADER_END+u64_at(&d,0x258).unwrap() as usize;
+        let gb=align16(geo+0xC8);
+        let original_mesh=d[gb+0x40..gb+0x40+0x70].to_vec();
+        // pos f32x3, color0 RGBA, color1 RGBA, UV0 half2, UV1 half2.
+        put(&mut d,geo+0x1C,&28u16.to_le_bytes());
+        put(&mut d,geo+0x20,&[1,0,0,0,0,0,4,4,5,5,0]);
+        put(&mut d,geo+0x78,&0x60u64.to_le_bytes());
+        put(&mut d,geo+0x88,&0x70u64.to_le_bytes());
+        for i in 0..3 {
+            let at=gb+i*28;
+            put(&mut d,at,&(i as f32).to_le_bytes());
+            put(&mut d,at+12,&[128,64,255,192]);
+            put(&mut d,at+16,&[11,22,33,44]);
+            put(&mut d,at+20,&0x3C00u16.to_le_bytes()); // UV0.x = 1
+            put(&mut d,at+22,&0x3800u16.to_le_bytes()); // UV0.y = 0.5
+            put(&mut d,at+24,&0x4000u16.to_le_bytes()); // UV1.x = 2
+            put(&mut d,at+26,&0x0000u16.to_le_bytes());
+        }
+        for (i,ix) in [0u16,1,2].iter().enumerate(){put(&mut d,gb+0x60+i*2,&ix.to_le_bytes());}
+        put(&mut d,gb+0x70,&original_mesh);
+        let m=read_m3(&d).unwrap();
+        assert_eq!(m.visible_indices(),vec![0,1,2]);
+        assert_eq!(m.vertices[0].uv,[1.0,0.5]);
+        assert_eq!(m.vertices[0].uv1,[2.0,0.0]);
+        assert_eq!(m.vertices[0].color0,[128,64,255,192]);
+        assert_eq!(m.vertices[0].color1,[11,22,33,44]);
+    }
+    #[test]
+    fn decodes_and_samples_bone_quaternion_track(){
+        let mut d=sample();
+        let bones=align16(d.len());
+        put(&mut d,0x180,&1u64.to_le_bytes());
+        put(&mut d,0x188,&((bones-HEADER_END) as u64).to_le_bytes());
+        d.resize(bones+0x160,0);
+        let keys=align16(bones+0x160);
+        let p=bones+0x70; // rotation track 4
+        put(&mut d,p,&2u64.to_le_bytes());
+        put(&mut d,p+8,&0u64.to_le_bytes());
+        put(&mut d,p+16,&16u64.to_le_bytes());
+        put(&mut d,keys,&0u32.to_le_bytes());
+        put(&mut d,keys+4,&1000u32.to_le_bytes());
+        // First quaternion = identity; last = 90-degree around Z.
+        let q0=[0i16,0,0,16384];
+        let q1=[0i16,0,11585,11585];
+        for (k,q) in [q0,q1].iter().enumerate(){
+            for j in 0..4{put(&mut d,keys+16+k*8+j*2,&q[j].to_le_bytes());}
+        }
+        let m=read_m3(&d).unwrap();
+        assert_eq!(m.bones[0].tracks[4].times_ms,[0,1000]);
+        let halfway=m.sample_bone_track(0,4,500).unwrap();
+        assert!((halfway[2]-0.38268).abs()<0.002);
+        assert!((halfway[3]-0.92388).abs()<0.002);
     }
     #[test]
     fn half_floats(){

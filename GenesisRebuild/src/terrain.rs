@@ -7,6 +7,12 @@ use wildstar_formats::area::{HeightGrid, RawArea, tile_heights};
 
 pub fn terrain_mesh(area:&RawArea, preview:usize, layer:usize)->Result<(Mesh,Vec3),String>{
     let grid=tile_heights(area);
+    terrain_mesh_from_grid(area,preview,layer,&grid)
+}
+
+/// Render a live sculpted heightfield using the original AREA metadata and masks.
+pub fn terrain_mesh_from_grid(area:&RawArea, preview:usize, layer:usize,
+    grid:&HeightGrid)->Result<(Mesh,Vec3),String>{
     if grid.cells==0 {return Err("AREA contains no heightmap blocks".into());}
     let mut positions=Vec::with_capacity(257*257);
     let mut normals=Vec::with_capacity(257*257);
@@ -108,4 +114,21 @@ fn debug_id_color(id:u32)->[f32;4]{
     [0.28+((n&255) as f32)/510.,
      0.28+(((n>>8)&255) as f32)/510.,
      0.28+(((n>>16)&255) as f32)/510.,1.]
+}
+
+
+#[cfg(test)]
+mod generated_area_tests {
+    use super::*;
+    use wildstar_formats::area::builder::AreaBuilder;
+
+    #[test]
+    fn flat_new_area_produces_a_visible_terrain_mesh() {
+        let raw=AreaBuilder::flat(0.0,0).build().unwrap();
+        let area=RawArea::from_bytes(raw).unwrap();
+        let (mesh,focus)=terrain_mesh(&area,0,0).unwrap();
+        assert!(mesh.attribute(Mesh::ATTRIBUTE_POSITION).is_some());
+        assert!(mesh.indices().is_some());
+        assert_eq!(focus.y,0.0);
+    }
 }

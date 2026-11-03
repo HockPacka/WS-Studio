@@ -21,6 +21,8 @@ impl SectorSubmesh {
         let hi=self.id>>8;
         if hi==0||self.id&0xFF==0xFF{None}else{Some(hi as usize-1)}
     }
+    /// Low byte selects the material pass; 0xFF is collision-only.
+    pub fn pass(&self)->Option<usize>{self.material().map(|_|(self.id&0xFF) as usize)}
     /// `hi == 0` or `lo == 255` is collision geometry only.
     pub fn is_collision_only(&self)->bool{self.material().is_none()}
     pub fn triangles(&self)->std::ops::Range<usize>{
@@ -309,6 +311,17 @@ mod tests {
         put(&mut d,SECTOR_HEADER+108,&9u32.to_le_bytes());
         assert!(read_sector(&d).is_err());
         assert!(read_sector(b"FEDS").is_err());
+    }
+    #[test]
+    fn material_and_pass_are_separate_fields(){
+        let s=SectorSubmesh{kind:0,first_index:0,last_index:2,
+            first_vertex:0,last_vertex:2,id:(3<<8)|1};
+        assert_eq!(s.material(),Some(2));
+        assert_eq!(s.pass(),Some(1));
+        assert!(!s.is_collision_only());
+        let collision=SectorSubmesh{id:(3<<8)|0xFF,..s};
+        assert_eq!(collision.material(),None);
+        assert_eq!(collision.pass(),None);
     }
     #[test]
     fn collision_only_submesh(){

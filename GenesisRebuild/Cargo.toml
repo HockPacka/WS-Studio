@@ -7,7 +7,7 @@ description = "WildStar Genesis visual UI replica in Bevy"
 [dependencies]
 bevy = "0.20.1"
 bevy_egui = "0.43.1"
-image = { version = "0.25", default-features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png", "tiff", "bmp", "tga", "dds", "hdr", "ico", "pnm", "ff"] }
 wildstar_formats = { path = "crates/wildstar_formats" }
 rfd = "0.17.2"
 

@@ -410,6 +410,7 @@ pub fn update_world_streaming(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut layered_materials: ResMut<Assets<crate::m3_layers::M3LayerMaterial>>,
     mut terrain_materials: ResMut<Assets<TerrainMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
@@ -430,8 +431,13 @@ pub fn update_world_streaming(
             None => break,
         };
 
-        streaming.in_flight.remove(&resp.coords);
+        // Dropped/old requests may still finish after switching maps or opening
+        // a standalone M3/I3 preview. Never let those replies re-spawn old tiles.
+        let expected = streaming.in_flight.remove(&resp.coords);
         processed_this_frame += 1;
+        if !expected || streaming.active_map.is_none() {
+            continue;
+        }
 
         match resp.result {
             Ok(mut baked) => {
@@ -508,7 +514,7 @@ pub fn update_world_streaming(
                 });
 
                 let prop_entities = if !baked.props.is_empty() {
-                    props::spawn_props(&mut commands, &baked.props, &mut meshes, &mut materials, &mut images,
+                    props::spawn_props(&mut commands, &baked.props, &mut meshes, &mut materials, &mut layered_materials, &mut images,
                         client.index.as_ref(), &client.prop_models)
                 } else {
                     Vec::new()

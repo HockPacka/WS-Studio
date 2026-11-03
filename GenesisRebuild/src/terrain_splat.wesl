@@ -14,6 +14,8 @@ struct SplatParams {
     tint_gamma: u32,
     pad: u32,
     tiling: array<vec4<f32>, 64>,
+    debug_options: vec4<u32>,
+    surface_options: vec4<f32>,
 }
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(100) var<uniform> splat: SplatParams;
@@ -35,7 +37,7 @@ fn fragment(
 
     if (splat.enabled != 0u) {
         let uv = in.uv;
-        let meters = uv * splat.tile_meters;
+        let meters = uv * splat.tile_meters * splat.surface_options.x;
         // Derivatives are taken here, in uniform control flow, then reused for every layer fetch.
         let dx = dpdx(meters);
         let dy = dpdy(meters);
@@ -43,9 +45,11 @@ fn fragment(
         let ids = textureLoad(cell_layers, cell, 0) * 255.0;
         let weights = textureSample(weight_map, weight_sampler, uv);
         // Neutral of the colour map is 128; strength blends between no tint and the full tint.
-        let tint = mix(vec3<f32>(1.0), textureSample(tint_map, weight_sampler, uv).rgb * (255.0 / 128.0), splat.tint_strength);
+        let tint_sample = textureSample(tint_map, weight_sampler, uv);
+        let tint = mix(vec3<f32>(1.0), tint_sample.rgb * (255.0 / 128.0), splat.tint_strength);
 
         var color = vec3<f32>(0.0);
+        var raw_albedo = vec3<f32>(0.0);
         var normal = vec3<f32>(0.0);
         var total = 0.0;
         for (var slot = 0u; slot < 4u; slot++) {
@@ -55,7 +59,7 @@ fn fragment(
                 let t = splat.tiling[id >> 2u][id & 3u];
                 let p = meters * t;
                 color += textureSampleGrad(albedo_layers, layer_sampler, p, id, dx * t, dy * t).rgb * w;
-                if (splat.has_normals != 0u) {
+                if (splat.has_normals != 0u && splat.debug_options.z != 0u) {
                     let n = textureSampleGrad(normal_layers, layer_sampler, p, id, dx * t, dy * t).xyz;
                     normal += (n * 2.0 - 1.0) * w;
                 }
@@ -64,6 +68,7 @@ fn fragment(
         }
         if (total > 0.0001) {
             var albedo = color / total;
+            raw_albedo = albedo;
             if (splat.tint_gamma != 0u) {
                 // Multiply in gamma space: the sRGB bytes times the tint, as the atlas bake did.
                 albedo = pow(pow(albedo, vec3<f32>(1.0 / 2.2)) * tint, vec3<f32>(2.2));
@@ -71,10 +76,32 @@ fn fragment(
                 albedo = albedo * tint;
             }
             pbr_input.material.base_color = vec4<f32>(albedo, 1.0);
-            if (splat.has_normals != 0u) {
+            if (splat.has_normals != 0u && splat.debug_options.z != 0u) {
                 let tbn = calculate_tbn_mikktspace(pbr_input.world_normal, in.world_tangent);
-                pbr_input.N = normalize(tbn * normalize(normal));
+                let strength = splat.surface_options.y;
+                let adjusted = normalize(vec3<f32>(normal.xy * strength, normal.z));
+                pbr_input.N = normalize(tbn * adjusted);
             }
+        }
+        // Unlit editor diagnostics: render the actual channels without PBR lighting.
+        // BC2 alpha is a source attribute, NOT an opacity value.
+        if (splat.debug_options.x != 0u) {
+            var debug_color = vec3<f32>(0.0);
+            switch (splat.debug_options.x) {
+                case 1u: { debug_color = raw_albedo; }
+                case 2u: { debug_color = weights.rgb; }
+                case 3u: {
+                    let channel = weights[splat.debug_options.y];
+                    debug_color = vec3<f32>(channel);
+                }
+                case 4u: { debug_color = tint_sample.rgb; }
+                case 5u: { debug_color = vec3<f32>(tint_sample.a); }
+                case 6u: { debug_color = pbr_input.N * 0.5 + 0.5; }
+                default: { debug_color = pbr_input.material.base_color.rgb; }
+            }
+            var diagnostic: FragmentOutput;
+            diagnostic.color = vec4<f32>(debug_color, 1.0);
+            return diagnostic;
         }
     }
 

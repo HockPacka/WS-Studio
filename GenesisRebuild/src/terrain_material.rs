@@ -354,7 +354,9 @@ fn build_splat(
                 if let Some(rgb) = cell.terrain_color(x, z) {
                     tint_px[p..p + 3].copy_from_slice(&rgb);
                 }
-                tint_px[p + 3] = 255;
+                // Keep the native BC2 alpha byte for debug view only.
+                // It is never interpreted as terrain opacity.
+                tint_px[p + 3] = cell.bc2_color_alpha(x,z).unwrap_or(0);
             }
         }
     }

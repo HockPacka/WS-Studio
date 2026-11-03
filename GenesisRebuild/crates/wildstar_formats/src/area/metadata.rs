@@ -148,10 +148,12 @@ impl AreaCell {
     }
     /// Terrain macro color tint (Bit 3 RGB565 or Bit 13 BC2).
     pub fn terrain_color(&self,x:usize,z:usize)->Option<[u8;3]>{
+        self.color_rgb565(x,z).or_else(||self.color_bc2(x,z))
+    }
+    /// Decompress bit 13 BC2/DXT3 RGB independently from bit 3.
+    /// The 4-bit alpha has an unknown terrain meaning and is exposed separately.
+    pub fn color_bc2(&self,x:usize,z:usize)->Option<[u8;3]>{
         if x>=65||z>=65{return None;}
-        if let Some(c)=self.color_rgb565(x,z){
-            return Some(c);
-        }
         let b=self.block(13)?;
         if b.len()<4624{return None;}
         let bx=(x/4).min(16);
@@ -185,10 +187,34 @@ impl AreaCell {
         };
         Some(res)
     }
-    /// Compressed weights from Bit 17 (base weights BC1) + Bit 18 (signed corrections BC1).
-    pub fn compressed_weights(&self,x:usize,z:usize)->Option<[f32;4]>{
+    /// Raw bit 13 BC2 alpha sample, 0..255, without attributing semantics.
+    /// BC2 explicitly packs 16 four-bit alphas in bytes 0..7 per 4x4 block.
+    pub fn bc2_color_alpha(&self,x:usize,z:usize)->Option<u8>{
         if x>=65||z>=65{return None;}
-        let b17=self.block(17)?;
+        let bytes=self.block(13)?;
+        let bx=(x/4).min(16);
+        let bz=(z/4).min(16);
+        let index=(z%4)*4+(x%4);
+        let offset=(bz*17+bx)*16+index/2;
+        let byte=*bytes.get(offset)?;
+        let nibble=if index%2==0 {byte&15}else{byte>>4};
+        Some(nibble*17)
+    }
+    /// Confirmed visual path: Bit 17 BC1 layer weights with Bit 18 correction.
+    pub fn compressed_weights(&self,x:usize,z:usize)->Option<[f32;4]>{
+        self.decode_weight_pair(17,18,x,z)
+    }
+    /// Experimental READ-ONLY interpretation of the Bit 19/20 BC1 pair.
+    /// The descriptor links Bit 29 -> 19/20, but its exact numerical
+    /// semantics and native encoder remain unverified; never serialize it.
+    pub fn candidate_weights_19_20(&self,x:usize,z:usize)->Option<[f32;4]>{
+        if self.block(19).is_none() || self.block(20).is_none(){return None;}
+        self.decode_weight_pair(19,20,x,z)
+    }
+    fn decode_weight_pair(&self,base_bit:usize,correction_bit:usize,
+        x:usize,z:usize)->Option<[f32;4]> {
+        if x>=65||z>=65{return None;}
+        let b17=self.block(base_bit)?;
         if b17.len()<2312{return None;}
         let bx=(x/4).min(16);
         let by=(z/4).min(16);
@@ -218,7 +244,7 @@ impl AreaCell {
         let mut r=base[0];
         let mut g=base[1];
         let mut b=base[2];
-        if let Some(b18)=self.block(18){
+        if let Some(b18)=self.block(correction_bit){
             if b18.len()>=2312{
                 let corr=decode_bc1_rgb(&b18[off..off+8]);
                 let cr=(corr[0]*(31.0/15.0)-1.0)*0.5;
@@ -367,6 +393,7 @@ mod tests {
         // 17x17 blocks, each 16 bytes. Test block 0:
         // bytes 0..7 alpha, 8..11 RGB565 endpoints, 12..15 indices
         // c0 = pure red (0xF800), c1 = pure green (0x07E0), index 0 = 0 -> c0
+        b13[0]=0xF2; // first pixel alpha=2, second alpha=15
         b13[8..10].copy_from_slice(&0xF800u16.to_le_bytes());
         b13[10..12].copy_from_slice(&0x07E0u16.to_le_bytes());
         let mut c = AreaCell {
@@ -377,6 +404,18 @@ mod tests {
         };
         c.blocks[13] = Some(b13);
         assert_eq!(c.terrain_color(0, 0), Some([255, 0, 0]));
+        assert_eq!(c.bc2_color_alpha(0,0),Some(34));
+        assert_eq!(c.bc2_color_alpha(1,0),Some(255));
+        assert_eq!(c.color_bc2(0,0),Some([255,0,0]));
+        assert_eq!(c.bc2_color_alpha(65,0),None);
+        let mut raw565=vec![0u8;8450];
+        raw565[..2].copy_from_slice(&0x001Fu16.to_le_bytes());
+        c.blocks[3]=Some(raw565);
+        c.flags|=1<<3;
+        assert_eq!(c.terrain_color(0,0),Some([0,0,255])); // bit3 priority
+        assert_eq!(c.color_bc2(0,0),Some([255,0,0])); // independent bit13
+        assert_eq!(c.bc2_color_alpha(0,0),Some(34));
+
 
         let mut b17 = vec![0u8; 2312];
         // 17x17 blocks, each 8 bytes. c0 = pure red, c1 = black, index 0 = 0
@@ -385,6 +424,20 @@ mod tests {
         c.blocks[17] = Some(b17);
         let w = c.compressed_weights(0, 0).unwrap();
         assert!(w[0] > 0.9);
+        assert!(c.candidate_weights_19_20(0,0).is_none());
+        c.blocks[19]=c.blocks[17].clone();
+        let mut neutral=vec![0u8;2312];
+        for block in neutral.chunks_exact_mut(8){
+            block[..2].copy_from_slice(&0x7BF0u16.to_le_bytes());
+            block[2..4].copy_from_slice(&0x7BEFu16.to_le_bytes());
+            block[4..].copy_from_slice(&0x5555_5555u32.to_le_bytes());
+        }
+        c.blocks[20]=Some(neutral);
+        let candidate=c.candidate_weights_19_20(0,0).unwrap();
+        assert!(candidate[0]>0.9);
+        assert_eq!(candidate.iter().sum::<f32>().round() as usize,1);
+        // Read-only experiment does not affect the known bit17/18 result.
+        assert_eq!(c.compressed_weights(0,0),Some(w));
     }
     #[test]
     fn real_tile_is_still_readable() {

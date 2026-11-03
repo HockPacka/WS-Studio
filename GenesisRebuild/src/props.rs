@@ -5,14 +5,16 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
+use bevy::pbr::ExtendedMaterial;
+use bevy::mesh::{Indices, Mesh, PrimitiveTopology, VertexAttributeValues};
 use bevy::prelude::*;
 use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use wildstar_formats::area::AreaProp;
 use wildstar_formats::assets::{virtual_key, AssetIndex};
-use wildstar_formats::tex::decode_tex;
+use wildstar_formats::tex::{decode_tex, normal::decode_normal_tex};
 use wildstar_formats::{i3, m3};
+use crate::m3_layers::{M3LayerMaterial, extension_for};
 
 /// Model files above this size are not loaded synchronously.
 const MAX_MODEL_BYTES: u64 = 64 * 1024 * 1024;
@@ -68,34 +70,48 @@ pub(crate) struct PartMaterial {
     pub(crate) glow: f32,
     pub(crate) color_mod: [f32; 3],
     pub(crate) is_effect: bool,
+    pub(crate) overlays: Vec<MaterialOverlay>,
+}
+
+/// Colour overlay record from the original M3 material layer table.
+#[derive(Clone, Debug)]
+pub(crate) struct MaterialOverlay {
+    pub(crate) colour: Option<String>,
+    pub(crate) opacity: f32,
+    pub(crate) color_mod: [f32; 3],
 }
 impl PartMaterial {
     fn plain(color: Option<String>, normal: Option<String>) -> Self {
-        Self { color, normal, blend: PropBlend::Opaque, opacity: 1.0, gloss: 0.0, glow: 0.0, color_mod: [1.0; 3], is_effect: false }
+        Self { color, normal, blend: PropBlend::Opaque, opacity: 1.0, gloss: 0.0, glow: 0.0, color_mod: [1.0; 3], is_effect: false, overlays: Vec::new() }
     }
 }
 
 #[derive(Clone)]
-struct ModelPart {
-    mesh: Handle<Mesh>,
-    material: Handle<StandardMaterial>,
+pub(crate) struct ModelPart {
+    pub(crate) mesh: Handle<Mesh>,
+    pub(crate) material: Handle<StandardMaterial>,
+    /// Uses the GPU multi-layer shader for M3 props/viewer when present.
+    pub(crate) layered: Option<Handle<M3LayerMaterial>>,
 }
 
 #[derive(Clone)]
-struct CachedModel {
-    parts: Vec<ModelPart>,
+pub(crate) struct CachedModel {
+    pub(crate) parts: Vec<ModelPart>,
 }
 
+/// Build a tangent frame from the original M3/I3 triangles and UV0.
+/// Bevy's normal mapper needs the signed UV-handedness in tangent.w.
 pub(crate) fn generate_fast_tangents(mesh: &mut Mesh) {
-    let Some(normals) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL).and_then(|a| a.as_float3()) else { return; };
-    let mut tangents = Vec::with_capacity(normals.len());
-    for &n in normals {
-        let normal = Vec3::from_array(n);
-        let up = if normal.y.abs() > 0.9 { Vec3::Z } else { Vec3::Y };
-        let t = up.cross(normal).normalize_or_zero();
-        tangents.push([t.x, t.y, t.z, 1.0]);
+    let tangents = {
+        let Some(positions) = mesh.attribute(Mesh::ATTRIBUTE_POSITION).and_then(|a| a.as_float3()) else { return; };
+        let Some(normals) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL).and_then(|a| a.as_float3()) else { return; };
+        let Some(VertexAttributeValues::Float32x2(uvs)) = mesh.attribute(Mesh::ATTRIBUTE_UV_0) else { return; };
+        let Some(Indices::U32(indices)) = mesh.indices() else { return; };
+        wildstar_formats::tangents::generate_tangents(positions, normals, uvs, indices)
+    };
+    if let Some(tangents) = tangents {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
     }
-    mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
 }
 
 /// Decoded prop models, textures and metadata reports by virtual path.
@@ -113,11 +129,15 @@ pub(crate) struct PartGeometry {
     pub(crate) positions: Vec<[f32; 3]>,
     normals: Vec<[f32; 3]>,
     uvs: Vec<[f32; 2]>,
+    uv1: Vec<[f32; 2]>,
+    colors: Vec<[f32; 4]>,
     indices: Vec<u32>,
-    remap: HashMap<u32, u32>,
+    // A sector can have any u32 vertex index; use the full 64-bit (sector,index) key.
+    remap: HashMap<u64, u32>,
 }
 impl PartGeometry {
-    fn push_vertex(&mut self, source: u32, pos: [f32; 3], normal: [f32; 3], uv: [f32; 2]) -> u32 {
+    fn push_vertex(&mut self, source: u64, pos: [f32; 3], normal: [f32; 3],
+        uv: [f32; 2], uv1: [f32; 2], color: [f32; 4]) -> u32 {
         if let Some(&i) = self.remap.get(&source) {
             return i;
         }
@@ -125,6 +145,8 @@ impl PartGeometry {
         self.positions.push(pos);
         self.normals.push(normal);
         self.uvs.push(uv);
+        self.uv1.push(uv1);
+        self.colors.push(color);
         self.remap.insert(source, i);
         i
     }
@@ -133,6 +155,8 @@ impl PartGeometry {
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, self.positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, self.uvs);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, self.uv1);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, self.colors);
         mesh.insert_indices(Indices::U32(self.indices));
         mesh
     }
@@ -239,7 +263,11 @@ pub(crate) fn m3_geometry(data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial
         let start = mesh.start_index as usize;
         for &ix in &model.indices[start..start + mesh.index_count as usize] {
             let v = model.vertices[ix as usize];
-            let i = geometry.push_vertex(ix, v.pos, v.normal, v.uv);
+            // M3 ModelVS applies vertex color RGB * 2, while alpha is unscaled.
+            let c = v.color0;
+            let color = [c[0] as f32 / 128.0, c[1] as f32 / 128.0,
+                c[2] as f32 / 128.0, c[3] as f32 / 255.0];
+            let i = geometry.push_vertex(u64::from(ix), v.pos, v.normal, v.uv, v.uv1, color);
             geometry.indices.push(i);
         }
     }
@@ -266,6 +294,11 @@ pub(crate) fn m3_geometry(data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial
                 glow: m.glow,
                 color_mod: m.color_mod,
                 is_effect,
+                overlays: m.layers.iter().skip(1).take(3).map(|layer| MaterialOverlay {
+                    colour: name(layer.color_texture),
+                    opacity: layer.opacity,
+                    color_mod: layer.color_mod,
+                }).collect(),
             };
             (g, material)
         })
@@ -276,59 +309,81 @@ pub(crate) fn m3_geometry(data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial
     Ok(parts)
 }
 
-/// One geometry per material of material set 0 over all sectors of a FEDI model.
+/// Geometry of a FEDI structure assembled from its FEDS sectors, or of a FEDS
+/// file opened directly. Material pass and material index are distinct.
 fn i3_geometry(index: &AssetIndex, model_path: &str, data: &[u8]) -> Result<Vec<(PartGeometry, PartMaterial)>, String> {
-    let model = i3::read_model(data)?;
-    let set = model.sets.first();
-    let mut by_material: Vec<(usize, PartGeometry)> = Vec::new();
+    let model = if i3::is_sector(data) { None } else { Some(i3::read_model(data)?) };
+    let mut sectors: Vec<(usize, i3::SectorMesh)> = Vec::new();
+    if let Some(model) = &model {
+        for sector_index in 0..model.sectors.len() {
+            let Some(path) = model.sector_path(model_path, sector_index) else { continue };
+            let Some(bytes) = read_asset(index, &path) else { continue };
+            let Ok(mesh) = i3::read_sector(&bytes) else { continue };
+            sectors.push((sector_index, mesh));
+        }
+    } else {
+        sectors.push((0, i3::read_sector(data)?));
+    }
+    if sectors.is_empty() {
+        return Err("I3 has no readable sectors; check ClientData for the companion FEDS files".into());
+    }
+
+    // The first set is generally Default_Pass. Prefer it by name when present.
+    let set = model.as_ref().and_then(|m| m.sets.iter()
+        .find(|s| s.name.eq_ignore_ascii_case("Default_Pass"))
+        .or_else(|| m.sets.first()));
+    let mut by_material: Vec<((usize, usize), PartGeometry)> = Vec::new();
     let mut triangles = 0usize;
-    for sector in 0..model.sectors.len() {
-        let Some(path) = model.sector_path(model_path, sector) else { continue };
-        let Some(bytes) = read_asset(index, &path) else { continue };
-        let Ok(mesh) = i3::read_sector(&bytes) else { continue };
-        for sub in mesh.submeshes.iter() {
-            let Some(material) = sub.material() else { continue };
-            let slot = match by_material.iter().position(|(m, _)| *m == material) {
+    for (sector, mesh) in &sectors {
+        for sub in &mesh.submeshes {
+            let (Some(material), Some(pass)) = (sub.material(), sub.pass()) else { continue };
+            let key = (pass, material);
+            let slot = match by_material.iter().position(|(m, _)| *m == key) {
                 Some(i) => i,
                 None => {
-                    by_material.push((material, PartGeometry::default()));
+                    by_material.push((key, PartGeometry::default()));
                     by_material.len() - 1
                 }
             };
             let geometry = &mut by_material[slot].1;
             for tri in sub.triangles() {
+                if triangles >= MAX_MODEL_TRIANGLES {
+                    return Err("I3 exceeds the supported triangle budget".into());
+                }
                 for &ix in &mesh.indices[tri * 3..tri * 3 + 3] {
-                    // Vertex ids are per sector; keep them distinct between sectors.
-                    let key = ix ^ ((sector as u32) << 24);
                     let u = ix as usize;
-                    let i = geometry.push_vertex(key, mesh.positions[u], mesh.normals[u], mesh.uv0[u]);
+                    let source = ((*sector as u64) << 32) | u64::from(ix);
+                    let c = mesh.colors[u];
+                    let color = [c[0] as f32 / 255.0, c[1] as f32 / 255.0,
+                        c[2] as f32 / 255.0, c[3] as f32 / 255.0];
+                    let i = geometry.push_vertex(source, mesh.positions[u], mesh.normals[u],
+                        mesh.uv0[u], mesh.uv1[u], color);
                     geometry.indices.push(i);
                 }
                 triangles += 1;
             }
         }
-        if triangles > MAX_MODEL_TRIANGLES {
-            break;
-        }
     }
-    let parts: Vec<_> = by_material
-        .into_iter()
-        .map(|(material, g)| {
-            let record = set.and_then(|s| s.passes.first()).and_then(|p| p.materials.get(material));
+
+    let parts: Vec<_> = by_material.into_iter()
+        .filter(|(_, g)| !g.indices.is_empty())
+        .map(|((pass, material), g)| {
+            let record = set.and_then(|s| s.passes.get(pass))
+                .and_then(|p| p.materials.get(material));
             let texture = |tex: Option<u16>| {
                 let tex = tex.filter(|&t| t != 0xFFFF)?;
                 set?.textures.get(tex as usize).filter(|t| !t.is_empty()).cloned()
             };
-            let mut m = PartMaterial::plain(texture(record.map(|r| r.color_tex)), texture(record.map(|r| r.normal_tex)));
-            // Kind 5 = decal: alpha blended (docs/i3_dgn_format.md).
+            let mut desc = PartMaterial::plain(texture(record.map(|r| r.color_tex)),
+                texture(record.map(|r| r.normal_tex)));
+            // Decal kind 5 uses alpha blending; retain the visible sector colors.
             if record.is_some_and(|r| r.kind == 5) {
-                m.blend = PropBlend::Alpha;
+                desc.blend = PropBlend::Alpha;
             }
-            (g, m)
-        })
-        .collect();
+            (g, desc)
+        }).collect();
     if parts.is_empty() {
-        return Err("no drawable I3 sector geometry".into());
+        return Err("I3 contains no visible sector geometry".into());
     }
     Ok(parts)
 }
@@ -376,18 +431,13 @@ impl PropModelCache {
             return hit.clone();
         }
         let handle = read_asset(index, path)
-            .and_then(|data| decode_tex(&data, MAX_TEXTURE_SIZE).ok())
+            .and_then(|data| decode_normal_tex(&data, MAX_TEXTURE_SIZE).ok())
+            .map(|(image, _encoding)| image)
             .filter(|t| t.width > 8 && t.height > 8)
             .map(|t| {
-                // DXT5nm (x in alpha, y in green) and RGB maps both end up as RGB tangent-space normals.
-                let mut rgba = t.rgba;
-                for px in rgba.chunks_exact_mut(4) {
-                    let n = crate::terrain_material::unpack_normal([px[0], px[1], px[2], px[3]]);
-                    for c in 0..3 {
-                        px[c] = ((n[c] * 0.5 + 0.5) * 255.0).clamp(0.0, 255.0).round() as u8;
-                    }
-                    px[3] = 255;
-                }
+                // Packing is selected once per source image, never per texel.
+                // Normal maps must remain in linear colour space.
+                let rgba = t.rgba;
                 let mut image = Image::new(
                     Extent3d { width: t.width as u32, height: t.height as u32, depth_or_array_layers: 1 },
                     TextureDimension::D2,
@@ -402,11 +452,12 @@ impl PropModelCache {
         handle
     }
 
-    fn load(
+    pub(crate) fn load(
         &self,
         index: &AssetIndex,
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<StandardMaterial>,
+        layered_materials: &mut Assets<M3LayerMaterial>,
         images: &mut Assets<Image>,
         path: &str,
         budget: &mut usize,
@@ -436,9 +487,22 @@ impl PropModelCache {
                     if normal.is_some() {
                         generate_fast_tangents(&mut mesh);
                     }
+                    let base = standard_material(kind, &desc, color, normal);
+                    let extra: Vec<_> = desc.overlays.iter().take(3).map(|layer| {
+                        (layer.colour.as_deref().and_then(|t| self.texture(index, images, t)),
+                         layer.opacity, layer.color_mod)
+                    }).collect();
+                    let layered = if kind == ModelKind::M3 {
+                        extension_for(images, &extra).map(|extension| {
+                            layered_materials.add(ExtendedMaterial {
+                                base: base.clone(), extension,
+                            })
+                        })
+                    } else { None };
                     ModelPart {
                         mesh: meshes.add(mesh),
-                        material: materials.add(standard_material(kind, &desc, color, normal)),
+                        material: materials.add(base),
+                        layered,
                     }
                 })
                 .collect(),
@@ -472,6 +536,10 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
         return out;
     };
     let Some(file) = index.resolve(path) else { return out };
+    if std::fs::metadata(&file.path).is_ok_and(|m| m.len() > MAX_MODEL_BYTES) {
+        out.push("Asset too large for interactive preview (64 MiB limit)".into());
+        return out;
+    }
     let Ok(data) = std::fs::read(&file.path) else {
         out.push("Cannot read file".into());
         return out;
@@ -484,6 +552,29 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
                     m.meshes.iter().filter(|x| x.is_hidden()).count()));
                 out.push(format!("Bounds: {:?} .. {:?}", m.bounds_min, m.bounds_max));
                 out.push(format!("Bones: {}, clips: {}, materials: {}", m.bones.len(), m.clips.len(), m.materials.len()));
+                out.push(format!("Visible meshes: {} | skinned vertices: {}",
+                    m.meshes.iter().filter(|mesh| mesh.is_visible_default(&m.mesh_display)).count(),
+                    m.vertices.iter().filter(|v| v.bone_weight.iter().skip(1).any(|&w| w > 0)).count()));
+                for (i, mat) in m.materials.iter().enumerate().take(64) {
+                    out.push(format!("Material {i}: {:?}, {} layers | opacity {:.2}, gloss {:.2}, glow {:.2}, color {:?}",
+                        mat.blend, mat.layer_count, mat.opacity, mat.gloss, mat.glow, mat.color_mod));
+                    for (layer_index, layer) in mat.layers.iter().enumerate() {
+                        let path = layer.color_texture.and_then(|idx| m.textures.get(idx));
+                        out.push(format!("  Layer {layer_index}: color={} [{}], normal={:?}, class={}, type={}, modes={:?}, opacity={:.2}",
+                            path.map(|t|t.name.as_str()).unwrap_or("<none>"),
+                            path.map(|t|found(index,&t.name)).unwrap_or("none"),
+                            layer.normal_texture, layer.class, layer.type_id, layer.modes, layer.opacity));
+                    }
+                }
+                for (i, mesh) in m.meshes.iter().enumerate().take(64) {
+                    out.push(format!("Mesh {i}: {} triangles | material {} | group {} | {}",
+                        mesh.index_count / 3, mesh.material, mesh.group,
+                        if mesh.is_visible_default(&m.mesh_display) { "visible" } else { "hidden" }));
+                }
+                for (i, clip) in m.clips.iter().enumerate().take(40) {
+                    out.push(format!("Clip {i}: animation {} variant {} | {}..{} ms",
+                        clip.anim_id, clip.variant, clip.start_ms, clip.end_ms));
+                }
                 for (i, t) in m.textures.iter().enumerate() {
                     let kind = match t.kind { 0 => "color", 1 => "normal", 2 => "skinfx", _ => "?" };
                     out.push(format!("Texture {i} ({kind}): {} [{}]", t.name, found(index, &t.name)));
@@ -497,8 +588,13 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
                 out.push(format!("Portals: {}", m.portals.len()));
                 for (i, name) in m.sectors.iter().enumerate() {
                     let sector = m.sector_path(path, i).unwrap_or_default();
-                    out.push(format!("Sector {i} '{name}' ({}): {} [{}]",
-                        if m.sector_exterior[i] { "exterior" } else { "interior" }, sector, found(index, &sector)));
+                    let detail = read_asset(index, &sector)
+                        .and_then(|bytes| i3::read_sector(&bytes).ok())
+                        .map(|mesh| format!("{} verts, {} tris, {} submeshes",
+                            mesh.positions.len(), mesh.triangle_count(), mesh.submeshes.len()))
+                        .unwrap_or_else(|| "not decoded".into());
+                    out.push(format!("Sector {i} '{name}' ({}): {} [{}] | {}",
+                        if m.sector_exterior[i] { "exterior" } else { "interior" }, sector, found(index, &sector), detail));
                 }
                 for set in &m.sets {
                     out.push(format!("Material set '{}': {} textures, {} passes", set.name, set.textures.len(), set.passes.len()));
@@ -510,8 +606,9 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
             Err(e) => {
                 // A FEDS sector opened directly.
                 match i3::read_sector(&data) {
-                    Ok(s) => out.push(format!("I3 sector '{}': {} vertices, {} triangles, {} submeshes",
-                        s.name, s.positions.len(), s.triangle_count(), s.submeshes.len())),
+                    Ok(s) => out.push(format!("I3 sector '{}': {} vertices, {} triangles, {} submeshes ({} collision-only), UV1 + vertex colours available",
+                        s.name, s.positions.len(), s.triangle_count(), s.submeshes.len(),
+                        s.submeshes.iter().filter(|sub| sub.is_collision_only()).count())),
                     Err(_) => out.push(format!("I3 read error: {e}")),
                 }
             }
@@ -520,11 +617,73 @@ fn build_report(index: &AssetIndex, path: &str) -> Vec<String> {
     out
 }
 
+/// Entity hierarchy and bounds of a standalone prop preview.
+/// The root is centered on the model bounds so orbiting the model stays in place.
+pub struct PreviewScene {
+    pub entities: Vec<Entity>,
+    pub root: Entity,
+    pub parts: Vec<Entity>,
+    pub min: [f32; 3],
+    pub max: [f32; 3],
+}
+
+/// Open one indexed model as an independent Genesis viewport preview.
+/// All files are read-only; the FEDI sector companions still resolve through ClientData.
+pub fn spawn_model_preview(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    layered_materials: &mut Assets<M3LayerMaterial>,
+    images: &mut Assets<Image>,
+    index: &AssetIndex,
+    cache: &PropModelCache,
+    path: &str,
+) -> Result<PreviewScene, String> {
+    let kind = model_kind(path).ok_or("Select a .m3 or .i3 model")?;
+    let data = read_asset(index, path).ok_or("Model not found in indexed ClientData or exceeds 64 MiB")?;
+    let (min, max) = match kind {
+        ModelKind::M3 => {
+            let m = m3::read_m3(&data)?;
+            (m.bounds_min, m.bounds_max)
+        }
+        ModelKind::I3 => {
+            if i3::is_sector(&data) {
+                let m = i3::read_sector(&data)?;
+                (m.bbox_min, m.bbox_max)
+            } else {
+                let m = i3::read_model(&data)?;
+                (m.bbox_min, m.bbox_max)
+            }
+        }
+    };
+    let mut budget = 1;
+    let model = cache.load(index, meshes, materials, layered_materials, images, path, &mut budget)
+        .ok_or("Model has no drawable parts (or sector files could not be loaded)")?;
+    let center = (Vec3::from_array(min) + Vec3::from_array(max)) * 0.5;
+    let root = commands.spawn((Transform::from_translation(center), Visibility::default())).id();
+    let mut entities = vec![root];
+    let mut parts = Vec::new();
+    for part in &model.parts {
+        let child = if let Some(layered) = &part.layered {
+            commands.spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(layered.clone()),
+                Transform::from_translation(-center))).id()
+        } else {
+            commands.spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(part.material.clone()),
+                Transform::from_translation(-center))).id()
+        };
+        commands.entity(root).add_child(child);
+        entities.push(child);
+        parts.push(child);
+    }
+    Ok(PreviewScene { entities, root, parts, min, max })
+}
+
 pub fn spawn_props(
     commands: &mut Commands,
     props: &[AreaProp],
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    layered_materials: &mut Assets<M3LayerMaterial>,
     images: &mut Assets<Image>,
     index: Option<&AssetIndex>,
     cache: &PropModelCache,
@@ -550,15 +709,19 @@ pub fn spawn_props(
 
         let model = index
             .zip(prop.model_path.as_deref())
-            .and_then(|(index, path)| cache.load(index, meshes, materials, images, path, &mut budget));
+            .and_then(|(index, path)| cache.load(index, meshes, materials, layered_materials, images, path, &mut budget));
         match model {
             Some(model) => {
                 let root = commands.spawn((transform, Visibility::default(), marker)).id();
                 entities.push(root);
                 for part in &model.parts {
-                    let child = commands
-                        .spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(part.material.clone()), Transform::default()))
-                        .id();
+                    let child = if let Some(layered) = &part.layered {
+                        commands.spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(layered.clone()),
+                            Transform::default())).id()
+                    } else {
+                        commands.spawn((Mesh3d(part.mesh.clone()), MeshMaterial3d(part.material.clone()),
+                            Transform::default())).id()
+                    };
                     commands.entity(root).add_child(child);
                     entities.push(child);
                 }

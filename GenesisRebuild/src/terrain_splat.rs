@@ -42,10 +42,18 @@ pub struct SplatParams {
     pub _pad: u32,
     /// Inverse tiling length (1 / metres per texture repeat), indexed by array layer.
     pub tiling: [Vec4; TILING_VECS],
+    /// x: debug (0=lit, 1=albedo, 2=RGBA weights, 3=selected weight,
+    /// 4=macro color, 5=BC2 alpha, 6=normals).
+    /// y: weight layer slot, z: use tangent-space normal maps.
+    pub debug_options: UVec4,
+    /// x: user-facing texture tiling multiplier, y: normal intensity.
+    pub surface_options: Vec4,
 }
 impl Default for SplatParams {
     fn default() -> Self {
-        Self { enabled: 0, has_normals: 0, tile_meters: 512.0, tint_strength: 1.0, tint_gamma: 1, _pad: 0, tiling: [Vec4::ZERO; TILING_VECS] }
+        Self { enabled: 0, has_normals: 0, tile_meters: 512.0, tint_strength: 1.0, tint_gamma: 1, _pad: 0,
+            tiling: [Vec4::ZERO; TILING_VECS], debug_options: UVec4::new(0,0,1,0),
+            surface_options: Vec4::new(1.0,1.0,0.0,0.0) }
     }
 }
 
@@ -157,18 +165,38 @@ impl SplatData {
 pub struct TintSettings {
     pub strength: f32,
     pub gamma_space: bool,
+    /// 0 Auto: Bit 3 with Bit 13 fallback. 1 Bit 3 only, 2 Bit 13 only.
+    /// Only standalone AREA currently supports on-the-fly switching.
+    pub color_source: u32,
+    /// 0 Lit, 1 Albedo, 2 All weights, 3 one layer, 4 RGB, 5 BC2 alpha, 6 normal.
+    pub debug_mode: u32,
+    pub debug_slot: u32,
+    pub show_normals: bool,
+    pub normal_strength: f32,
+    pub tiling_scale: f32,
 }
 impl Default for TintSettings {
     fn default() -> Self {
-        Self { strength: 1.0, gamma_space: true }
+        Self { strength: 1.0, gamma_space: true, color_source: 0,
+            debug_mode: 0, debug_slot: 0, show_normals: true,
+            normal_strength: 1.0, tiling_scale: 1.0 }
     }
 }
 
 impl TintSettings {
+    pub fn configure_params(&self,params:&mut SplatParams) {
+        params.tint_strength=self.strength;
+        params.tint_gamma=self.gamma_space as u32;
+        params.debug_options=UVec4::new(self.debug_mode.min(6),
+            self.debug_slot.min(3),self.show_normals as u32,0);
+        params.surface_options=Vec4::new(
+            self.tiling_scale.clamp(0.25,8.0),
+            self.normal_strength.clamp(0.0,2.0),0.0,0.0,
+        );
+    }
     pub fn apply(&self, materials: &mut Assets<TerrainMaterial>) {
         for (_, material) in materials.iter_mut() {
-            material.extension.params.tint_strength = self.strength;
-            material.extension.params.tint_gamma = self.gamma_space as u32;
+            self.configure_params(&mut material.extension.params);
         }
     }
 }

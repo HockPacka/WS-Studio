@@ -22,7 +22,7 @@ enum Icon {
 fn select(name: &str) -> Option<(Icon, Color32)> {
     use Icon::*;
     let (i, c) = match name {
-        "New" | "New AREA" | "New AREA..." => (FileNew, BLUE),
+        "New" | "New AREA" => (FileNew, BLUE),
         "Open AREA..." | "Open AREA by path..." | "Open Zone..." |
         "Open Zone (World Streaming)..." | "Open Model (.m3/.i3)..." => (Folder, BLUE),
         "Save" | "Save Package" => (Save, BLUE),
@@ -253,6 +253,11 @@ mod tests {
             "Dock Properties","About Genesis"] {
             assert!(select(name).is_some(), "missing icon for {name}");
         }
+    }
+    #[test]
+    fn new_area_has_its_own_distinct_icon() {
+        assert_eq!(select("New"), Some((Icon::FileNew, BLUE)));
+        assert_eq!(select("New AREA..."), Some((Icon::TileNew, GOLD)));
     }
     #[test]
     fn unsupported_command_is_not_misrepresented() {

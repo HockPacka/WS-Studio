@@ -17,7 +17,16 @@ const PAGE: usize = 12;
 pub enum PaintMode { #[default] Paint, Erase, Smooth }
 
 #[derive(Clone,Copy,PartialEq,Eq,Default)]
-pub enum ColorMode { #[default] Color, Darken, Lighten, Smooth }
+pub enum ColorMode {
+    #[default]
+    Color,
+    Darken,
+    Lighten,
+    Smooth,
+    Overlay,
+    Saturate,
+    Desaturate,
+}
 
 #[derive(Clone)]
 struct Snapshot {
@@ -47,6 +56,10 @@ pub struct TerrainPaint {
     redo: Vec<Snapshot>,
     pub revision: u64,
     pub gpu_revision: u64,
+    pub weights_revision: u64,
+    pub colors_revision: u64,
+    pub gpu_weights_revision: u64,
+    pub gpu_colors_revision: u64,
     pub rebuild_pending: bool,
     pub selected_id: Option<u32>,
     pub mode: PaintMode,
@@ -110,22 +123,32 @@ impl TerrainPaint {
         }
         Ok(())
     }
+    /// Copy rendered tint directly into an existing RGBA8 buffer without allocating.
+    pub fn copy_tint_to(&self, source: u32, out: &mut [u8]) {
+        if !self.colors_ready() || out.len() != self.colors.len() { return; }
+        out.copy_from_slice(&self.colors);
+        if source == 0 {
+            for (px, &a) in out.chunks_exact_mut(4).zip(&self.alpha_bit13) {
+                px[3] = a;
+            }
+            return;
+        }
+        let rgb = if source == 1 { &self.rgb_bit3 } else { &self.rgb_bit13 };
+        for i in 0..MAP_SIDE * MAP_SIDE {
+            if self.colors[i * 4..i * 4 + 3] == self.baseline_colors[i * 4..i * 4 + 3] {
+                out[i * 4..i * 4 + 3].copy_from_slice(&rgb[i * 3..i * 3 + 3]);
+            }
+            out[i * 4 + 3] = self.alpha_bit13[i];
+        }
+    }
     /// Read-only source switch. Preserve alpha from the original BC2 blocks
     /// for diagnostics, even when Bit 3 is used for the visible RGB.
     /// Modified RGB texels are overlaid so editing stays visible in every mode.
+    #[allow(dead_code)]
     pub fn render_tint(&self,source:u32)->Vec<u8>{
         if !self.colors_ready(){return Vec::new();}
-        let mut result=self.colors.clone();
-        let pixels=MAP_SIDE*MAP_SIDE;
-        for i in 0..pixels{
-            if self.colors[i*4..i*4+3]==self.baseline_colors[i*4..i*4+3]{
-                if source==1 || source==2 {
-                    let rgb=if source==1{&self.rgb_bit3}else{&self.rgb_bit13};
-                    result[i*4..i*4+3].copy_from_slice(&rgb[i*3..i*3+3]);
-                }
-            }
-            result[i*4+3]=self.alpha_bit13.get(i).copied().unwrap_or(0);
-        }
+        let mut result = vec![0u8; self.colors.len()];
+        self.copy_tint_to(source, &mut result);
         result
     }
     pub fn colors_ready(&self)->bool {
@@ -171,10 +194,14 @@ impl TerrainPaint {
     }
     fn restore(&mut self, item:Snapshot){
         let changed_slots=self.slots!=item.slots;
+        let changed_weights=self.weights!=item.weights;
+        let changed_colors=self.colors!=item.colors;
         self.weights=item.weights;
         self.slots=item.slots;
         self.colors=item.colors;
         if changed_slots{self.rebuild_pending=true;}
+        if changed_weights{self.weights_revision=self.weights_revision.wrapping_add(1);}
+        if changed_colors{self.colors_revision=self.colors_revision.wrapping_add(1);}
         self.revision=self.revision.wrapping_add(1);
     }
     pub fn undo(&mut self)->bool{
@@ -222,14 +249,21 @@ impl TerrainPaint {
         self.slots[cell][slot]=id;
         self.push_undo(previous);
         self.rebuild_pending=true;
+        self.weights_revision=self.weights_revision.wrapping_add(1);
         self.revision=self.revision.wrapping_add(1);
         self.selected_id=Some(id);
         Ok(())
     }
     /// Paint a selected WorldLayer ID. Cells without that ID are skipped,
     /// preventing accidental painting of another material on a cell boundary.
+    #[allow(dead_code)]
     pub fn brush(&mut self,world:Vec2,id:u32,radius:f32,power:f32,
                  hardness:f32,falloff:f32,dt:f32,restricted_cell:Option<usize>)->bool {
+        self.brush_ext(world, id, radius, power, hardness, falloff, dt, restricted_cell, 0, false)
+    }
+    pub fn brush_ext(&mut self,world:Vec2,id:u32,radius:f32,power:f32,
+                 hardness:f32,falloff:f32,dt:f32,restricted_cell:Option<usize>,
+                 shape_mode:usize,custom_tip:bool)->bool {
         if !self.ready() || self.stroke.is_none(){return false;}
         let center=(world-self.origin+Vec2::splat(256.0))*2.0;
         let r=(radius*2.0).max(1.0);
@@ -238,11 +272,16 @@ impl TerrainPaint {
         let z0=((center.y-r).floor() as isize).max(0) as usize;
         let z1=((center.y+r).ceil() as isize).min((MAP_SIDE-1) as isize) as usize;
         if x0>x1||z0>z1{return false;}
-        let before=if self.mode==PaintMode::Smooth{Some(self.weights.clone())}else{None};
         let mut changed=false;
         for z in z0..=z1 {
             for x in x0..=x1 {
-                let d=(Vec2::new(x as f32+0.5,z as f32+0.5)-center).length();
+                let dx = x as f32 + 0.5 - center.x;
+                let dz = z as f32 + 0.5 - center.y;
+                let d = if shape_mode == 1 {
+                    dx.abs().max(dz.abs())
+                } else {
+                    Vec2::new(dx, dz).length()
+                };
                 if d>=r{continue;}
                 let cell=z/CELL_SIDE*16+x/CELL_SIDE;
                 if !self.present[cell] || restricted_cell.is_some_and(|c|c!=cell) {continue;}
@@ -250,23 +289,34 @@ impl TerrainPaint {
                 let mut current=[0u8;4];
                 let off=(z*MAP_SIDE+x)*4;
                 current.copy_from_slice(&self.weights[off..off+4]);
-                let influence=crate::brush_profile::influence(d,r,hardness,falloff);
-                let amount=power.clamp(0.0,2.0)*dt.clamp(0.0,0.1)*influence*450.0;
+                let mut influence=if shape_mode==2{1.0}else{
+                    crate::brush_profile::influence(d,r,hardness,falloff)
+                };
+                if custom_tip {
+                    let u = (dx / r) * 0.5 + 0.5;
+                    let v = (dz / r) * 0.5 + 0.5;
+                    influence *= crate::brush_profile::sample_tip_uv(u, v);
+                }
+                let amount=power.abs().clamp(0.0,2.0)*dt.clamp(0.0,0.1)*influence*450.0;
                 if amount<=0.0{continue;}
                 let old=current[slot] as f32;
-                let new=match self.mode{
+                let effective_mode = if power < 0.0 && self.mode == PaintMode::Paint {
+                    PaintMode::Erase
+                } else {
+                    self.mode
+                };
+                let new=match effective_mode{
                     PaintMode::Paint=>(old+amount).min(255.0),
                     PaintMode::Erase=>(old-amount).max(0.0),
                     PaintMode::Smooth=>{
                         let mut sum=0f32;
                         let mut count=0f32;
-                        let src=before.as_ref().expect("smooth snapshot");
                         let sx=x/CELL_SIDE;
                         let sz=z/CELL_SIDE;
                         for nz in z.saturating_sub(1)..=(z+1).min(MAP_SIDE-1){
                             for nx in x.saturating_sub(1)..=(x+1).min(MAP_SIDE-1){
                                 if nx/CELL_SIDE!=sx||nz/CELL_SIDE!=sz{continue;}
-                                sum+=src[(nz*MAP_SIDE+nx)*4+slot] as f32;
+                                sum+=self.weights[(nz*MAP_SIDE+nx)*4+slot] as f32;
                                 count+=1.0;
                             }
                         }
@@ -280,14 +330,24 @@ impl TerrainPaint {
                 }
             }
         }
-        if changed{self.revision=self.revision.wrapping_add(1);}
+        if changed{
+            self.weights_revision=self.weights_revision.wrapping_add(1);
+            self.revision=self.revision.wrapping_add(1);
+        }
         changed
     }
 
     /// Paint existing WildStar macro-tint RGB without altering the unknown alpha.
     /// Color mode and swatch are editor settings, not new AREA metadata.
+    #[allow(dead_code)]
     pub fn color_brush(&mut self,world:Vec2,radius:f32,power:f32,
         hardness:f32,falloff:f32,dt:f32,restricted_cell:Option<usize>)->bool
+    {
+        self.color_brush_ext(world, radius, power, hardness, falloff, dt, restricted_cell, 0, false)
+    }
+    pub fn color_brush_ext(&mut self,world:Vec2,radius:f32,power:f32,
+        hardness:f32,falloff:f32,dt:f32,restricted_cell:Option<usize>,
+        shape_mode:usize,custom_tip:bool)->bool
     {
         if !self.colors_ready() || self.stroke.is_none(){return false;}
         let center=(world-self.origin+Vec2::splat(256.0))*2.0;
@@ -297,18 +357,32 @@ impl TerrainPaint {
         let z0=((center.y-radius).floor() as isize).max(0) as usize;
         let z1=((center.y+radius).ceil() as isize).min((MAP_SIDE-1) as isize) as usize;
         if x0>x1 || z0>z1{return false;}
-        let before=if self.color_mode==ColorMode::Smooth{Some(self.colors.clone())}else{None};
         let mut changed=false;
         for z in z0..=z1{
             for x in x0..=x1{
-                let d=(Vec2::new(x as f32+0.5,z as f32+0.5)-center).length();
+                let dx = x as f32 + 0.5 - center.x;
+                let dz = z as f32 + 0.5 - center.y;
+                let d = if shape_mode == 1 {
+                    dx.abs().max(dz.abs())
+                } else {
+                    Vec2::new(dx, dz).length()
+                };
                 if d>=radius{continue;}
                 let cell=z/64*16+x/64;
                 if !self.present[cell] || !self.color_present[cell] ||
                     restricted_cell.is_some_and(|only|only!=cell) {continue;}
                 let off=(z*MAP_SIDE+x)*4;
-                let amount=(power.clamp(0.0,2.0)*dt.clamp(0.0,0.1)*15.0
-                    *crate::brush_profile::influence(d,radius,hardness,falloff))
+                let mut inf = if shape_mode == 2 {
+                    1.0
+                } else {
+                    crate::brush_profile::influence(d,radius,hardness,falloff)
+                };
+                if custom_tip {
+                    let u = (dx / radius) * 0.5 + 0.5;
+                    let v = (dz / radius) * 0.5 + 0.5;
+                    inf *= crate::brush_profile::sample_tip_uv(u, v);
+                }
+                let amount=(power.abs().clamp(0.0,2.0)*dt.clamp(0.0,0.1)*15.0*inf)
                     .clamp(0.0,1.0);
                 if amount<=0.0{continue;}
                 let original=[self.colors[off],self.colors[off+1],self.colors[off+2]];
@@ -316,15 +390,28 @@ impl TerrainPaint {
                     ColorMode::Color=>self.color,
                     ColorMode::Darken=>original.map(|c|((c as f32)*0.4).round() as u8),
                     ColorMode::Lighten=>original.map(|c|(c as f32+(255-c) as f32*0.6).round() as u8),
+                    ColorMode::Overlay=>std::array::from_fn(|i|{
+                        let a=original[i] as f32/255.0;
+                        let b=self.color[i] as f32/255.0;
+                        let res=if a<0.5{2.0*a*b}else{1.0-2.0*(1.0-a)*(1.0-b)};
+                        (res.clamp(0.0,1.0)*255.0).round() as u8
+                    }),
+                    ColorMode::Saturate=>{
+                        let lum=0.299*original[0] as f32+0.587*original[1] as f32+0.114*original[2] as f32;
+                        original.map(|c|(lum+(c as f32-lum)*1.65).clamp(0.0,255.0).round() as u8)
+                    },
+                    ColorMode::Desaturate=>{
+                        let lum=(0.299*original[0] as f32+0.587*original[1] as f32+0.114*original[2] as f32).round().clamp(0.0,255.0) as u8;
+                        [lum,lum,lum]
+                    },
                     ColorMode::Smooth=>{
-                        let src=before.as_ref().expect("smooth input");
                         let mut sum=[0u32;3];
                         let mut count=0u32;
                         for nz in z.saturating_sub(1)..=(z+1).min(MAP_SIDE-1){
                             for nx in x.saturating_sub(1)..=(x+1).min(MAP_SIDE-1){
                                 if nx/64!=x/64||nz/64!=z/64{continue;}
                                 let at=(nz*MAP_SIDE+nx)*4;
-                                for i in 0..3{sum[i]+=src[at+i] as u32;}
+                                for i in 0..3{sum[i]+=self.colors[at+i] as u32;}
                                 count+=1;
                             }
                         }
@@ -338,7 +425,10 @@ impl TerrainPaint {
                 }
             }
         }
-        if changed{self.revision=self.revision.wrapping_add(1);}
+        if changed{
+            self.colors_revision=self.colors_revision.wrapping_add(1);
+            self.revision=self.revision.wrapping_add(1);
+        }
         changed
     }
 

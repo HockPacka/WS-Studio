@@ -50,8 +50,9 @@ struct GenesisState {
     circle: usize,
     restricted: bool,
     custom_tip: bool,
+    limit_mode: usize,
+    stamp_drag_start: Option<egui::Pos2>,
     color_panel: bool, color_palette: bool, texture_panel: bool,
-    clutter_panel: bool, prop_panel: bool, object_list: bool,
     clutter_preview_enabled: bool,
     clutter_native_mode: bool,
     clutter_brush_enabled: bool,
@@ -69,7 +70,6 @@ struct GenesisState {
     clutter_wind_strength: f32,
     clutter_wind_speed: f32,
     clutter_wind_direction: Vec2,
-    zone_panel: bool,
     grid: bool, palette_index: usize, texture_index: usize,
     tint: terrain_splat::TintSettings,
     search: String,
@@ -90,11 +90,9 @@ struct GenesisState {
     weight_research_report: Option<area::weight_research::AreaWeightResearch>,
     dock_visible: bool,
     floating_mode: bool,
-    bottom_visible: bool,
     toolbars_visible: bool,
     ui_zoom: f32,
     dock_tab: usize,
-    bottom_tab: usize,
     time_of_day: f32,
     /// Render-preview controls: never write to native .sky/.area assets.
     shadow_preview_enabled: bool,
@@ -106,6 +104,8 @@ struct GenesisState {
     terrain_bundle_dialog: bool,
     terrain_undo_request: bool,
     terrain_redo_request: bool,
+    open_custom_tip_dialog: bool,
+    custom_tip_tex: Option<(u64, egui::TextureHandle)>,
 }
 impl Default for GenesisState {
     fn default() -> Self {
@@ -115,8 +115,8 @@ impl Default for GenesisState {
             paint_tool: "Texture Brush",
             brush_size: 0.75, power: 1.0, hardness: 0.58, falloff: 0.58,
             mode: 0, circle: 0, restricted: false, custom_tip: false,
+            limit_mode: 1, stamp_drag_start: None,
             color_panel: true, color_palette: true, texture_panel: false,
-            clutter_panel: false, prop_panel: false, object_list: false,
             clutter_preview_enabled: false,
             clutter_native_mode: true,
             clutter_brush_enabled: false,
@@ -134,7 +134,6 @@ impl Default for GenesisState {
             clutter_wind_strength: 0.13,
             clutter_wind_speed: 1.5,
             clutter_wind_direction: Vec2::new(0.8,0.6),
-            zone_panel: false,
             grid: false, palette_index: 0, texture_index: 0,
             tint: terrain_splat::TintSettings::default(),
             search: String::new(),
@@ -155,11 +154,9 @@ impl Default for GenesisState {
             weight_research_report: None,
             dock_visible: true,
             floating_mode: false,
-            bottom_visible: true,
             toolbars_visible: true,
             ui_zoom: 1.0,
             dock_tab: 0,
-            bottom_tab: 0,
             time_of_day: 12.0,
             shadow_preview_enabled: false,
             ambient_light_scale: 1.0,
@@ -170,6 +167,8 @@ impl Default for GenesisState {
             terrain_bundle_dialog: false,
             terrain_undo_request: false,
             terrain_redo_request: false,
+            open_custom_tip_dialog: false,
+            custom_tip_tex: None,
         }
     }
 }
@@ -445,7 +444,7 @@ fn load_raw_area(
                             effective_coords.map(|c| c.to_hex()).unwrap_or_default(),
                             tile.cell_count(), loaded.props.len(), path
                         );
-                        state.dock_tab = 6; // World tab with radar
+                        state.dock_tab = 4; // World & Env tab with radar
                     } else {
                         // Standalone single-tile mode: spawn terrain at world_center, water and props
                         loaded.terrain_albedo=None;
@@ -550,7 +549,7 @@ fn load_raw_area(
                             "AREA | {} cells | {} props | {} water | {} | {}",
                             tile.cell_count(),loaded.props.len(),loaded.water_count,loaded.layer_status,path
                         );
-                        state.dock_tab=8;
+                        state.dock_tab=0;
                     }
                     if loaded.terrain_albedo.is_none(){
                         eprintln!("Genesis TEXTURE: {}",loaded.layer_status);
@@ -642,7 +641,7 @@ fn load_model_preview(
             orbit.is_first_person = false;
             orbit.eye = center + Vec3::new(0.0, orbit.distance * 0.25, orbit.distance);
             state.raw_view = true;
-            state.dock_tab = 10; // Dedicated Prop Viewer
+            state.dock_tab = 3; // Props & Prop Viewer tab
             state.status = format!("MODEL PREVIEW | {virtual_path} | bounds {min:?} .. {max:?}");
         }
         Err(error) => state.status = format!("MODEL: {error} | {virtual_path}"),
@@ -687,8 +686,10 @@ fn refresh_painted_splat(
 ) {
     if !paint.ready() || !loaded.terrain_splat {return;}
     let (Some(source),Some(entity))=(loaded.tile.as_ref(),loaded.mesh_entity) else{return;};
+    let source_changed = *last_source != Some(state.tint.color_source);
+    let entity_changed = *last_entity != Some(entity);
     if paint.revision==paint.gpu_revision && !paint.rebuild_pending &&
-        *last_source==Some(state.tint.color_source) && *last_entity==Some(entity) {
+        !source_changed && !entity_changed {
         return;
     }
     let Ok(component)=mesh_materials.get(entity) else{return;};
@@ -704,28 +705,47 @@ fn refresh_painted_splat(
                 };
                 data.weights.data=Some(paint.weights.clone());
                 if paint.colors_ready(){
-                    data.tint.data=Some(paint.render_tint(state.tint.color_source));
+                    data.tint.data=Some(if state.tint.color_source==0 {
+                        paint.colors.clone()
+                    } else {
+                        paint.render_tint(state.tint.color_source)
+                    });
                 }
                 material.extension=data.into_extension(&mut images,state.terrain_view==5);
                 state.tint.configure_params(&mut material.extension.params);
                 paint.rebuild_pending=false;
+                paint.gpu_weights_revision=paint.weights_revision;
+                paint.gpu_colors_revision=paint.colors_revision;
                 paint.gpu_revision=paint.revision;
                 paint.error.clear();
             }
             Err(err)=>{paint.error=format!("WorldLayer preview rebuild failed: {err}");}
         }
     }else{
-        let mut uploaded=false;
-        if let Some(handle)=material.extension.weights.as_ref(){
-            if let Some(mut image)=images.get_mut(handle){
-                image.data=Some(paint.weights.clone());
-                uploaded=true;
-            }
+        let need_weights = paint.weights_revision != paint.gpu_weights_revision || entity_changed;
+        let need_colors = paint.colors_revision != paint.gpu_colors_revision || source_changed || entity_changed;
+        let mut uploaded=true;
+        if need_weights {
+            if let Some(handle)=material.extension.weights.as_ref(){
+                if let Some(mut image)=images.get_mut(handle){
+                    if let Some(buf)=image.data.as_mut().filter(|b|b.len()==paint.weights.len()){
+                        buf.copy_from_slice(&paint.weights);
+                    }else{
+                        image.data=Some(paint.weights.clone());
+                    }
+                    paint.gpu_weights_revision=paint.weights_revision;
+                }else{uploaded=false;}
+            }else{uploaded=false;}
         }
-        if paint.colors_ready(){
+        if need_colors && paint.colors_ready(){
             if let Some(handle)=material.extension.tint.as_ref(){
                 if let Some(mut image)=images.get_mut(handle){
-                    image.data=Some(paint.render_tint(state.tint.color_source));
+                    if let Some(buf)=image.data.as_mut().filter(|b|b.len()==paint.colors.len()){
+                        paint.copy_tint_to(state.tint.color_source, buf);
+                    }else{
+                        image.data=Some(paint.render_tint(state.tint.color_source));
+                    }
+                    paint.gpu_colors_revision=paint.colors_revision;
                 }else{uploaded=false;}
             }else{uploaded=false;}
         }
@@ -861,7 +881,7 @@ fn main() {
         .insert_resource(ClearColor(Color::srgb(0.12, 0.09, 0.16)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "NewCentral [106] Map: NewCentral - World Editor - Genesis".into(),
+                title: "World Editor - Genesis".into(),
                 resolution: (1280, 760).into(),
                 resizable: true,
                 ..default()
@@ -971,7 +991,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                 menu_and_toolbars(ui, &mut state);
                 bottom_strip(ui, &mut state, &loaded, orbit.as_mut(), streaming.as_ref());
                 if state.dock_visible && !state.floating_mode {
-                    dock_panels(ui, &mut state, &loaded, &client, paint.as_mut(), clutter_paint.as_mut(), viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &clutter_preview, &mut commands);
+                    dock_panels(ui, &mut state, &loaded, &client, edit.as_mut(), paint.as_mut(), clutter_paint.as_mut(), viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &clutter_preview, &mut commands);
                 }
                 viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref(), &sky_mgr,
                     edit.as_mut(), paint.as_mut(), clutter_paint.as_mut(),
@@ -990,7 +1010,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
     }
     if state.terrain_undo_request {
         state.terrain_undo_request=false;
-        state.status=if state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush") {
+        state.status=if state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush" || state.paint_tool=="Color Palette") {
             if paint.undo(){"Texture Undo".into()}else{"Nothing to undo".into()}
         }else if state.dock_tab==2 && state.clutter_brush_enabled{
             if clutter_paint.undo(){"Clutter Undo".into()}else{"Nothing to undo".into()}
@@ -998,7 +1018,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
     }
     if state.terrain_redo_request {
         state.terrain_redo_request=false;
-        state.status=if state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush") {
+        state.status=if state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush" || state.paint_tool=="Color Palette") {
             if paint.redo(){"Texture Redo".into()}else{"Nothing to redo".into()}
         }else if state.dock_tab==2 && state.clutter_brush_enabled{
             if clutter_paint.redo(){"Clutter Redo".into()}else{"Nothing to redo".into()}
@@ -1063,7 +1083,7 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
             state.status="Open an editable standalone AREA first".into();
         }
     }
-    if state.floating_mode { floating_panels(ctx, &mut state); }
+    if state.floating_mode { floating_panels(ctx, &mut state, paint.as_mut()); }
     area_inspector_panel(ctx, &mut state, &loaded);
     if state.change_client_root {
         client.settings_open=true;
@@ -1120,6 +1140,30 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
             });
         if !open{state.open_area_path_dialog=false;}
     }
+    if state.open_custom_tip_dialog {
+        state.open_custom_tip_dialog = false;
+        let mut picker = rfd::FileDialog::new()
+            .set_title("Load Custom Brush Tip (All Formats: PNG, TGA, BMP, TIFF, DDS, HDR, TEX, RAW, R16, ASC, *.*)")
+            .add_filter("All Files (*.*)", &["*"])
+            .add_filter(
+                "Brush & Height Formats",
+                &["png", "tga", "bmp", "tif", "tiff", "dds", "hdr", "ico", "pgm", "ppm", "pnm", "ff", "tex", "raw", "r16", "r8", "asc", "csv", "txt"],
+            );
+        if let Some(root) = client.client_data_dir() {
+            picker = picker.set_directory(root);
+        }
+        if let Some(file) = picker.pick_file() {
+            match brush_profile::load_custom_tip_from_path(&file) {
+                Ok(summary) => {
+                    state.custom_tip = true;
+                    state.status = format!("Loaded custom brush tip: {summary}");
+                }
+                Err(err) => {
+                    state.status = format!("Failed to load custom brush: {err}");
+                }
+            }
+        }
+    }
     zone_browser_dialog(ctx, &mut state, streaming.as_mut(), &client, orbit.as_mut(), &mut commands,
         loaded.as_mut(), viewer.as_mut(), edit.as_mut(), paint.as_mut());
     client_data::settings_panel(ctx,&mut client);
@@ -1133,9 +1177,14 @@ fn command(state: &mut GenesisState, name: &'static str) {
             state.new_area_dialog=true;
             state.new_area_options.error.clear();
         }
+        "Clear Selection" => {
+            state.restricted = false;
+            state.circle = 0;
+        }
         "Undo" => {state.terrain_undo_request = true;}
         "Redo" => {state.terrain_redo_request = true;}
         "Save" | "Save As" | "Save Package" => {state.terrain_save_dialog = true;}
+        "Export AREA Bundle..." => {state.terrain_bundle_dialog = true;}
         "Terrain Sculpt" | "Sculpt" => {
             state.dock_tab = 0;
             state.dock_visible = true;
@@ -1155,77 +1204,56 @@ fn command(state: &mut GenesisState, name: &'static str) {
         }
         "Texture Brush" | "Texture Brush Properties" => {
             state.paint_tool = "Texture Brush";
+            state.texture_panel = true;
             state.dock_tab = 1;
             state.dock_visible = true;
         }
-        "Color Brush" | "Color Brush Properties" => {
+        "Color Brush" | "Color Brush Properties" | "Color Palette" => {
             state.paint_tool = "Color Brush";
-            state.dock_tab = 1;
-            state.dock_visible = true;
-        }
-        "Color Palette" => {
-            state.paint_tool = "Color Palette";
+            state.color_panel = true;
+            state.color_palette = true;
             state.dock_tab = 1;
             state.dock_visible = true;
         }
         "Clutter" | "Clutter Preset" => {
-            state.clutter_panel = true;
             state.dock_tab = 2;
             state.dock_visible = true;
         }
-        "Props" | "Prop Models" | "Snap Points Properties" => {
-            state.prop_panel = true;
+        "Props" | "Prop Models" | "Snap Points Properties" | "Object List" | "Prop Viewer" => {
             state.dock_tab = 3;
             state.dock_visible = true;
+            state.floating_mode = false;
         }
-        "Object List" => {
-            state.object_list = true;
-            state.dock_tab = 3;
-            state.dock_visible = true;
-        }
-        "Water" | "Simple Water" | "Water Grid" | "Water Sphere" | "Water Grid Outer Edge" => {
+        "Water" | "Environment" | "Sky" | "Fog" | "Lights" | "World" | "Zones" => {
             state.dock_tab = 4;
             state.dock_visible = true;
         }
-        "Environment" | "Sky" | "Fog" | "Lights" | "Sky Editor" | "Cloud Shadows" | "God Rays" | "FullScreen Effects" => {
+        "Render" | "Render Options" => {
             state.dock_tab = 5;
-            state.dock_visible = true;
-        }
-        "World" => {
-            state.dock_tab = 6;
-            state.dock_visible = true;
-        }
-        "Zones" | "Named Region Editor" | "Navigation Window" => {
-            state.zone_panel = true;
-            state.dock_tab = 7;
             state.dock_visible = true;
         }
         "AREA Inspector" | "Chunk Inspector" | "Inspect" => {
             state.area_inspector = true;
-            state.dock_tab = 8;
+            state.dock_tab = 6;
             state.dock_visible = true;
         }
         "Dock Properties" => { state.dock_visible = true; state.floating_mode = false; }
         "Float Properties" => { state.floating_mode = true; state.dock_visible = false; }
         "Hide Properties" => { state.dock_visible = false; state.floating_mode = false; }
-        "Bottom Workspace" => state.bottom_visible = !state.bottom_visible,
         "Header Toolbars" => state.toolbars_visible = !state.toolbars_visible,
         "UI 80%" => state.ui_zoom = 0.8,
         "UI 100%" => state.ui_zoom = 1.0,
         "UI 125%" => state.ui_zoom = 1.25,
         "UI 150%" => state.ui_zoom = 1.5,
         "Land Chunk Grid" => state.grid = !state.grid,
+        "Dynamic Shadows" => state.shadow_preview_enabled = !state.shadow_preview_enabled,
+        "Hide Shadows" => state.shadow_preview_enabled = false,
         "3D AREA View" => state.raw_view = true,
         "Open Zone..." | "Open Zone (World Streaming)..." => {
             state.open_zone_dialog = true;
         }
         "Open AREA..." => state.open_area_dialog = true,
         "Open Model (.m3/.i3)..." => state.open_model_dialog = true,
-        "Prop Viewer" => {
-            state.dock_tab = 10;
-            state.dock_visible = true;
-            state.floating_mode = false;
-        },
         "Open AREA by path..." => state.open_area_path_dialog = true,
         "Choose Client Root..." | "ClientData Settings..." => state.change_client_root = true,
         "Grimvault Preview" => { state.scene = 0; state.raw_view = false; }
@@ -1247,43 +1275,31 @@ fn icon(ui: &mut egui::Ui, state: &mut GenesisState, name: &'static str) {
 }
 const ICONS: &[&str] = &[
     "Select", "Translate", "Rotate", "Scale", "Terrain Sculpt",
-    "Terrain Paint", "Clutter", "Props", "Water", "Environment",
-    "Zones", "3D AREA View", "Object List", "AREA Inspector",
+    "Terrain Paint", "Clutter", "Props", "Environment",
+    "Zones", "3D AREA View", "AREA Inspector",
 ];
-// Classic Genesis chrome: menu header, multiple toolbars and bottom workspace.
-// All layout regions are nested in the top-level CentralPanel and therefore resize.
+// Classic Genesis chrome: clean menu bar (`File Edit View Terrain Window Settings Help`)
+// and a single compact toolbar row matching the WILDSTAREDITOR reference screenshots.
 fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
     egui::Panel::top("genesis-menu-and-ribbon")
         .frame(egui::Frame::default().fill(PAPER)
             .inner_margin(egui::Margin::symmetric(4,2)))
         .show(ui_root,|ui| {
             ui.horizontal_wrapped(|ui| {
-                ui.spacing_mut().item_spacing.x=5.0;
+                ui.spacing_mut().item_spacing.x=6.0;
                 for (title, entries) in [
-                    ("File",&["New","New AREA...","Open Zone (World Streaming)...","Open AREA...","Open Model (.m3/.i3)...","Open AREA by path...",
-                        "Save","Save As","Save Package","Exit"][..]),
-                    ("Edit",&["Undo","Redo","Cut","Copy","Paste","Delete","Select","Align Selection"][..]),
-                    ("View",&["3D AREA View","Land Wireframe","Object Wireframe","Land Chunk Grid",
-                        "Land Area Grid","Land Layer ID","Hide Land Color","Hide Land Layers",
-                        "Hide Shadows","Dynamic Shadows","UI 80%","UI 100%","UI 125%","UI 150%",
+                    ("File",&["New AREA...","Open AREA...","Open AREA by path...",
+                        "Open Zone (World Streaming)...","Open Model (.m3/.i3)...",
+                        "Save As","Export AREA Bundle..."][..]),
+                    ("Edit",&["Undo","Redo","Clear Selection"][..]),
+                    ("View",&["3D AREA View","Land Chunk Grid","Dynamic Shadows","Hide Shadows",
+                        "Render Options","UI 80%","UI 100%","UI 125%","UI 150%",
                         "Grimvault Preview","Aurora Preview","Blue Forest Preview"][..]),
-                    ("Select",&["Select","Selection Mask","Highlight Primary",
-                        "Align Selection","Group","Ungroup"][..]),
                     ("Terrain",&["Height Brush","Smooth","Flatten","Noise","Clone","Stamp",
-                        "Texture Brush","Color Brush","Land Chunk Grid","Chunk Inspector"][..]),
-                    ("Objects",&["Prop Viewer","Prop Models","Prop Interiors","Object List",
-                        "Snap Points Properties","Group","Ungroup"][..]),
-                    ("Clutter",&["Clutter Preset","Clutter","Hide Canopy","Fade Unused Props"][..]),
-                    ("Water",&["Water","Simple Water","Water Grid","Water Sphere",
-                        "Water Grid Outer Edge"][..]),
-                    ("Environment",&["Sky","Sky Editor","Fog","Lights","Cloud Shadows",
-                        "God Rays","Dynamic Shadows","Time of Day"][..]),
-                    ("Zones",&["Zones","Named Region Editor","Navigation Window",
-                        "Land Layer ID"][..]),
+                        "Texture Brush","Color Brush","Clutter","Chunk Inspector"][..]),
                     ("Window",&["Dock Properties","Float Properties","Hide Properties",
-                        "Bottom Workspace","Header Toolbars","Color Brush Properties",
-                        "Color Palette","Texture Brush Properties","Clutter Preset",
-                        "Object List","Prop Viewer","AREA Inspector","Named Region Editor"][..]),
+                        "Header Toolbars","Color Brush Properties","Texture Brush Properties",
+                        "Prop Viewer","AREA Inspector"][..]),
                     ("Settings",&["ClientData Settings..."][..]),
                     ("Help",&["About Genesis","Keyboard Shortcuts"][..]),
                 ] {
@@ -1296,30 +1312,19 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                         }
                     });
                 }
-                if ui.available_width()>150.0 {
+                if ui.available_width()>160.0 {
                     ui.separator();
-                    ui.label(egui::RichText::new("World Editor - Genesis")
-                        .size(9.0).color(EDGE));
+                    let area_label = if state.area_path.is_empty() {
+                        "World Editor - Genesis".to_string()
+                    } else {
+                        std::path::Path::new(&state.area_path)
+                            .file_name()
+                            .and_then(|s| s.to_str())
+                            .map(|f| format!("{f} — World Editor - Genesis"))
+                            .unwrap_or_else(|| "World Editor - Genesis".to_string())
+                    };
+                    ui.label(egui::RichText::new(area_label).size(9.0).color(EDGE));
                 }
-            });
-            ui.separator();
-            ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new("World").size(9.).strong());
-                if ui.add_sized([83.,17.],egui::Button::new("NewCentral").frame(true))
-                    .on_hover_text("Create new editable AREA").clicked() {
-                    command(state,"New");
-                }
-                ui.label(egui::RichText::new("Map").size(9.).strong());
-                ui.add_sized([52.,17.],egui::Button::new("Area 106").frame(true));
-                if ui.button("Open Zone...").clicked() {command(state,"Open Zone...");}
-                if ui.button("Open AREA...").clicked() {command(state,"Open AREA...");}
-                if ui.button("Open Model...").clicked() {command(state,"Open Model (.m3/.i3)...");}
-                if ui.button("Prop Viewer").clicked() {command(state,"Prop Viewer");}
-                if ui.button("3D View").clicked() {command(state,"3D AREA View");}
-                ui.separator();
-                ui.label(egui::RichText::new("Time of Day").size(9.));
-                ui.add(egui::Slider::new(&mut state.time_of_day,0.0..=24.0)
-                    .show_value(true).custom_formatter(|v,_|format!("{v:04.1}")));
             });
             if !state.toolbars_visible {return;}
             ui.separator();
@@ -1330,11 +1335,37 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = 2.0;
                         for (i, &name) in ICONS.iter().enumerate() {
-                            if matches!(i, 4 | 7 | 11) {
+                            if matches!(i, 4 | 8 | 10) {
                                 ui.separator();
                             }
                             icon(ui, state, name);
                         }
+                        ui.separator();
+                        if ui.button("New AREA").on_hover_text("Create new editable .area tile").clicked() {
+                            command(state, "New AREA...");
+                        }
+                        if ui.button("Open AREA").on_hover_text("Open standalone .area tile").clicked() {
+                            command(state, "Open AREA...");
+                        }
+                        if ui.button("Open Zone").on_hover_text("Stream full WildStar Map folder").clicked() {
+                            command(state, "Open Zone...");
+                        }
+                        if ui.button("Save As").on_hover_text("Export edited .area to a new file").clicked() {
+                            command(state, "Save As");
+                        }
+                        ui.separator();
+                        if ui.button("Undo").on_hover_text("Ctrl+Z").clicked() {
+                            command(state, "Undo");
+                        }
+                        if ui.button("Redo").on_hover_text("Ctrl+Y").clicked() {
+                            command(state, "Redo");
+                        }
+                        ui.separator();
+                        ui.checkbox(&mut state.grid, "Grid");
+                        ui.separator();
+                        ui.label(egui::RichText::new("Time").size(9.));
+                        ui.add(egui::Slider::new(&mut state.time_of_day, 0.0..=24.0)
+                            .show_value(true).custom_formatter(|v, _| format!("{v:04.1}h")));
                     });
                 });
         });
@@ -1342,23 +1373,19 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
 
 fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedArea,
                 orbit:&mut OrbitCamera, streaming:&streaming::WorldStreaming) {
-    // The status bar is always visible, while the workspace can be collapsed.
     egui::Panel::bottom("genesis-bottom-status")
         .frame(egui::Frame::default().fill(PAPER)
             .inner_margin(egui::Margin::symmetric(6,3)))
         .show(ui_root,|ui| {
             ui.horizontal(|ui| {
-                if ui.small_button(if state.bottom_visible {"▾"} else {"▴"}).clicked() {
-                    state.bottom_visible=!state.bottom_visible;
-                }
-                let max_chars=(ui.available_width()/6.0).floor().clamp(24.0,110.0) as usize;
+                let max_chars=(ui.available_width()/6.0).floor().clamp(24.0,115.0) as usize;
                 let short_status=if state.status.chars().count()>max_chars {
                     format!("{}…",state.status.chars().take(max_chars.saturating_sub(1))
                         .collect::<String>())
                 } else {state.status.clone()};
                 ui.label(egui::RichText::new(short_status).size(9.))
                     .on_hover_text(&state.status);
-                if ui.available_width()>210.0 {
+                if ui.available_width()>220.0 {
                     ui.separator();
                     let origin = orbit.origin();
                     ui.label(egui::RichText::new(format!(
@@ -1368,57 +1395,20 @@ fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAr
                         orbit.is_first_person = !orbit.is_first_person;
                     }
                     ui.label(egui::RichText::new(format!("{:.0} m/s", orbit.fly_speed)).size(9.));
+                    ui.separator();
+                    ui.label(egui::RichText::new(format!("Cell #{}", state.selected_cell.min(255))).size(9.));
                     if let Some(map) = streaming.active_map.as_ref() {
                         ui.label(egui::RichText::new(format!(
                             "ZONE {} ({}/{} tiles)",
                             map.name, streaming.loaded_tiles.len(), map.tiles.len()
-                        )).size(9.).strong().color(egui::Color32::from_rgb(100, 210, 130)));
+                        )).size(9.).strong().color(egui::Color32::from_rgb(50, 150, 80)));
                     } else {
                         ui.label(egui::RichText::new(format!(
-                            "{} cells",loaded.tile.as_ref().map(|t|t.cell_count()).unwrap_or(0)))
-                            .size(9.));
+                            "{} cells | {} props",
+                            loaded.tile.as_ref().map(|t|t.cell_count()).unwrap_or(0),
+                            loaded.props.len()
+                        )).size(9.));
                     }
-                }
-            });
-        });
-    if !state.bottom_visible {return;}
-    egui::Panel::bottom("genesis-bottom-workspace")
-        .frame(egui::Frame::default().fill(PANEL)
-            .stroke(egui::Stroke::new(1.,EDGE))
-            .inner_margin(egui::Margin::symmetric(5,3)))
-        .resizable(true).default_size(62.0).min_size(46.0).max_size(190.0)
-        .show(ui_root,|ui| {
-            ui.horizontal_wrapped(|ui| {
-                for (i,label) in ["Occlusion","Layers","Selection","Navigation","Output"].iter().enumerate() {
-                    if ui.selectable_label(state.bottom_tab==i,
-                        egui::RichText::new(*label).size(9.)).clicked(){
-                        state.bottom_tab=i;
-                    }
-                }
-                ui.separator();
-                if ui.small_button("Hide").clicked(){state.bottom_visible=false;}
-            });
-            ui.separator();
-            egui::ScrollArea::vertical().auto_shrink([false,false]).show(ui,|ui| {
-                ui.horizontal_wrapped(|ui| {
-                    let commands:&[&'static str]=match state.bottom_tab {
-                        0=>&["Occlusion","Land Occlusion Lines","Land Occlusion Nodes",
-                             "Occlusion Editor","Land Occlusion Curtains"],
-                        1=>&["Land","Land Layer ID","Land Chunk Grid",
-                             "Land Area Grid","Chunk Inspector"],
-                        2=>&["Select","Selection Mask","Align Selection",
-                             "Group","Ungroup","Clear Selection"],
-                        3=>&["Navigation Window","Named Region Editor",
-                             "Zones","Waypoints"],
-                        _=>&["Open AREA...","AREA Inspector","Save Package"],
-                    };
-                    for &name in commands {
-                        if ui.add(egui::Button::new(egui::RichText::new(name).size(9.)))
-                            .clicked(){command(state,name);}
-                    }
-                });
-                if state.bottom_tab==4 {
-                    ui.label(egui::RichText::new(&state.status).size(9.).color(INK));
                 }
             });
         });
@@ -1447,47 +1437,125 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                 let response=ui.allocate_rect(rect,egui::Sense::click_and_drag());
                 if !ui.input(|i| i.pointer.primary_down()) {
                     edit.end_stroke();
+                    state.stamp_drag_start = None;
                     paint.end();
                     clutter_paint.end();
                 }
                 if edit.is_ready() && streaming.active_map.is_none() &&
-                    state.dock_tab==0 && state.mode<=3 && response.hovered() {
+                    state.dock_tab==0 && state.mode<=5 &&
+                    (response.hovered() || response.dragged_by(egui::PointerButton::Primary) || response.dragged_by(egui::PointerButton::Secondary)) {
                     if let Some(pointer)=ui.input(|i|i.pointer.latest_pos()) {
-                        let (primary,shift,dt)=ui.input(|i|
-                            (i.pointer.primary_down(),i.modifiers.shift,i.stable_dt));
-                        
-                        if let Ok((camera, transform))=camera_query.single() {
+                        let (primary,shift,ctrl,dt)=ui.input(|i|
+                            (i.pointer.primary_down(),i.modifiers.shift,i.modifiers.ctrl || i.modifiers.command,i.stable_dt));
+                        let radius=(state.brush_size*10.0).clamp(1.0,50.0);
+                        let mode=match state.mode {
+                            1=>terrain_edit::BrushMode::Smooth,
+                            2=>terrain_edit::BrushMode::Flatten,
+                            3=>terrain_edit::BrushMode::Noise,
+                            4=>terrain_edit::BrushMode::Clone,
+                            5=>terrain_edit::BrushMode::Stamp,
+                            _=>terrain_edit::BrushMode::Raise,
+                        };
+                        let selected_before=state.selected_cell.min(255);
+                        let restricted=if state.restricted{Some(selected_before)}else{None};
+
+                        // If Stamp is already anchored and held, dragging the mouse adjusts
+                        // stamp strength even if the cursor moves off the terrain surface.
+                        if mode == terrain_edit::BrushMode::Stamp && primary && edit.stamp_anchor.is_some() {
+                            let start = state.stamp_drag_start.unwrap_or(pointer);
+                            let drag_y = start.y - pointer.y;
+                            let drag_x = pointer.x - start.x;
+                            let raw_drag = drag_y + drag_x * 0.35;
+                            let sign = if shift { -1.0 } else { 1.0 }
+                                * if state.power < 0.0 { -1.0 } else { 1.0 };
+                            let delta_height = raw_drag * 0.15 * state.power.abs().max(0.2) * sign;
+                            edit.stamp_drag(
+                                radius, delta_height, state.hardness, state.falloff,
+                                state.circle, restricted, state.custom_tip,
+                            );
+                            state.status = format!(
+                                "Stamp ({:?}): {:+.2} m (hold & drag mouse up/down for strength)",
+                                edit.stamp_shape, delta_height
+                            );
+                            if let Some(anchor) = edit.stamp_anchor {
+                                let y = edit.surface_height(anchor).unwrap_or(0.0);
+                                decal.show_ext(
+                                    Vec3::new(anchor.x, y, anchor.y),
+                                    radius, state.hardness, state.falloff,
+                                    [1.0, 0.74, 0.24], false,
+                                    state.circle, state.custom_tip, None,
+                                );
+                            }
+                        } else if let Ok((camera, transform))=camera_query.single() {
                             if let Ok(ray)=camera.viewport_to_world(transform,
                                 brush_decal::cursor_to_camera_target(
                                     pointer,orbit.ui_pixels_per_point,
                                     camera.target_scaling_factor().unwrap_or(orbit.ui_pixels_per_point)
                                 )) {
                                 if let Some(hit)=edit.raycast(ray) {
-                                    let radius=(state.brush_size*10.0).clamp(1.0,50.0);
-                                    let mode=match state.mode {
-                                        1=>terrain_edit::BrushMode::Smooth,
-                                        2=>terrain_edit::BrushMode::Flatten,
-                                        3=>terrain_edit::BrushMode::Noise,
-                                        _=>terrain_edit::BrushMode::Raise,
-                                    };
+                                    let point=Vec2::new(hit.x,hit.z);
+                                    if !primary {
+                                        if let Some(cell)=edit.cell_at(point) {
+                                            state.selected_cell=cell;
+                                        }
+                                    }
                                     if primary {
-                                        let point=Vec2::new(hit.x,hit.z);
-                                        edit.begin_stroke(point);
-                                        let signed_power=if shift {-state.power}else{state.power};
-                                        edit.brush(point,radius,signed_power,state.hardness,state.falloff,dt,mode);
+                                        if mode==terrain_edit::BrushMode::Clone && (ctrl || shift) {
+                                            edit.set_clone_anchor(point);
+                                            state.status=format!("Clone source set at ({:.1}, {:.1})", point.x, point.y);
+                                        } else if mode==terrain_edit::BrushMode::Stamp {
+                                            edit.begin_stroke(point);
+                                            state.stamp_drag_start = Some(pointer);
+                                            edit.stamp_drag(
+                                                radius, 0.0, state.hardness, state.falloff,
+                                                state.circle, restricted, state.custom_tip,
+                                            );
+                                            state.status = format!(
+                                                "Stamp ({:?}): +0.00 m — hold & drag mouse up/down for strength",
+                                                edit.stamp_shape
+                                            );
+                                        } else {
+                                            if mode==terrain_edit::BrushMode::Clone && edit.clone_anchor.is_none() {
+                                                edit.set_clone_anchor(point);
+                                            }
+                                            edit.begin_stroke(point);
+                                            let signed_power=if shift {-state.power}else{state.power};
+                                            edit.brush_ext(
+                                                point,radius,signed_power,state.hardness,state.falloff,dt,
+                                                mode,state.circle,restricted,state.custom_tip,
+                                            );
+                                        }
                                     }
                                     // World-space decal follows the actual sculpted
                                     // height triangles, not a 2D cursor circle.
-                                    decal.show(hit,radius,state.hardness,state.falloff,
-                                        [1.0,0.74,0.24],false);
+                                    let clone_marker=if mode==terrain_edit::BrushMode::Clone {
+                                        edit.clone_anchor
+                                    } else {
+                                        None
+                                    };
+                                    let decal_hit = if mode==terrain_edit::BrushMode::Stamp {
+                                        if let Some(anchor) = edit.stamp_anchor {
+                                            let y = edit.surface_height(anchor).unwrap_or(hit.y);
+                                            Vec3::new(anchor.x, y, anchor.y)
+                                        } else {
+                                            hit
+                                        }
+                                    } else {
+                                        hit
+                                    };
+                                    decal.show_ext(
+                                        decal_hit,radius,state.hardness,state.falloff,
+                                        [1.0,0.74,0.24],false,
+                                        state.circle,state.custom_tip,clone_marker,
+                                    );
                                 }
                             }
                         }
                     }
                 }
                 if paint.ready() && edit.is_ready() && streaming.active_map.is_none() &&
-                    state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush")
-                    && response.hovered() {
+                    state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush" || state.paint_tool=="Color Palette")
+                    && (response.hovered() || response.dragged_by(egui::PointerButton::Primary) || response.dragged_by(egui::PointerButton::Secondary)) {
                     if let Some(pointer)=ui.input(|i|i.pointer.latest_pos()) {
                         
                         if let Ok((camera,transform))=camera_query.single() {
@@ -1497,7 +1565,7 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                 )) {
                                 if let Some(hit)=edit.raycast(ray){
                                     let world=Vec2::new(hit.x,hit.z);
-                                    let (primary,dt)=ui.input(|i|(i.pointer.primary_down(),i.stable_dt));
+                                    let (primary,shift,dt)=ui.input(|i|(i.pointer.primary_down(),i.modifiers.shift,i.stable_dt));
                                     let selected_before=state.selected_cell.min(255);
                                     if !primary{
                                         if let Some(cell)=paint.cell_at(world) {
@@ -1507,20 +1575,41 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                     let radius=(state.brush_size*10.0).clamp(1.0,50.0);
                                     if primary {
                                         let restricted=if state.restricted{Some(selected_before)}else{None};
-                                        if state.paint_tool=="Color Brush"{
+                                        if state.paint_tool=="Color Brush" || state.paint_tool=="Color Palette" {
                                             if paint.colors_ready(){
                                                 paint.begin();
-                                                paint.color_brush(world,radius,state.power.abs(),
-                                                    state.hardness,state.falloff,dt,restricted);
+                                                let saved_mode=paint.color_mode;
+                                                if shift {
+                                                    paint.color_mode = match saved_mode {
+                                                        terrain_paint::ColorMode::Darken => terrain_paint::ColorMode::Lighten,
+                                                        terrain_paint::ColorMode::Lighten => terrain_paint::ColorMode::Darken,
+                                                        terrain_paint::ColorMode::Saturate => terrain_paint::ColorMode::Desaturate,
+                                                        terrain_paint::ColorMode::Desaturate => terrain_paint::ColorMode::Saturate,
+                                                        other => other,
+                                                    };
+                                                }
+                                                paint.color_brush_ext(
+                                                    world,radius,state.power.abs(),
+                                                    state.hardness,state.falloff,dt,restricted,
+                                                    state.circle,state.custom_tip,
+                                                );
+                                                paint.color_mode=saved_mode;
                                             }
                                         }else if let Some(id)=paint.selected_id{
                                             paint.begin();
-                                            paint.brush(world,id,radius,state.power.abs(),
-                                                state.hardness,state.falloff,dt,restricted);
+                                            let signed_power=if shift {-state.power.abs()} else {state.power};
+                                            paint.brush_ext(
+                                                world,id,radius,signed_power,
+                                                state.hardness,state.falloff,dt,restricted,
+                                                state.circle,state.custom_tip,
+                                            );
                                         }
                                     }
-                                    decal.show(hit,radius,state.hardness,state.falloff,
-                                        [0.27,0.95,0.53],false);
+                                    decal.show_ext(
+                                        hit,radius,state.hardness,state.falloff,
+                                        [0.27,0.95,0.53],false,
+                                        state.circle,state.custom_tip,None,
+                                    );
                                 }
                             }
                         }
@@ -1528,7 +1617,7 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                 }
                 if clutter_paint.ready() && edit.is_ready() &&
                     streaming.active_map.is_none() && state.dock_tab==2 &&
-                    state.clutter_brush_enabled && response.hovered()
+                    state.clutter_brush_enabled && (response.hovered() || response.dragged_by(egui::PointerButton::Secondary))
                 {
                     if let Some(pointer)=ui.input(|i|i.pointer.latest_pos()){
                         
@@ -1560,12 +1649,22 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                     }
                 }
                 if response.dragged_by(egui::PointerButton::Secondary) {
-                    let delta=ui.input(|i|i.pointer.delta());
-                    orbit.yaw -= delta.x * 0.003;
-                    if orbit.is_first_person {
-                        orbit.pitch = (orbit.pitch - delta.y * 0.003).clamp(-1.52, 1.52);
+                    let (delta, alt) = ui.input(|i| (i.pointer.delta(), i.modifiers.alt));
+                    if alt {
+                        let size_delta = (delta.x - delta.y) * 0.01;
+                        state.brush_size = (state.brush_size + size_delta).clamp(0.05, 5.0);
+                        state.status = format!(
+                            "Brush Size: {:.2} ({:.1} m) [Alt + Right-Drag]",
+                            state.brush_size,
+                            state.brush_size * 10.0
+                        );
                     } else {
-                        orbit.pitch = (orbit.pitch + delta.y * 0.006).clamp(0.05, 1.50);
+                        orbit.yaw -= delta.x * 0.003;
+                        if orbit.is_first_person {
+                            orbit.pitch = (orbit.pitch - delta.y * 0.003).clamp(-1.52, 1.52);
+                        } else {
+                            orbit.pitch = (orbit.pitch + delta.y * 0.006).clamp(0.05, 1.50);
+                        }
                     }
                 }
                 if response.dragged_by(egui::PointerButton::Middle) {
@@ -1583,9 +1682,13 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                     }
                 }
                 if response.hovered() || response.dragged_by(egui::PointerButton::Secondary) || response.dragged_by(egui::PointerButton::Middle) {
-                    let scroll=ui.input(|i|i.smooth_scroll_delta.y);
+                    let (scroll, shift_scroll) = ui.input(|i| (i.smooth_scroll_delta.y, i.modifiers.shift));
                     if scroll.abs() > 0.1 {
-                        if orbit.is_first_person {
+                        if shift_scroll {
+                            let step = (scroll * 0.0025).clamp(-0.15, 0.15);
+                            state.hardness = (state.hardness + step).clamp(0.0, 1.0);
+                            state.status = format!("Brush Hardness: {:.2} [Shift + Mouse Wheel]", state.hardness);
+                        } else if orbit.is_first_person {
                             let speed_factor = (scroll * 0.002).exp();
                             orbit.fly_speed = (orbit.fly_speed * speed_factor).clamp(5.0, 2500.0);
                         } else {
@@ -1666,23 +1769,9 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                         egui::FontId::proportional(11.), egui::Color32::from_rgb(238, 233, 219));
                 } else if loaded.tile.is_none() {
                     ui.painter().text(rect.center(),egui::Align2::CENTER_CENTER,
-                        "Open Zone... or Open AREA... (File menu) | WildStar World Streaming",
+                        "Open Zone... or Open AREA... (File menu or toolbar) | WildStar World Editor",
                         egui::FontId::proportional(15.),
                         egui::Color32::from_rgb(243,236,222));
-                } else {
-                    let mode_str = if orbit.is_first_person { "FlyCam" } else { "Orbit" };
-                    let overlay = format!(
-                        "RAW AREA | Origin: [{:.0}, {:.0}, {:.0}] | {} | WASD/Space/C: Fly | RMB: Look | Spd: {:.0}m/s (Wheel)",
-                        orbit.origin().x, orbit.origin().y, orbit.origin().z,
-                        mode_str, orbit.fly_speed
-                    );
-                    let box_rect = egui::Rect::from_min_size(rect.min + egui::vec2(8., 8.),
-                        egui::vec2((rect.width() - 16.).clamp(40., 680.), 26.));
-                    ui.painter().rect_filled(box_rect, 3.,
-                        egui::Color32::from_rgba_unmultiplied(20, 20, 27, 210));
-                    ui.painter().text(box_rect.left_center() + egui::vec2(9., 0.),
-                        egui::Align2::LEFT_CENTER, overlay,
-                        egui::FontId::proportional(11.), egui::Color32::from_rgb(238, 233, 219));
                 }
             } else {
                 orbit.rect=None;
@@ -1759,7 +1848,7 @@ fn area_inspector_panel(
 // A resizable dock replaces fixed-position floating tools in the default layout.
 // Classic floating property windows can still be enabled from Window > Float Properties.
 const DOCK_TABS: &[&str] = &[
-    "Sculpt", "Paint", "Clutter", "Props", "Water", "Env", "World", "Zones", "Inspect", "Assets", "Prop Viewer", "Render"
+    "Sculpt", "Paint", "Clutter", "Props", "World & Env", "Render", "Inspect"
 ];
 
 fn dock_panels(
@@ -1767,6 +1856,7 @@ fn dock_panels(
     state: &mut GenesisState,
     loaded: &LoadedArea,
     client: &client_data::ClientFiles,
+    edit: &mut terrain_edit::TerrainEdit,
     paint: &mut terrain_paint::TerrainPaint,
     clutter_paint: &mut clutter_paint::ClutterPaint,
     viewer: &mut prop_viewer::PropViewer,
@@ -1782,12 +1872,12 @@ fn dock_panels(
     }
     egui::Panel::right("genesis-properties-dock")
         .resizable(true)
-        .default_size(242.0)
-        .min_size(190.0).max_size(480.0)
+        .default_size(246.0)
+        .min_size(195.0).max_size(480.0)
         .frame(panel_frame())
         .show(ui_root, |ui| {
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new("Genesis Tools").strong().size(10.5));
+                ui.label(egui::RichText::new("Genesis Properties").strong().size(10.5));
                 if ui.small_button("Float").clicked() {
                     state.floating_mode = true;
                     state.dock_visible = false;
@@ -1810,231 +1900,325 @@ fn dock_panels(
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     match state.dock_tab {
-                        0 => dock_sculpt(ui, state),
+                        0 => dock_sculpt(ui, state, edit),
                         1 => dock_paint(ui, state, loaded, client, paint),
                         2 => dock_clutter(ui, state, clutter_paint, clutter_preview),
-                        3 => dock_objects(ui, state, loaded, client),
-                        4 => dock_water(ui, state, loaded),
-                        5 => dock_environment(ui, state, sky_mgr),
-                        6 => dock_world(ui, state, loaded, streaming, orbit, commands),
-                        7 => dock_zones(ui, state, sky_mgr),
-                        8 => dock_area(ui, state, loaded),
-                        11 => dock_terrain_render(ui,state,loaded,streaming),
-                        10 => {
-                            let report = viewer.preview.as_ref().and_then(|preview| {
-                                client.index.as_ref().map(|index| {
-                                    client.prop_models.report(index, &preview.path)
-                                })
-                            }).unwrap_or_default();
-                            viewer.show(ui, client.index.as_ref(), &report, commands,
-                                &mut state.pending_model_load);
-                        },
-                        _ => {
-                            if ui.button("ClientData Settings...").clicked() {
-                                command(state, "ClientData Settings...");
-                            }
-                            client_data::asset_summary(ui, client, loaded.tile.as_ref());
-                        }
+                        3 => dock_objects(ui, state, loaded, client, viewer, commands),
+                        4 => dock_world(ui, state, loaded, client, streaming, orbit, sky_mgr, commands),
+                        5 => dock_terrain_render(ui, state, loaded, streaming),
+                        _ => dock_area(ui, state, loaded),
                     }
                 });
         });
 }
 
-fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState) {
-    ui.label(egui::RichText::new("Terrain Sculpt Properties").strong().size(10.5));
-    ui.separator();
-    ui.label(egui::RichText::new("Sculpt Tools").strong().size(9.0));
-    ui.horizontal_wrapped(|ui| {
-        for tool in ["Height Brush", "Smooth", "Flatten", "Noise", "Clone", "Stamp"] {
-            let selected = state.sculpt_tool == tool;
-            if ui.selectable_label(selected, egui::RichText::new(tool).size(9.0)).clicked() {
-                state.sculpt_tool = tool;
-                state.status = format!("Sculpt Tool: {tool}");
-            }
-        }
-    });
-    ui.separator();
-    ui.label(egui::RichText::new(format!("Active Tool: {}", state.sculpt_tool)).strong().size(9.5).color(INK));
-    row_slider(ui, "Size", &mut state.brush_size, 0.1..=5.0);
-    row_slider(ui, "Power", &mut state.power, -2.0..=2.0);
-    row_slider(ui,"Hardness",&mut state.hardness,0.0..=1.0);
+fn brush_common_controls(ui: &mut egui::Ui, state: &mut GenesisState, min_size: f32, allow_signed_power: bool) {
+    row_slider(ui, "Size", &mut state.brush_size, min_size..=5.0);
+    if allow_signed_power {
+        row_slider(ui, "Power", &mut state.power, -2.0..=2.0);
+    } else {
+        row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
+    }
+    row_slider(ui, "Hardness", &mut state.hardness, 0.0..=1.0);
     row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
     ui.horizontal_wrapped(|ui| {
         for (i, title) in ["Circle", "Chunk", "Selection"].iter().enumerate() {
             ui.radio_value(&mut state.circle, i, *title);
         }
     });
-    ui.checkbox(&mut state.restricted, "Restrict to Selection");
-    ui.horizontal(|ui| {
-        ui.radio_value(&mut state.custom_tip, false, "Normal Tip");
-        ui.radio_value(&mut state.custom_tip, true, "Custom Tip");
+    ui.horizontal_wrapped(|ui| {
+        if ui.button("Clear Selection").clicked() {
+            command(state, "Clear Selection");
+        }
+        ui.checkbox(&mut state.restricted, "Restrict to Selection");
+        if allow_signed_power && ui.button("Invert").on_hover_text("Invert brush power").clicked() {
+            state.power = -state.power;
+        }
     });
-    ui.separator();
-    ui.label(egui::RichText::new("Sculpt Modes").strong().size(9.0));
-    for (i, title) in [
-        "Normal (Raise / Lower)", "Smooth", "Flatten to Height",
-        "Add Noise", "Clone Height", "Stamp Geometry"
-    ].iter().enumerate() {
-        ui.radio_value(&mut state.mode, i, *title);
-    }
-    ui.separator();
-    ui.horizontal(|ui| {
-        if ui.button("Clear Selection").clicked() { command(state, "Clear Selection"); }
-        if ui.button("Invert Brush").clicked() { state.power = -state.power; }
+    ui.horizontal_wrapped(|ui| {
+        for (i, label) in ["Min", "No Lim", "Max"].iter().enumerate() {
+            ui.radio_value(&mut state.limit_mode, i, *label);
+        }
     });
-    ui.label(egui::RichText::new("Left drag: sculpt | Shift: reverse height brush").size(8.5).color(INK));
-    ui.label("Radius = Size x 10 m. 1 height step = 0.125 m.");
-    if state.mode >= 4 {
-        ui.colored_label(egui::Color32::DARK_RED,
-            "Clone and Stamp are not implemented yet.");
+    ui.small("Alt + Right-Drag: Size | Shift + Scroll: Hardness");
+}
+
+fn draw_tip_preview_box(ui: &mut egui::Ui, state: &mut GenesisState, fill_rgb: Option<[u8; 3]>) {
+    if let Some((rev, w, h, rgba)) = brush_profile::custom_tip_preview() {
+        let needs_upload = state.custom_tip_tex.as_ref().is_none_or(|(r, _)| *r != rev);
+        if needs_upload {
+            let img = egui::ColorImage::from_rgba_unmultiplied([w, h], &rgba);
+            let tex = ui.ctx().load_texture(
+                "genesis-custom-brush-tip",
+                img,
+                egui::TextureOptions::LINEAR,
+            );
+            state.custom_tip_tex = Some((rev, tex));
+        }
+    } else {
+        state.custom_tip_tex = None;
     }
+
+    let tip_info = brush_profile::custom_tip_info();
+    let hover_text = if let Some((ref name, ref summary, _)) = tip_info {
+        format!("Custom Brush: {name} ({summary})\nClick to load another brush tip (any file format)")
+    } else {
+        "Click to load a Custom Brush Tip (supports PNG, TGA, BMP, TIFF, DDS, HDR, WildStar .tex, RAW/R16, ASCII, or any file)".to_string()
+    };
+
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(38.0, 44.0), egui::Sense::click());
+    if response.on_hover_text(hover_text).clicked() {
+        state.open_custom_tip_dialog = true;
+    }
+
+    if let Some((_, ref tex)) = state.custom_tip_tex {
+        let tint = if let Some(rgb) = fill_rgb {
+            egui::Color32::from_rgb(rgb[0], rgb[1], rgb[2])
+        } else {
+            egui::Color32::WHITE
+        };
+        ui.painter().image(
+            tex.id(),
+            rect,
+            egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
+            tint,
+        );
+    } else if let Some(rgb) = fill_rgb {
+        ui.painter().rect_filled(rect, 0.0, egui::Color32::from_rgb(rgb[0], rgb[1], rgb[2]));
+    } else {
+        ui.painter().rect_filled(rect, 0.0, egui::Color32::from_rgb(38, 36, 42));
+        let center = rect.center();
+        if state.custom_tip {
+            let r = 13.0;
+            let pts = [
+                egui::pos2(center.x, center.y - r),
+                egui::pos2(center.x + r, center.y),
+                egui::pos2(center.x, center.y + r),
+                egui::pos2(center.x - r, center.y),
+            ];
+            ui.painter().add(egui::Shape::convex_polygon(
+                pts.to_vec(),
+                egui::Color32::from_rgb(235, 195, 95),
+                egui::Stroke::new(1.0, egui::Color32::WHITE),
+            ));
+        } else {
+            ui.painter().circle_filled(center, 12.5, egui::Color32::from_rgb(235, 195, 95));
+            ui.painter().circle_stroke(center, 15.5, egui::Stroke::new(0.8, egui::Color32::from_gray(180)));
+        }
+    }
+    ui.painter().rect_stroke(rect, 0.0, egui::Stroke::new(0.8, EDGE), egui::StrokeKind::Inside);
+
     ui.horizontal(|ui| {
-        if ui.button("Undo").clicked(){command(state,"Undo");}
-        if ui.button("Redo").clicked(){command(state,"Redo");}
-        if ui.button("Save AREA As...").clicked(){command(state,"Save As");}
-        if ui.button("Export AREA Bundle...").clicked(){
-            state.terrain_bundle_dialog=true;
+        if ui.small_button("Load...").on_hover_text("Load custom brush tip from any file format").clicked() {
+            state.open_custom_tip_dialog = true;
+        }
+        if tip_info.is_some() && ui.small_button("×").on_hover_text("Clear loaded custom brush tip").clicked() {
+            brush_profile::clear_custom_tip();
+            state.custom_tip_tex = None;
+            state.status = "Cleared custom brush tip (using procedural tip)".into();
         }
     });
 }
 
+fn dock_sculpt(ui: &mut egui::Ui, state: &mut GenesisState, edit: &mut terrain_edit::TerrainEdit) {
+    const SCULPT_TOOLS: [&str; 6] = ["Height Brush", "Smooth", "Flatten", "Noise", "Clone", "Stamp"];
+    ui.label(egui::RichText::new("Terrain Sculpt Brush Properties").strong().size(10.5));
+    ui.separator();
+    brush_common_controls(ui, state, 0.1, true);
+    ui.separator();
+    ui.label(egui::RichText::new("Advanced Settings").strong().size(9.0));
+    ui.horizontal(|ui| {
+        ui.vertical(|ui| {
+            ui.checkbox(&mut state.custom_tip, "Custom Tip");
+            draw_tip_preview_box(ui, state, None);
+        });
+        ui.separator();
+        ui.vertical(|ui| {
+            for (i, title) in [
+                "Normal (Raise / Lower)",
+                "Smooth",
+                "Flatten to Height",
+                "Add Noise",
+                "Clone Height",
+                "Stamp Geometry",
+            ].iter().enumerate() {
+                if ui.radio_value(&mut state.mode, i, *title).clicked() {
+                    state.sculpt_tool = SCULPT_TOOLS[i];
+                    state.status = format!("Sculpt Mode: {}", state.sculpt_tool);
+                }
+            }
+        });
+    });
+    if state.mode == 4 {
+        ui.separator();
+        ui.group(|ui| {
+            ui.label(egui::RichText::new("Clone Height Source").strong().size(9.0));
+            if let Some(anchor) = edit.clone_anchor {
+                ui.label(format!("Source: ({:.1}, {:.1})", anchor.x, anchor.y));
+                if ui.small_button("Reset Clone Source").clicked() {
+                    edit.clear_clone_anchor();
+                }
+            } else {
+                ui.label("Source: not set (first click or Ctrl/Shift+Click sets source)");
+            }
+            ui.small("Ctrl+Click or Shift+Click on terrain picks clone source.");
+        });
+    } else if state.mode == 5 {
+        ui.separator();
+        ui.group(|ui| {
+            ui.label(egui::RichText::new("Stamp Geometry Shape").strong().size(9.0));
+            ui.horizontal_wrapped(|ui| {
+                ui.radio_value(&mut edit.stamp_shape, terrain_edit::StampShape::Dome, "Dome");
+                ui.radio_value(&mut edit.stamp_shape, terrain_edit::StampShape::Plateau, "Plateau");
+                ui.radio_value(&mut edit.stamp_shape, terrain_edit::StampShape::Ridge, "Ridge");
+                ui.radio_value(&mut edit.stamp_shape, terrain_edit::StampShape::Crater, "Crater");
+            });
+            ui.small("Click, hold & drag mouse up/down to control Stamp height & strength (Shift inverts).");
+        });
+    }
+    ui.separator();
+    ui.small("Left drag: sculpt | Shift: invert height brush | Radius = Size × 10 m.");
+}
+
 fn dock_paint(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea,
     client: &client_data::ClientFiles, paint: &mut terrain_paint::TerrainPaint) {
-    if (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush") && paint.ready() {state.terrain_view=5;}
-    ui.horizontal(|ui|{
-        ui.label(egui::RichText::new("Terrain Paint Properties").strong().size(10.5));
-        if ui.small_button("Render Options").clicked(){state.dock_tab=11;}
-    });
-    ui.separator();
-    ui.label(egui::RichText::new("Paint Tools").strong().size(9.0));
-    ui.horizontal_wrapped(|ui| {
-        for tool in ["Texture Brush", "Color Brush", "Color Palette"] {
+    if state.paint_tool == "Color Palette" {
+        state.paint_tool = "Color Brush";
+    }
+    if (state.paint_tool == "Texture Brush" || state.paint_tool == "Color Brush") && paint.ready() {
+        state.terrain_view = 5;
+    }
+    ui.horizontal(|ui| {
+        for tool in ["Texture Brush", "Color Brush"] {
             let selected = state.paint_tool == tool;
-            if ui.selectable_label(selected, egui::RichText::new(tool).size(9.0)).clicked() {
+            if ui.selectable_label(selected, egui::RichText::new(tool).strong().size(9.5)).clicked() {
                 state.paint_tool = tool;
                 state.status = format!("Paint Tool: {tool}");
             }
         }
+        if ui.small_button("Render").on_hover_text("Terrain Render & Debug Options").clicked() {
+            state.dock_tab = 5;
+        }
     });
     ui.separator();
-    if let Some(area)=loaded.tile.as_ref(){
-        ui.collapsing("Native AREA Format Status",|ui|{
-            let cells=area.cells.iter().flatten().count();
-            let mut native_weight=0usize;
-            let mut unknown_companion=0usize;
-            let mut color=0usize;
-            let mut bc2=0usize;
-            for cell in area.cells.iter().flatten(){
-                let uncertain=cell.block(19).is_some()||cell.block(20).is_some();
-                if uncertain{unknown_companion+=1;}
-                if !uncertain && (cell.block(2).is_some()||
-                    cell.block(29).is_some()||cell.block(17).is_some()){
-                    native_weight+=1;
+
+    match state.paint_tool {
+        "Texture Brush" => {
+            ui.group(|ui| {
+                ui.label(egui::RichText::new("TextureBrush Brush Properties").strong().size(10.0));
+                brush_common_controls(ui, state, 0.01, true);
+                ui.separator();
+                ui.label(egui::RichText::new("Advanced Settings").strong().size(9.0));
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        ui.checkbox(&mut state.custom_tip, "Custom Tip");
+                        draw_tip_preview_box(ui, state, None);
+                    });
+                    ui.vertical(|ui| {
+                        ui.small("Left drag: paint selected layer");
+                        ui.small("Shift + drag: erase layer");
+                    });
+                });
+            });
+            ui.add_space(4.0);
+            ui.group(|ui| {
+                ui.label(egui::RichText::new("Layer Palette").strong().size(10.0));
+                paint.browser(ui, client, state.selected_cell, &mut state.texture_index);
+                ui.separator();
+                ui.horizontal(|ui| {
+                    ui.label("Macro tint");
+                    ui.add(egui::Slider::new(&mut state.tint.strength, 0.0..=1.0));
+                });
+                ui.checkbox(&mut state.tint.gamma_space, "Tint in gamma space");
+                ui.label(egui::RichText::new(&loaded.layer_status).small());
+                if loaded.terrain_albedo.is_none() {
+                    ui.colored_label(egui::Color32::DARK_RED, "No texture atlas: showing RGB565 fallback.");
                 }
-                if cell.block(3).is_some() || cell.block(13).is_some(){color+=1;}
-                if cell.block(13).is_some(){bc2+=1;}
+                if !loaded.missing_textures.is_empty() {
+                    ui.collapsing(format!("Missing textures ({})", loaded.missing_textures.len()), |ui| {
+                        for issue in loaded.missing_textures.iter().take(20) {
+                            ui.monospace(issue);
+                        }
+                    });
+                }
+            });
+        }
+        _ => {
+            ui.group(|ui| {
+                ui.label(egui::RichText::new("Color Brush Properties").strong().size(10.0));
+                brush_common_controls(ui, state, 0.01, false);
+                ui.separator();
+                ui.label(egui::RichText::new("Advanced Settings").strong().size(9.0));
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        ui.checkbox(&mut state.custom_tip, "Custom Tip");
+                        draw_tip_preview_box(ui, state, Some(paint.color));
+                        ui.color_edit_button_srgb(&mut paint.color);
+                    });
+                    ui.separator();
+                    ui.vertical(|ui| {
+                        for (mode, label) in [
+                            (terrain_paint::ColorMode::Color, "Normal (Color)"),
+                            (terrain_paint::ColorMode::Darken, "Burn Tool"),
+                            (terrain_paint::ColorMode::Lighten, "Dodge Tool"),
+                            (terrain_paint::ColorMode::Overlay, "Overlay"),
+                            (terrain_paint::ColorMode::Saturate, "Saturate Sponge"),
+                            (terrain_paint::ColorMode::Desaturate, "Desaturate Sponge"),
+                            (terrain_paint::ColorMode::Smooth, "Smooth"),
+                        ] {
+                            ui.radio_value(&mut paint.color_mode, mode, egui::RichText::new(label).size(8.8));
+                        }
+                    });
+                });
+                if !paint.error.is_empty() {
+                    ui.colored_label(egui::Color32::DARK_RED, &paint.error);
+                }
+            });
+            ui.add_space(4.0);
+            ui.group(|ui| {
+                dock_palette(ui, state, paint);
+            });
+        }
+    }
+
+    if let Some(area) = loaded.tile.as_ref() {
+        ui.add_space(4.0);
+        ui.collapsing("Native AREA Format Status", |ui| {
+            let cells = area.cells.iter().flatten().count();
+            let mut native_weight = 0usize;
+            let mut unknown_companion = 0usize;
+            let mut color = 0usize;
+            let mut bc2 = 0usize;
+            for cell in area.cells.iter().flatten() {
+                let uncertain = cell.block(19).is_some() || cell.block(20).is_some();
+                if uncertain { unknown_companion += 1; }
+                if !uncertain && (cell.block(2).is_some() || cell.block(29).is_some() || cell.block(17).is_some()) {
+                    native_weight += 1;
+                }
+                if cell.block(3).is_some() || cell.block(13).is_some() { color += 1; }
+                if cell.block(13).is_some() { bc2 += 1; }
             }
             ui.label(format!("Cells: {cells} | Writable weights: {native_weight}"));
             ui.label(format!("Unresolved 19/20 companions: {unknown_companion}"));
             ui.label(format!("Writable macro-color cells: {color} (BC2: {bc2})"));
-            if let Some(cell)=area.cells.get(state.selected_cell.min(255))
-                .and_then(Option::as_ref){
-                let blocks=[1usize,2,3,13,17,18,19,20,29];
-                let present=blocks.iter().filter(|&&bit|cell.block(bit).is_some())
-                    .map(|bit|bit.to_string()).collect::<Vec<_>>().join(", ");
-                ui.label(format!("Selected cell {}: bits [{}]",cell.index,present));
-                let weight_blocked=cell.block(19).is_some()||
-                    cell.block(20).is_some();
-                if weight_blocked{
-                    ui.colored_label(egui::Color32::DARK_RED,
-                        "Weight export blocked here: bit 19/20 not decoded.");
+            if let Some(cell) = area.cells.get(state.selected_cell.min(255)).and_then(Option::as_ref) {
+                let blocks = [1usize, 2, 3, 13, 17, 18, 19, 20, 29];
+                let present = blocks.iter().filter(|&&bit| cell.block(bit).is_some())
+                    .map(|bit| bit.to_string()).collect::<Vec<_>>().join(", ");
+                ui.label(format!("Selected cell {}: bits [{}]", cell.index, present));
+                if cell.block(19).is_some() || cell.block(20).is_some() {
+                    ui.colored_label(egui::Color32::DARK_RED, "Weight export blocked here: bit 19/20 not decoded.");
                 }
-                if cell.block(3).is_none() && cell.block(13).is_none(){
-                    ui.label("No native RGB color attributes for this cell.");
-                }
+            }
+            if ui.button("Export AREA Bundle (sync neighbour borders)...").clicked() {
+                state.terrain_bundle_dialog = true;
             }
         });
     }
-    match state.paint_tool {
-        "Texture Brush" => {
-            ui.label(egui::RichText::new("Texture Layer Splatting").strong().size(9.5).color(INK));
-            row_slider(ui, "Size", &mut state.brush_size, 0.01..=5.0);
-            row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
-            row_slider(ui,"Hardness",&mut state.hardness,0.0..=1.0);
-            row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
-            ui.separator();
-            paint.browser(ui,client,state.selected_cell,&mut state.texture_index);
-            ui.horizontal(|ui|{
-                if ui.button("Undo Paint").clicked() {
-                    state.status=if paint.undo(){"Texture Undo".into()}else{"Nothing to undo".into()};
-                }
-                if ui.button("Redo Paint").clicked() {
-                    state.status=if paint.redo(){"Texture Redo".into()}else{"Nothing to redo".into()};
-                }
-            });
-            ui.checkbox(&mut state.restricted, "Restrict to Selection");
-            ui.separator();
-            ui.label(egui::RichText::new("Macro Tint & Blending").strong().size(9.0));
-            ui.horizontal(|ui| {
-                ui.label("Macro tint");
-                ui.add(egui::Slider::new(&mut state.tint.strength, 0.0..=1.0));
-            });
-            ui.checkbox(&mut state.tint.gamma_space, "Tint in gamma space");
-            ui.label(egui::RichText::new(&loaded.layer_status).small().strong());
-            if loaded.terrain_albedo.is_none() {
-                ui.colored_label(egui::Color32::DARK_RED, "No texture atlas: showing RGB565 fallback.");
-            }
-            if !loaded.missing_textures.is_empty() {
-                ui.collapsing(format!("Missing textures ({})", loaded.missing_textures.len()), |ui| {
-                    for issue in loaded.missing_textures.iter().take(20) {
-                        ui.monospace(issue);
-                    }
-                });
-            }
-        }
-        "Color Brush" => {
-            ui.label(egui::RichText::new("Color Brush Properties").strong().size(9.5).color(INK));
-            row_slider(ui, "Size", &mut state.brush_size, 0.01..=5.0);
-            row_slider(ui, "Power", &mut state.power, 0.0..=2.0);
-            row_slider(ui,"Hardness",&mut state.hardness,0.0..=1.0);
-            row_slider(ui, "F/O", &mut state.falloff, 0.0..=1.0);
-            ui.horizontal(|ui|{
-                ui.label("RGB Brush");
-                ui.color_edit_button_srgb(&mut paint.color);
-            });
-            ui.horizontal_wrapped(|ui|{
-                ui.radio_value(&mut paint.color_mode,terrain_paint::ColorMode::Color,"Color");
-                ui.radio_value(&mut paint.color_mode,terrain_paint::ColorMode::Darken,"Darken");
-                ui.radio_value(&mut paint.color_mode,terrain_paint::ColorMode::Lighten,"Lighten");
-                ui.radio_value(&mut paint.color_mode,terrain_paint::ColorMode::Smooth,"Smooth");
-            });
-            ui.checkbox(&mut state.restricted,"Restrict to Selection");
-            ui.label("Color edits native RGB565 / BC2 only; BC2 alpha stays unchanged.");
-            ui.label(format!("Tint map: {}",if paint.colors_ready(){"ready"}else{"unavailable"}));
-            ui.horizontal(|ui|{
-                if ui.button("Undo Color").clicked(){
-                    state.status=if paint.undo(){"Paint Undo".into()}else{"Nothing to undo".into()};
-                }
-                if ui.button("Redo Color").clicked(){
-                    state.status=if paint.redo(){"Paint Redo".into()}else{"Nothing to redo".into()};
-                }
-            });
-            if !paint.error.is_empty(){ui.colored_label(egui::Color32::DARK_RED,&paint.error);}
-            ui.label("Save AREA As exports supported RGB changes into a new AREA.");
-        }
-        "Color Palette" => {
-            dock_palette(ui, state);
-        }
-        _ => {}
-    }
-    ui.separator();
-    if ui.button("Export AREA Bundle (sync neighbour borders)...").clicked(){
-        state.terrain_bundle_dialog=true;
-    }
-    ui.label("Creates a NEW folder. Never overwrites original AREA files.");
 }
-fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState) {
-    ui.label(egui::RichText::new("Color Palette").strong().size(10.));
+
+fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState, paint: &mut terrain_paint::TerrainPaint) {
+    ui.label(egui::RichText::new("Color Palette").strong().size(10.0));
     ui.horizontal_wrapped(|ui| {
         for name in ["Grimvault Chrs","Grimvault Idealized","Grimvault"] {
             ui.add(egui::Button::new(egui::RichText::new(name).size(8.)));
@@ -2068,11 +2252,17 @@ fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState) {
                 egui::vec2(24.,27.),egui::Sense::click());
             ui.painter().rect_filled(rect,0.,
                 egui::Color32::from_rgb(rgb[0],rgb[1],rgb[2]));
-            if response.clicked(){state.palette_index=i;}
+            if response.clicked(){
+                state.palette_index=i;
+                paint.color=*rgb;
+                paint.color_mode=terrain_paint::ColorMode::Color;
+            }
             ui.vertical(|ui| {
                 if ui.selectable_label(state.palette_index==i,
                     egui::RichText::new(*label).size(9.)).clicked(){
                     state.palette_index=i;
+                    paint.color=*rgb;
+                    paint.color_mode=terrain_paint::ColorMode::Color;
                 }
                 ui.label(egui::RichText::new("Category: Favorite").size(8.).color(INK));
             });
@@ -2080,6 +2270,7 @@ fn dock_palette(ui:&mut egui::Ui,state:&mut GenesisState) {
         ui.separator();
     }
 }
+
 fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
     clutter_paint:&mut clutter_paint::ClutterPaint,
     preview:&clutter::ClutterPreview)
@@ -2137,12 +2328,6 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
         ui.label(if clutter_paint.dirty(){
             "Native Clutter edits: UNSAVED"
         }else{"Native Clutter edits: none"});
-        if ui.button("Save AREA As...").clicked(){
-            state.terrain_save_dialog=true;
-        }
-        if ui.button("Export AREA Bundle...").clicked(){
-            state.terrain_bundle_dialog=true;
-        }
         ui.small("Preset modifies only one Bit27 two-bit slot; Exclude/Restore toggles only Bit16 0x20. Originals remain read-only.");
     }
     ui.label("Candidates per cell");
@@ -2178,7 +2363,6 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
                 .speed(0.05).range(-1.0..=1.0));
         });
     }
-    ui.small("Bevy automatic instancing + GPU vertex wind. LOD is per M3 part (not simplified geometry). Actual draw calls require GPU profiling.");
     ui.horizontal(|ui|{
         if ui.button(if state.clutter_native_mode {"Build Native Instanced Clutter"}
             else {"Build Manual Instanced Preview"}).clicked(){
@@ -2194,67 +2378,54 @@ fn dock_clutter(ui:&mut egui::Ui,state:&mut GenesisState,
     ui.label(format!("Instances: {} | Mesh parts/instance: {}",
         preview.instances,preview.parts_per_instance));
     ui.label(format!(
-        "CPU cells regenerated: {} / 256 | GPU instanced groups rebuilt: {} | retained: {} | new instances: {}",
-        preview.cpu_recalculated_cells,preview.rebuilt_cells,
-        preview.retained_cells,preview.last_spawned
+        "CPU cells regenerated: {} / 256 | GPU instanced groups rebuilt: {} | retained: {}",
+        preview.cpu_recalculated_cells,preview.rebuilt_cells,preview.retained_cells
     ));
-    ui.label(format!("Opaque/masked parts: {} | transparent excluded: {}",
-        preview.opaque_parts,preview.transparent_parts));
-    ui.label(format!("Rejected: no-clutter {}, selector {}, weights {}, slope {}",
-        preview.rejected_by_mask,preview.rejected_by_selector,
-        preview.rejected_by_weight,preview.rejected_by_slope));
     ui.label(&preview.status);
-    ui.small("Native TBL values drive model selection. Placement RNG and density are preview approximations; final draw calls require GPU profiling.");
 }
-fn dock_objects(ui:&mut egui::Ui,state:&mut GenesisState,loaded:&LoadedArea,
-                client:&client_data::ClientFiles) {
-    ui.label(egui::RichText::new("Object List / Snap Points").strong().size(10.));
-    if let Some(path) = loaded.preview_model.as_deref() {
-        ui.collapsing(format!("Open model: {path}"), |ui| {
-            if let Some(index) = client.index.as_ref() {
-                for line in client.prop_models.report(index, path) { ui.monospace(line); }
-            }
-        });
-    }
+
+fn dock_objects(
+    ui: &mut egui::Ui,
+    state: &mut GenesisState,
+    loaded: &LoadedArea,
+    client: &client_data::ClientFiles,
+    viewer: &mut prop_viewer::PropViewer,
+    commands: &mut Commands,
+) {
+    ui.label(egui::RichText::new("Props & M3/I3 Model Viewer").strong().size(10.5));
+    ui.separator();
     if !loaded.props.is_empty() {
-        ui.collapsing(format!("AREA Prop Placements ({})",loaded.props.len()),|ui|{
+        ui.collapsing(format!("AREA Prop Placements ({})", loaded.props.len()), |ui| {
             for prop in loaded.props.iter().take(64) {
-                ui.collapsing(format!("{}: {}",prop.index,
-                    prop.model_path.as_deref().unwrap_or("<unresolved name>")),|ui|{
-                    ui.monospace(format!("XYZ: {:?}",prop.position_xyz));
-                    ui.monospace(format!("Rotation: {:?}",prop.rotation_xyzw));
-                    ui.monospace(format!("Scale: {:.4}",prop.scale));
-                    ui.monospace(format!("Tint: 0x{:08X}",prop.tint));
-                    if let (Some(index),Some(path))=(client.index.as_ref(),prop.model_path.as_deref()){
+                ui.collapsing(format!("{}: {}", prop.index,
+                    prop.model_path.as_deref().unwrap_or("<unresolved name>")), |ui| {
+                    ui.monospace(format!("XYZ: {:?}", prop.position_xyz));
+                    ui.monospace(format!("Rotation: {:?}", prop.rotation_xyzw));
+                    ui.monospace(format!("Scale: {:.4}", prop.scale));
+                    ui.monospace(format!("Tint: 0x{:08X}", prop.tint));
+                    if let (Some(index), Some(path)) = (client.index.as_ref(), prop.model_path.as_deref()) {
                         ui.separator();
-                        if ui.button("View model separately").clicked() {
+                        if ui.button("Preview Model").clicked() {
                             state.pending_model_load = Some(path.to_owned());
-                            state.dock_tab = 10;
                         }
-                        for line in client.prop_models.report(index,path){ui.monospace(line);}
+                        for line in client.prop_models.report(index, path) {
+                            ui.monospace(line);
+                        }
                     }
                 });
             }
-            if loaded.props.len()>64{ui.label("Showing first 64 placements");}
-        });
-    }
-    for name in ["World","Land","Props","Clutter","Zones","Water","Lights","FX"] {
-        ui.collapsing(name,|ui| {
-            if ui.selectable_label(false,format!("{name} (placeholder)")).clicked(){
-                state.status=format!("{name}: selection placeholder");
+            if loaded.props.len() > 64 {
+                ui.label("Showing first 64 placements");
             }
         });
+        ui.separator();
     }
-    ui.separator();
-    ui.label("Transform");
-    for name in ["Position  0.000  0.000  0.000",
-        "Rotation  0.000  0.000  0.000","Scale  1.000  1.000  1.000"] {
-        ui.label(egui::RichText::new(name).monospace().size(9.));
-    }
-    if ui.button("Align Selection").clicked(){command(state,"Align Selection");}
-    if ui.button("Snap Points Properties").clicked(){
-        command(state,"Snap Points Properties");
-    }
+    let report = viewer.preview.as_ref().and_then(|preview| {
+        client.index.as_ref().map(|index| {
+            client.prop_models.report(index, &preview.path)
+        })
+    }).unwrap_or_default();
+    viewer.show(ui, client.index.as_ref(), &report, commands, &mut state.pending_model_load);
 }
 
 /// Diagnostic and artistic render controls; does not mutate native AREA blocks.
@@ -2433,89 +2604,21 @@ fn dock_terrain_render(
     ui.label("Preview-only settings: AREA files, layer IDs and texture weights are not changed.");
 }
 
-fn dock_water(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea) {
-    ui.label(egui::RichText::new("Water Properties").strong().size(10.5));
-    ui.separator();
-    ui.label(egui::RichText::new(format!("Active Water Bodies: {}", loaded.water_count)).size(9.0));
-    ui.separator();
-    ui.label(egui::RichText::new("Water Tools").strong().size(9.0));
-    for tool in ["Simple Water", "Water Grid", "Water Sphere", "Water Grid Outer Edge"] {
-        if ui.button(tool).clicked() {
-            command(state, tool);
-        }
-    }
-    ui.separator();
-    ui.label(egui::RichText::new("Shading & Surface").strong().size(9.0));
-    ui.label("WildStar oceanic and river surface shader active.");
-}
-
-fn dock_environment(ui: &mut egui::Ui, state: &mut GenesisState, sky_mgr: &sky::SkyManager) {
-    ui.label(egui::RichText::new("Environment & Sky").strong().size(10.5));
-    ui.separator();
-    ui.label(egui::RichText::new("Time of Day").strong().size(9.0));
-    ui.add(egui::Slider::new(&mut state.time_of_day, 0.0..=24.0)
-        .show_value(true).custom_formatter(|v, _| format!("{v:04.1} h")));
-    ui.separator();
-    ui.label(egui::RichText::new("Sky Lighting Preview").strong().size(9.0));
-    ui.checkbox(&mut state.shadow_preview_enabled, "Directional shadows (3 cascades / 600 m)");
-    ui.add(egui::Slider::new(&mut state.ambient_light_scale, 0.0..=2.0)
-        .text("Sky ambient intensity"));
-    ui.add(egui::Slider::new(&mut state.sun_light_scale, 0.0..=2.0)
-        .text("Sun illuminance"));
-    if let Some(eval) = sky_mgr.current_evaluated.as_ref() {
-        ui.small(format!("Sun elevation: {:.1} deg | Fog: {:.0} - {:.0} m",
-            eval.sun_elevation_deg, eval.fog_start, eval.fog_end));
-        ui.small("SunSpecular is parsed but does not yet override Bevy PBR specular.");
-    } else {
-        ui.small("Load ClientData and an AREA to sample native .sky lighting.");
-    }
-    ui.small("Read-only visual settings; original .sky and AREA data stay unchanged.");
-    ui.separator();
-    ui.label(egui::RichText::new("Current Sky Context").strong().size(9.0));
-    if let Some(zone) = sky_mgr.current_zone_id {
-        ui.monospace(format!("Zone ID: #{}", zone));
-    }
-    if let Some(sky_path) = sky_mgr.current_sky_path.as_ref() {
-        ui.monospace(format!("Sky: {}", sky_path));
-    }
-    ui.separator();
-    ui.label(egui::RichText::new("Sky Environment Tools").strong().size(9.0));
-    for tool in ["Sky Editor", "Fog Settings", "Cloud Shadows", "God Rays", "FullScreen Effects"] {
-        if ui.button(tool).clicked() {
-            command(state, tool);
-        }
-    }
-}
-
-fn dock_zones(ui: &mut egui::Ui, state: &mut GenesisState, sky_mgr: &sky::SkyManager) {
-    ui.label(egui::RichText::new("Zones & Named Regions").strong().size(10.5));
-    ui.separator();
-    if let Some(zone) = sky_mgr.current_zone_id {
-        ui.label(egui::RichText::new(format!("Current Zone ID: #{}", zone)).strong());
-    } else {
-        ui.label("No active zone sampled.");
-    }
-    ui.separator();
-    ui.label(egui::RichText::new("Zone Tools").strong().size(9.0));
-    for tool in ["Named Region Editor", "Navigation Window", "Land Layer ID", "Land Occlusion Lines"] {
-        if ui.button(tool).clicked() {
-            command(state, tool);
-        }
-    }
-}
 fn dock_world(
     ui: &mut egui::Ui,
     state: &mut GenesisState,
     loaded: &LoadedArea,
+    client: &client_data::ClientFiles,
     streaming: &mut streaming::WorldStreaming,
     orbit: &mut OrbitCamera,
+    sky_mgr: &sky::SkyManager,
     commands: &mut Commands,
 ) {
-    ui.label(egui::RichText::new("World / Zone Streaming").strong().size(10.));
+    ui.label(egui::RichText::new("World Streaming & Environment").strong().size(10.5));
     ui.separator();
 
     ui.checkbox(&mut state.area_standalone, "Open AREA standalone (editable)");
-    ui.label(egui::RichText::new("Streaming zone tiles are read-only. Standalone AREA supports sculpting.").small());
+    ui.small("Streaming zone tiles are read-only. Standalone AREA supports sculpting & painting.");
     ui.group(|ui| {
         ui.label(egui::RichText::new("World Streaming").strong().size(10.));
         ui.horizontal(|ui| {
@@ -2575,43 +2678,49 @@ fn dock_world(
             render_zone_radar(ui, map, streaming, orbit);
         } else {
             ui.label(egui::RichText::new("No active map streaming.").size(9.).color(EDGE));
-            ui.label(egui::RichText::new("Open a zone or .area file to start streaming.").size(8.).color(EDGE));
         }
     });
 
+    ui.add_space(4.0);
+    ui.group(|ui| {
+        ui.label(egui::RichText::new("Sky, Time of Day & Lighting").strong().size(10.0));
+        ui.add(egui::Slider::new(&mut state.time_of_day, 0.0..=24.0)
+            .text("Time of Day")
+            .custom_formatter(|v, _| format!("{v:04.1} h")));
+        ui.checkbox(&mut state.shadow_preview_enabled, "Directional shadows (3 cascades / 600 m)");
+        ui.add(egui::Slider::new(&mut state.ambient_light_scale, 0.0..=2.0).text("Sky ambient"));
+        ui.add(egui::Slider::new(&mut state.sun_light_scale, 0.0..=2.0).text("Sun illuminance"));
+        if let Some(eval) = sky_mgr.current_evaluated.as_ref() {
+            ui.small(format!("Sun elevation: {:.1}° | Fog: {:.0} – {:.0} m",
+                eval.sun_elevation_deg, eval.fog_start, eval.fog_end));
+        }
+        if let Some(zone) = sky_mgr.current_zone_id {
+            ui.monospace(format!("Active Zone ID: #{zone}"));
+        }
+        if let Some(sky_path) = sky_mgr.current_sky_path.as_ref() {
+            ui.monospace(format!("Sky: {sky_path}"));
+        }
+        ui.label(format!("Active Water Bodies in AREA: {}", loaded.water_count));
+    });
+
     if let Some(area) = loaded.tile.as_ref() {
-        ui.collapsing("Focused AREA WorldZone IDs", |ui| {
+        ui.collapsing("AREA WorldZone & WorldSky IDs", |ui| {
             let mut ids = std::collections::BTreeSet::new();
             for cell in area.cells.iter().flatten() {
                 if let Some(zone_ids) = cell.zones() {
                     for id in zone_ids { if id != 0 { ids.insert(id); } }
                 }
             }
-            for id in ids.iter().take(64) { ui.monospace(format!("WorldZone {id}")); }
-            if ids.is_empty() { ui.label("No decoded WorldZone IDs"); }
-        });
-        ui.collapsing("Focused AREA WorldSky IDs", |ui| {
-            let ids = area.all_sky_ids();
-            for id in ids.iter().take(64) { ui.monospace(format!("WorldSky {id}")); }
-            if ids.is_empty() { ui.label("No decoded WorldSky IDs"); }
+            for id in ids.iter().take(32) { ui.monospace(format!("WorldZone {id}")); }
+            for id in area.all_sky_ids().iter().take(32) { ui.monospace(format!("WorldSky {id}")); }
         });
     }
-    ui.collapsing("Zones / Regions", |ui| {
-        for name in ["Zones", "Named Region Editor", "Navigation Window"] {
-            if ui.button(name).clicked() { command(state, name); }
+
+    ui.collapsing("ClientData Asset Index", |ui| {
+        if ui.button("ClientData Settings...").clicked() {
+            command(state, "ClientData Settings...");
         }
-    });
-    ui.collapsing("Sky / Lighting", |ui| {
-        ui.label("Time of Day");
-        ui.add(egui::Slider::new(&mut state.time_of_day, 0.0..=24.0));
-        for name in ["Sky", "Sky Editor", "Fog", "Lights", "God Rays", "Cloud Shadows", "Dynamic Shadows"] {
-            if ui.button(name).clicked() { command(state, name); }
-        }
-    });
-    ui.collapsing("Water", |ui| {
-        for name in ["Water", "Simple Water", "Water Sphere", "Water Grid"] {
-            if ui.button(name).clicked() { command(state, name); }
-        }
+        client_data::asset_summary(ui, client, loaded.tile.as_ref());
     });
 }
 
@@ -2771,7 +2880,7 @@ fn zone_browser_dialog(
                                     edit.reset();
                                     paint.reset();
                                     state.status = format!("Loaded zone {map_name}");
-                                    state.dock_tab = 6;
+                                    state.dock_tab = 4;
                                     state.open_zone_dialog = false;
                                 }
                                 Err(e) => {
@@ -2807,43 +2916,36 @@ fn dock_area(ui: &mut egui::Ui, state: &mut GenesisState, loaded: &LoadedArea) {
     }
 }
 
-fn floating_panels(ctx: &egui::Context, state: &mut GenesisState) {
+fn floating_panels(ctx: &egui::Context, state: &mut GenesisState, paint: &mut terrain_paint::TerrainPaint) {
     let right = ctx.content_rect().right() - 193.0;
     if state.color_panel {
         let mut open = true;
         egui::Window::new("Color Brush Properties")
             .id(egui::Id::new("genesis-color-brush"))
-            .default_pos(egui::pos2(right,128.0)).default_size(egui::vec2(182.,242.))
+            .default_pos(egui::pos2(right,128.0)).default_size(egui::vec2(186.,260.))
             .collapsible(false).resizable(false).open(&mut open).frame(panel_frame())
             .show(ctx, |ui| {
-                ui.set_min_width(174.0);
-                row_slider(ui,"Size",&mut state.brush_size,0.01..=2.0);
-                row_slider(ui,"Power",&mut state.power,0.0..=2.0);
-                row_slider(ui,"Hardness",&mut state.hardness,0.0..=1.0);
-                row_slider(ui,"F/O",&mut state.falloff,0.0..=1.0);
-                ui.horizontal(|ui| {
-                    ui.radio_value(&mut state.circle,0,"Circle");
-                    ui.radio_value(&mut state.circle,1,"Chunk");
-                    ui.radio_value(&mut state.circle,2,"Selection");
-                });
-                if ui.button("Clear Selection").clicked() { command(state,"Clear Selection"); }
-                ui.checkbox(&mut state.restricted,"Restrict to Selection");
-                ui.horizontal(|ui| {
-                    ui.radio_value(&mut state.custom_tip,false,"Normal Tip");
-                    ui.radio_value(&mut state.custom_tip,true,"Custom Tip");
-                });
+                ui.set_min_width(178.0);
+                brush_common_controls(ui, state, 0.01, false);
                 ui.separator();
                 ui.label(egui::RichText::new("Advanced Settings").size(9.0).strong());
                 ui.horizontal(|ui| {
-                    let (rect,_) = ui.allocate_exact_size(egui::vec2(37.,43.),egui::Sense::hover());
-                    ui.painter().rect_filled(rect,0.0,PAPER);
-                    ui.painter().rect_stroke(rect,0.0,egui::Stroke::new(0.7,EDGE),
-                                             egui::StrokeKind::Inside);
                     ui.vertical(|ui| {
-                        for (index,label) in ["Normal","Burn Tool","Dodge Tool","Overlay",
-                            "Saturate Sponge","Desaturate Sponge","Color"].iter().enumerate() {
-                            ui.radio_value(&mut state.mode,index,
-                                egui::RichText::new(*label).size(8.5));
+                        ui.checkbox(&mut state.custom_tip, "Custom Tip");
+                        draw_tip_preview_box(ui, state, Some(paint.color));
+                    });
+                    ui.vertical(|ui| {
+                        for (mode,label) in [
+                            (terrain_paint::ColorMode::Color, "Normal (Color)"),
+                            (terrain_paint::ColorMode::Darken, "Burn Tool"),
+                            (terrain_paint::ColorMode::Lighten, "Dodge Tool"),
+                            (terrain_paint::ColorMode::Overlay, "Overlay"),
+                            (terrain_paint::ColorMode::Saturate, "Saturate Sponge"),
+                            (terrain_paint::ColorMode::Desaturate, "Desaturate Sponge"),
+                            (terrain_paint::ColorMode::Smooth, "Smooth"),
+                        ] {
+                            ui.radio_value(&mut paint.color_mode,mode,
+                                egui::RichText::new(label).size(8.5));
                         }
                     });
                 });
@@ -2854,132 +2956,26 @@ fn floating_panels(ctx: &egui::Context, state: &mut GenesisState) {
         let mut open = true;
         egui::Window::new("Color Palette")
             .id(egui::Id::new("genesis-color-palette"))
-            .default_pos(egui::pos2(right,398.0)).default_size(egui::vec2(182.,303.))
+            .default_pos(egui::pos2(right,404.0)).default_size(egui::vec2(186.,298.))
             .collapsible(false).resizable(false).open(&mut open).frame(panel_frame())
             .show(ctx, |ui| {
-                ui.set_min_width(173.);
-                ui.horizontal(|ui| {
-                    for tab in ["Grimvault Chrs","Grimvault _Idealized","Gr"] {
-                        ui.add(egui::Button::new(egui::RichText::new(tab).size(7.4)));
-                    }
-                });
-                ui.add(egui::TextEdit::singleline(&mut state.search)
-                    .hint_text("Name").desired_width(162.));
-                const SWATCHES: [([u8;3],&str);14] = [
-                    ([220,130,172],"GRASS (CORRUPTED)"),
-                    ([208,124,174],"Grass_LIGHT_01"),
-                    ([227,169,185],"Grass_LIGHT_03"),
-                    ([215,154,132],"Grass_MID_01"),
-                    ([127,121,170],"Grass_MID_02"),
-                    ([112,108,178],"Grass_SHADOW_01"),
-                    ([93,77,165],"Grass_SHADOW_02"),
-                    ([172,93,158],"GRASS (IDEALIZED TRANSITION)"),
-                    ([122,99,154],"Corrupted_Ground_01"),
-                    ([122,109,180],"Rock_Moss_01"),
-                    ([159,125,165],"Boulder_Dark_01"),
-                    ([106,102,148],"Eldan_Surface_01"),
-                    ([194,108,161],"Flora_Pink_01"),
-                    ([81,110,139],"Dirt_Blue_02"),
-                ];
-                egui::ScrollArea::vertical().max_height(272.).show(ui,|ui| {
-                    for (index,(rgb,name)) in SWATCHES.iter().enumerate() {
-                        if !state.search.is_empty() &&
-                           !name.to_lowercase().contains(&state.search.to_lowercase()) {
-                            continue;
-                        }
-                        ui.horizontal(|ui| {
-                            let (rect,response) = ui.allocate_exact_size(
-                                egui::vec2(23.,27.),egui::Sense::click());
-                            ui.painter().rect_filled(rect,0.,
-                                egui::Color32::from_rgb(rgb[0],rgb[1],rgb[2]));
-                            if response.clicked() { state.palette_index=index; }
-                            ui.vertical(|ui| {
-                                if ui.selectable_label(state.palette_index==index,
-                                    egui::RichText::new(*name).size(8.3)).clicked() {
-                                    state.palette_index=index;
-                                }
-                                ui.label(egui::RichText::new(format!("Description: {name}"))
-                                    .size(7.0));
-                                ui.label(egui::RichText::new("Category: Favorite").size(7.0));
-                            });
-                        });
-                        ui.separator();
-                    }
-                });
+                ui.set_min_width(178.);
+                dock_palette(ui, state, paint);
             });
         state.color_palette = open;
     }
     if state.texture_panel {
         let mut open = true;
-        egui::Window::new("Texture Brush Properties")
-            .default_pos(egui::pos2(right-195.,130.)).default_size(egui::vec2(178.,207.))
+        egui::Window::new("TextureBrush Brush Properties")
+            .default_pos(egui::pos2(right-198.,128.)).default_size(egui::vec2(182.,245.))
             .collapsible(false).resizable(false).open(&mut open).frame(panel_frame())
             .show(ctx,|ui| {
-                row_slider(ui,"Size",&mut state.brush_size,0.01..=2.);
-                row_slider(ui,"Power",&mut state.power,0.0..=2.);
-                row_slider(ui,"Hardness",&mut state.hardness,0.0..=1.0);
-                row_slider(ui,"F/O",&mut state.falloff,0.0..=1.);
+                brush_common_controls(ui, state, 0.01, true);
                 ui.separator();
-                ui.label(egui::RichText::new("Land Texture Layers").strong().size(9.));
-                for (i,label) in ["Layer 0","Layer 1","Layer 2","Layer 3"].iter().enumerate() {
-                    ui.radio_value(&mut state.texture_index,i,*label);
-                }
-                ui.checkbox(&mut state.restricted,"Restrict to Selection");
+                ui.checkbox(&mut state.custom_tip, "Custom Tip");
+                draw_tip_preview_box(ui, state, None);
             });
         state.texture_panel=open;
     }
-    if state.clutter_panel {
-        let mut open = true;
-        egui::Window::new("Clutter Preset")
-            .default_pos(egui::pos2(right-195.,371.)).default_size(egui::vec2(178.,220.))
-            .collapsible(false).resizable(false).open(&mut open).frame(panel_frame())
-            .show(ctx,|ui| {
-                ui.label("Clutter Presets");
-                egui::ScrollArea::vertical().max_height(190.).show(ui,|ui| {
-                    for label in ["Aurora_Grass_Shrubs","Aurora_Grass_Tall","Grimvault_Grass_01",
-                        "Grimvault_Grass_02","Grimvault_Crystal","Grimvault_Rocks",
-                        "Grimvault_Shrubs"] {
-                        if ui.button(label).clicked() { command(state,label); }
-                    }
-                });
-            });
-        state.clutter_panel=open;
-    }
-    if state.prop_panel {
-        let mut open=true;
-        egui::Window::new("Snap Points Properties")
-            .default_pos(egui::pos2(24.,146.)).default_size(egui::vec2(211.,172.))
-            .collapsible(false).resizable(false).open(&mut open).frame(panel_frame())
-            .show(ctx,|ui| {
-                for label in ["Position   0.000  0.000  0.000","Rotation   0.000  0.000  0.000",
-                    "Scale         1.000  1.000  1.000","Align Selection",
-                    "Snap To Terrain","Snap Points"] {
-                    if ui.button(label).clicked() { command(state,label); }
-                }
-            });
-        state.prop_panel=open;
-    }
-    if state.object_list {
-        let mut open=true;
-        egui::Window::new("Object List")
-            .default_pos(egui::pos2(22.,345.)).default_size(egui::vec2(180.,175.))
-            .collapsible(false).resizable(false).open(&mut open).frame(panel_frame())
-            .show(ctx,|ui| {
-                for label in ["World","Land","Props","Clutter","Zones","Water","Lights"] {
-                    if ui.selectable_label(false,label).clicked() { command(state,label); }
-                }
-            });
-        state.object_list=open;
-    }
-    if state.zone_panel {
-        let mut open=true;
-        egui::Window::new("Named Region Editor")
-            .default_pos(egui::pos2(24.,530.)).default_size(egui::vec2(183.,123.))
-            .collapsible(false).resizable(false).open(&mut open).frame(panel_frame())
-            .show(ctx,|ui| {
-                ui.label("Zone ID"); ui.label("Subzone ID");
-                if ui.button("Add Region").clicked() { command(state,"Add Region"); }
-            });
-        state.zone_panel=open;
-    }
 }
+

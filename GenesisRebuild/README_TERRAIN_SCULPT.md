@@ -9,7 +9,7 @@ This is a **height-only** standalone AREA editor. It does not modify WildStar's 
 1. Configure an indexed WildStar ClientData root.
 2. Keep **World > Open AREA standalone (editable)** enabled (default). Open a source `.area` through **File > Open AREA...**. Use **Open Zone...** when you want read-only world streaming instead.
 3. Select the **Sculpt** dock; click/drag on terrain with the **left mouse button**. The yellow ring previews brush influence. Right mouse button continues to rotate the camera and middle mouse button pans.
-4. Select **Height Brush** (raise/lower), **Smooth**, **Flatten**, or **Noise**. Brush Size is multiplied by 10 metres. Power includes positive/negative values for Height Brush; hold **Shift** to reverse the sign while painting. Smooth/Flatten are not bidirectional.
+4. Select **Normal (Raise / Lower)**, **Smooth**, **Flatten to Height**, **Add Noise**, **Clone Height** (Ctrl/Shift+Click sets source anchor), or **Stamp Geometry** (`Dome`, `Plateau`, `Ridge`, `Crater` profiles — click, hold the mouse button, and drag up/down to dynamically control the stamp height/strength). Brush Size is multiplied by 10 metres. Power includes positive/negative values; hold **Shift** to reverse the sign while painting. Brush shapes (`Circle`, `Chunk`, `Selection`), `Restrict to Selection`, and `Custom Tip` apply across both Sculpt and Paint tools.
 5. **Edit > Undo / Redo** (also Ctrl+Z, Ctrl+Y) work one entire mouse stroke at a time. A history of 24 strokes is kept.
 6. **File > Save As...** or the Sculpt dock's **Save AREA As...** writes a **new** `.area` file (e.g. `YourTile_edited.area`). The editor refuses to overwrite *any* existing file, even if the dialog allows selection. Reopen your exported file to verify the resulting heightfield.
 
@@ -25,15 +25,13 @@ This is a **height-only** standalone AREA editor. It does not modify WildStar's 
 ## Implementation
 
 - `crates/wildstar_formats/src/area.rs`: `RawArea::with_height_changes`, supports uncompressed and zlib-compressed input, strict structural checks, tests.
-- `src/terrain_edit.rs`: grid, ray hit testing, brush math, quantization, bounded per-stroke undo/redo, Save As.
+- `src/terrain_edit.rs`: grid, ray hit testing, brush math (`Raise`, `Smooth`, `Flatten`, `Noise`, `Clone`, `Stamp`), quantization, bounded per-stroke undo/redo, Save As.
 - `src/terrain.rs`: regenerate render mesh and normals from a live grid.
 - `src/main.rs`: input, UI controls, live scene refresh and loading lifecycle.
 
 ## Not yet implemented
 
-- Clone and geometry Stamp are still placeholders.
-- Editable world streaming and automatic cross-AREA seam propagation.
-- Texture-layer painting / splat-weight encoding, vertex-color painting and other binary block writers.
+- Editable world streaming (live multi-tile sculpting without standalone export).
 - Drag visual checks, saving/reopening with representative original WildStar files, and comparison to the original Genesis output.
 
 ## CI and interactive check

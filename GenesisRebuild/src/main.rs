@@ -770,7 +770,7 @@ fn refresh_terrain_view(
         // Both the layered PBR terrain and the offline StandardMaterial
         // fallback have Mesh3d, so debug views must work on either.
         if let Ok(material)=terrain_material_query.get(entity) {
-            if let Some(terrain)=materials.get_mut(&material.0){
+            if let Some(mut terrain)=materials.get_mut(&material.0){
                 let textured=target.0==5;
                 terrain.extension.params.enabled=(textured && loaded.terrain_splat) as u32;
                 terrain.base.base_color_texture=if textured && !loaded.terrain_splat{

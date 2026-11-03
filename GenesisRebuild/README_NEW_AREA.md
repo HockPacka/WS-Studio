@@ -24,3 +24,7 @@ Check alternate tile coordinates, invalid paths, and Windows UI scaling.
 Build: cargo test -p wildstar_formats; cargo check -p genesis;
 cargo check -p genesis --tests. Execute local editor unit tests with
 cargo test -p genesis new_area. Windows GPU/manual launch still required.
+
+## Visibility fix: generated flat terrain
+
+Newly created areas now frame the entire 512-m tile in orbit camera mode rather than retaining a previous first-person yaw/pitch. Tiles without a decoded WorldLayer atlas use an unlit Bevy StandardMaterial with the native vertex-colour debug mesh, not the custom WESL splat shader. Switching terrain preview modes still replaces the Mesh3d asset on both material paths. This preserves the original Genesis window layout; it does not yet prove Windows GPU runtime parity.

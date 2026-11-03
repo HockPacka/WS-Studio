@@ -115,3 +115,20 @@ fn debug_id_color(id:u32)->[f32;4]{
      0.28+(((n>>8)&255) as f32)/510.,
      0.28+(((n>>16)&255) as f32)/510.,1.]
 }
+
+
+#[cfg(test)]
+mod generated_area_tests {
+    use super::*;
+    use wildstar_formats::area::builder::AreaBuilder;
+
+    #[test]
+    fn flat_new_area_produces_a_visible_terrain_mesh() {
+        let raw=AreaBuilder::flat(0.0,0).build().unwrap();
+        let area=RawArea::from_bytes(raw).unwrap();
+        let (mesh,focus)=terrain_mesh(&area,0,0).unwrap();
+        assert!(mesh.attribute(Mesh::ATTRIBUTE_POSITION).is_some());
+        assert!(mesh.indices().is_some());
+        assert_eq!(focus.y,0.0);
+    }
+}

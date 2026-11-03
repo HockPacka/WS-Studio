@@ -415,9 +415,15 @@ fn load_raw_area(
 
             match terrain::terrain_mesh(&tile,preview,state.texture_index) {
                 Ok((mesh,focus))=>{
-                    orbit.eye = Vec3::new(world_center[0], focus.y + 40.0, world_center[2] + 60.0);
+                    // Frame the full AREA on every load. An old FPS yaw/pitch
+                    // can otherwise aim the 3D camera completely away from the
+                    // new flat tile even though the file and mesh are valid.
                     orbit.focus = Vec3::new(world_center[0], focus.y, world_center[2]);
-                    orbit.distance = 730.;
+                    orbit.is_first_person = false;
+                    orbit.yaw = 0.25;
+                    orbit.pitch = 0.75;
+                    orbit.distance = 890.0;
+                    orbit.eye = orbit.focus + Vec3::new(161.0, 607.0, 631.0);
                     state.raw_view = true;
 
                     // Despawn any standalone entities
@@ -485,26 +491,46 @@ fn load_raw_area(
                             loaded.terrain_normal=atlas.normal_image.map(|img| images.add(img));
                         }
 
-                        loaded.mesh_entity=Some(commands.spawn((
-                            Mesh3d(meshes.add(mesh)),
-                            MeshMaterial3d(terrain_materials.add(ExtendedMaterial{
-                                base:StandardMaterial{
+                        // No ClientData or WorldLayer textures? Render the
+                        // actual terrain mesh with an unlit vertex-colour
+                        // StandardMaterial, bypassing custom WESL splatting.
+                        // This keeps a new AREA clearly visible while offline.
+                        let mesh_handle=meshes.add(mesh);
+                        let transform=Transform::from_xyz(world_center[0],0.0,world_center[2]);
+                        if !loaded.terrain_splat && loaded.terrain_albedo.is_none() {
+                            loaded.mesh_entity=Some(commands.spawn((
+                                Mesh3d(mesh_handle),
+                                MeshMaterial3d(materials.add(StandardMaterial{
                                     base_color:Color::WHITE,
-                                    base_color_texture:if state.terrain_view==5 && !loaded.terrain_splat {
-                                        loaded.terrain_albedo.clone()
-                                    }else{None},
-                                    normal_map_texture:if state.terrain_view==5 && !loaded.terrain_splat {
-                                        loaded.terrain_normal.clone()
-                                    }else{None},
-                                    perceptual_roughness:0.85,
-                                    reflectance:0.2,
+                                    unlit:true,
                                     cull_mode:None,
                                     ..default()
-                                },
-                                extension:splat_ext,
-                            })),
-                            Transform::from_xyz(world_center[0], 0.0, world_center[2]),
-                        )).id());
+                                })),
+                                transform,
+                            )).id());
+                            loaded.layer_status="Terrain-only vertex-colour preview (no WorldLayer textures)".into();
+                        } else {
+                            loaded.mesh_entity=Some(commands.spawn((
+                                Mesh3d(mesh_handle),
+                                MeshMaterial3d(terrain_materials.add(ExtendedMaterial{
+                                    base:StandardMaterial{
+                                        base_color:Color::WHITE,
+                                        base_color_texture:if state.terrain_view==5 && !loaded.terrain_splat {
+                                            loaded.terrain_albedo.clone()
+                                        }else{None},
+                                        normal_map_texture:if state.terrain_view==5 && !loaded.terrain_splat {
+                                            loaded.terrain_normal.clone()
+                                        }else{None},
+                                        perceptual_roughness:0.85,
+                                        reflectance:0.2,
+                                        cull_mode:None,
+                                        ..default()
+                                    },
+                                    extension:splat_ext,
+                                })),
+                                transform,
+                            )).id());
+                        }
 
                         if let Some(wmesh)=water::water_mesh(&water_bodies){
                             let water_ent=commands.spawn((
@@ -727,7 +753,8 @@ fn refresh_terrain_view(
     mut loaded:ResMut<LoadedArea>,
     mut meshes:ResMut<Assets<Mesh>>,
     mut materials:ResMut<Assets<terrain_splat::TerrainMaterial>>,
-    mut mesh_components:Query<(&mut Mesh3d,&MeshMaterial3d<terrain_splat::TerrainMaterial>)>,
+    mut mesh_components:Query<&mut Mesh3d>,
+    terrain_material_query:Query<&MeshMaterial3d<terrain_splat::TerrainMaterial>>,
 ){
     let target=(state.terrain_view,state.texture_index);
     if loaded.last_preview==target{return;}
@@ -739,16 +766,20 @@ fn refresh_terrain_view(
     } else {
         terrain::terrain_mesh(tile,preview,target.1)
     }) else{return;};
-    if let Ok((mut component,material))=mesh_components.get_mut(entity) {
-        if let Some(mut terrain)=materials.get_mut(&material.0){
-            let textured=target.0==5;
-            terrain.extension.params.enabled=(textured && loaded.terrain_splat) as u32;
-            terrain.base.base_color_texture=if textured && !loaded.terrain_splat{
-                loaded.terrain_albedo.clone()
-            }else{None};
-            terrain.base.normal_map_texture=if textured && !loaded.terrain_splat{
-                loaded.terrain_normal.clone()
-            }else{None};
+    if let Ok(mut component)=mesh_components.get_mut(entity) {
+        // Both the layered PBR terrain and the offline StandardMaterial
+        // fallback have Mesh3d, so debug views must work on either.
+        if let Ok(material)=terrain_material_query.get(entity) {
+            if let Some(terrain)=materials.get_mut(&material.0){
+                let textured=target.0==5;
+                terrain.extension.params.enabled=(textured && loaded.terrain_splat) as u32;
+                terrain.base.base_color_texture=if textured && !loaded.terrain_splat{
+                    loaded.terrain_albedo.clone()
+                }else{None};
+                terrain.base.normal_map_texture=if textured && !loaded.terrain_splat{
+                    loaded.terrain_normal.clone()
+                }else{None};
+            }
         }
         component.0=meshes.add(mesh);
         loaded.last_preview=target;

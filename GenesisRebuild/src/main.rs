@@ -1452,13 +1452,16 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                 }
                 if edit.is_ready() && streaming.active_map.is_none() &&
                     state.dock_tab==0 && state.mode<=3 && response.hovered() {
-                    if let Some(pointer)=ui.input(|i|i.pointer.interact_pos()) {
+                    if let Some(pointer)=ui.input(|i|i.pointer.latest_pos()) {
                         let (primary,shift,dt)=ui.input(|i|
                             (i.pointer.primary_down(),i.modifiers.shift,i.stable_dt));
-                        let physical=(pointer-rect.min)*orbit.ui_pixels_per_point;
+                        
                         if let Ok((camera, transform))=camera_query.single() {
                             if let Ok(ray)=camera.viewport_to_world(transform,
-                                Vec2::new(physical.x,physical.y)) {
+                                brush_decal::cursor_to_camera_target(
+                                    pointer,orbit.ui_pixels_per_point,
+                                    camera.target_scaling_factor().unwrap_or(orbit.ui_pixels_per_point)
+                                )) {
                                 if let Some(hit)=edit.raycast(ray) {
                                     let radius=(state.brush_size*10.0).clamp(1.0,50.0);
                                     let mode=match state.mode {
@@ -1485,10 +1488,13 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                 if paint.ready() && edit.is_ready() && streaming.active_map.is_none() &&
                     state.dock_tab==1 && (state.paint_tool=="Texture Brush" || state.paint_tool=="Color Brush")
                     && response.hovered() {
-                    if let Some(pointer)=ui.input(|i|i.pointer.interact_pos()) {
-                        let physical=(pointer-rect.min)*orbit.ui_pixels_per_point;
+                    if let Some(pointer)=ui.input(|i|i.pointer.latest_pos()) {
+                        
                         if let Ok((camera,transform))=camera_query.single() {
-                            if let Ok(ray)=camera.viewport_to_world(transform,Vec2::new(physical.x,physical.y)) {
+                            if let Ok(ray)=camera.viewport_to_world(transform,brush_decal::cursor_to_camera_target(
+                                    pointer,orbit.ui_pixels_per_point,
+                                    camera.target_scaling_factor().unwrap_or(orbit.ui_pixels_per_point)
+                                )) {
                                 if let Some(hit)=edit.raycast(ray){
                                     let world=Vec2::new(hit.x,hit.z);
                                     let (primary,dt)=ui.input(|i|(i.pointer.primary_down(),i.stable_dt));
@@ -1524,11 +1530,14 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                     streaming.active_map.is_none() && state.dock_tab==2 &&
                     state.clutter_brush_enabled && response.hovered()
                 {
-                    if let Some(pointer)=ui.input(|i|i.pointer.interact_pos()){
-                        let physical=(pointer-rect.min)*orbit.ui_pixels_per_point;
+                    if let Some(pointer)=ui.input(|i|i.pointer.latest_pos()){
+                        
                         if let Ok((camera,transform))=camera_query.single(){
                             if let Ok(ray)=camera.viewport_to_world(
-                                transform,Vec2::new(physical.x,physical.y)
+                                transform,brush_decal::cursor_to_camera_target(
+                                    pointer,orbit.ui_pixels_per_point,
+                                    camera.target_scaling_factor().unwrap_or(orbit.ui_pixels_per_point)
+                                )
                             ){
                                 if let Some(hit)=edit.raycast(ray){
                                     let primary=ui.input(|i|i.pointer.primary_down());

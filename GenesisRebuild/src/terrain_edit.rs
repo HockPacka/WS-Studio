@@ -118,7 +118,7 @@ impl TerrainEdit {
         for i in 0..=2000 {
             let t = i as f32 * 3.0;
             let point = ray.origin + direction * t;
-            let delta = self.height_bilinear(Vec2::new(point.x, point.z))
+            let delta = self.surface_height(Vec2::new(point.x, point.z))
                 .map(|height| point.y - height);
             if let Some(current) = delta {
                 if let Some((previous_t, previous_delta)) = last {
@@ -128,7 +128,7 @@ impl TerrainEdit {
                         for _ in 0..12 {
                             let mid = (a + b) * 0.5;
                             let p = ray.origin + direction * mid;
-                            let d = self.height_bilinear(Vec2::new(p.x,p.z))
+                            let d = self.surface_height(Vec2::new(p.x,p.z))
                                 .map(|h|p.y-h).unwrap_or(1.0);
                             if d > 0.0 { a = mid; } else { b = mid; }
                         }

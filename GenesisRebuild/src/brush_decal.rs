@@ -8,8 +8,24 @@
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
+use bevy_egui::egui;
 
 use crate::terrain_edit::TerrainEdit;
+
+/// Exact cursor hotspot for Bevy ray picking. Bevy 0.20 internally
+/// subtracts Camera::logical_viewport_rect().min, so the caller MUST
+/// supply full-window logical coordinates, not viewport-local ones.
+pub fn cursor_to_camera_target(
+    pointer:egui::Pos2, egui_pixels_per_point:f32, target_pixels_per_point:f32
+)->Vec2 {
+    let ui_scale=if egui_pixels_per_point.is_finite() && egui_pixels_per_point>0.0{
+        egui_pixels_per_point
+    }else{1.0};
+    let target_scale=if target_pixels_per_point.is_finite() && target_pixels_per_point>0.0{
+        target_pixels_per_point
+    }else{ui_scale};
+    Vec2::new(pointer.x,pointer.y)*(ui_scale/target_scale)
+}
 
 const SURFACE_OFFSET: f32 = 0.075;
 const RING_OFFSET: f32 = 0.12;
@@ -239,6 +255,23 @@ mod tests {
         assert!(build_mesh(&edit,&off).is_none());
         let edge=BrushPreview{position:Some(Vec2::new(255.0,255.0)),..off};
         assert!(build_mesh(&edit,&edge).is_some());
+    }
+    #[test]
+    fn cursor_tip_keeps_full_window_offset() {
+        // A viewport starts far from (0,0). Bevy subtracts the viewport
+        // offset internally; input must still be absolute window coords.
+        assert_eq!(
+            cursor_to_camera_target(egui::pos2(425.0,260.0),1.0,1.0),
+            Vec2::new(425.0,260.0)
+        );
+    }
+    #[test]
+    fn cursor_tip_handles_egui_zoom_and_native_dpi() {
+        let mouse=egui::pos2(400.0,200.0);
+        assert_eq!(cursor_to_camera_target(mouse,3.0,2.0),
+                   Vec2::new(600.0,300.0));
+        assert_eq!(cursor_to_camera_target(mouse,2.0,2.0),
+                   Vec2::new(400.0,200.0));
     }
     #[test]
     fn no_editable_area_cannot_show_a_decal(){

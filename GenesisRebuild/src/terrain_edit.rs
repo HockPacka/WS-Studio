@@ -68,6 +68,33 @@ impl TerrainEdit {
             max: if max.is_finite() { max } else { 0.0 },
         })
     }
+    /// Sample precisely the same diagonal triangle surface as the rendered
+    /// 257x257 height mesh, instead of bilinear heights that could float
+    /// above or sink below steep terrain between vertices.
+    pub fn surface_height(&self,world:Vec2)->Option<f32>{
+        if !self.is_ready(){return None;}
+        let x=(world.x-self.origin.x+256.0)*0.5;
+        let z=(world.y-self.origin.y+256.0)*0.5;
+        if !(0.0..=256.0).contains(&x) || !(0.0..=256.0).contains(&z){return None;}
+        let x0=(x.floor() as usize).min(255);
+        let z0=(z.floor() as usize).min(255);
+        let tx=(x-x0 as f32).clamp(0.0,1.0);
+        let tz=(z-z0 as f32).clamp(0.0,1.0);
+        let a=z0*GRID+x0;
+        let b=a+1;
+        let c=a+GRID;
+        let d=c+1;
+        if [a,b,c,d].iter().any(|&i|!self.present[i]){return None;}
+        let (ha,hb,hc,hd)=(self.heights[a],self.heights[b],
+                            self.heights[c],self.heights[d]);
+        // terrain.rs triangulates: [a,c,b] and [b,c,d].
+        Some(if tx+tz<=1.0{
+            ha+(hb-ha)*tx+(hc-ha)*tz
+        }else{
+            hd+(hc-hd)*(1.0-tx)+(hb-hd)*(1.0-tz)
+        })
+    }
+
     fn height_bilinear(&self, world: Vec2) -> Option<f32> {
         let x = (world.x - self.origin.x + 256.0) * 0.5;
         let z = (world.y - self.origin.y + 256.0) * 0.5;

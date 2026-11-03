@@ -24,6 +24,7 @@ mod water;
 mod sky;
 mod genesis_icons;
 mod brush_profile;
+mod brush_decal;
 mod new_area;
 use bevy::prelude::*;
 use bevy::pbr::ExtendedMaterial;
@@ -844,6 +845,8 @@ fn main() {
         .insert_resource(clutter::ClutterPreview::default())
         .insert_resource(clutter_paint::ClutterPaint::default())
         .insert_resource(terrain_edit::TerrainEdit::default())
+        .insert_resource(brush_decal::BrushPreview::default())
+        .insert_resource(brush_decal::BrushRenderer::default())
         .insert_resource(terrain_paint::TerrainPaint::default())
         .insert_resource(OrbitCamera::default())
         .insert_resource(client_data::ClientFiles::default())
@@ -876,7 +879,7 @@ fn main() {
             streaming::update_world_streaming,
             update_camera, refresh_edited_terrain, clutter::update_preview, refresh_painted_splat,
             refresh_terrain_view, apply_tint_settings, sky::update_sky_lighting, sky::update_skybox_position, sky::update_skybox_celestials, sky::update_camera_fog, water::update_water_color).chain())
-        .add_systems(EguiPrimaryContextPass, editor_ui)
+        .add_systems(EguiPrimaryContextPass, (editor_ui,brush_decal::update).chain())
         .run();
 }
 fn classic_visuals(ctx: &egui::Context) {
@@ -932,6 +935,7 @@ fn load_scenes(ctx: &egui::Context, previews: &mut Viewports) {
 }
 fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
              mut edit: ResMut<terrain_edit::TerrainEdit>,
+             mut brush_preview:ResMut<brush_decal::BrushPreview>,
              mut paint: ResMut<terrain_paint::TerrainPaint>,
              mut clutter_paint: ResMut<clutter_paint::ClutterPaint>,
              camera_query: Query<(&Camera,&GlobalTransform),With<GenesisCamera>>,
@@ -968,7 +972,8 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
                     dock_panels(ui, &mut state, &loaded, &client, paint.as_mut(), clutter_paint.as_mut(), viewer.as_mut(), streaming.as_mut(), orbit.as_mut(), &sky_mgr, &clutter_preview, &mut commands);
                 }
                 viewport(ui, &mut state, &previews, orbit.as_mut(), &loaded, streaming.as_ref(), &sky_mgr,
-                    edit.as_mut(), paint.as_mut(), clutter_paint.as_mut(), &camera_query);
+                    edit.as_mut(), paint.as_mut(), clutter_paint.as_mut(),
+                    brush_preview.as_mut(), &camera_query);
             });
         });
     // Keyboard undo/redo when no text editor is focused.
@@ -1417,17 +1422,6 @@ fn bottom_strip(ui_root:&mut egui::Ui, state:&mut GenesisState, loaded:&LoadedAr
         });
 }
 
-/// Two concentric rings: outer radius and inner full-strength hardness core.
-fn paint_brush_rings(ui:&egui::Ui, pointer:egui::Pos2, radius:f32,
-                     hardness:f32, tint:egui::Color32){
-    ui.painter().circle_stroke(pointer,radius,egui::Stroke::new(1.4,tint));
-    let h=hardness.clamp(0.0,1.0);
-    if (0.04..=0.96).contains(&h){
-        ui.painter().circle_stroke(pointer,radius*h,
-            egui::Stroke::new(1.1,egui::Color32::from_rgba_unmultiplied(250,250,250,215)));
-    }
-}
-
 fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             previews:&Viewports,orbit:&mut OrbitCamera,loaded:&LoadedArea,
             streaming:&streaming::WorldStreaming,
@@ -1435,12 +1429,16 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
             edit:&mut terrain_edit::TerrainEdit,
             paint:&mut terrain_paint::TerrainPaint,
             clutter_paint:&mut clutter_paint::ClutterPaint,
+            decal:&mut brush_decal::BrushPreview,
             camera_query:&Query<(&Camera,&GlobalTransform),With<GenesisCamera>>) {
     egui::CentralPanel::default()
         .frame(egui::Frame::default().fill(if state.raw_view {
             egui::Color32::TRANSPARENT
         } else { egui::Color32::from_rgb(37,24,49) }))
         .show(ui_root, |ui| {
+            // Recomputed on every egui frame; hiding the pointer or switching
+            // tools automatically hides the 3D projected brush geometry.
+            decal.position=None;
             let rect = ui.available_rect_before_wrap();
             if state.raw_view {
                 orbit.rect=Some([rect.left(),rect.top(),rect.right(),rect.bottom()]);
@@ -1473,12 +1471,10 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                         let signed_power=if shift {-state.power}else{state.power};
                                         edit.brush(point,radius,signed_power,state.hardness,state.falloff,dt,mode);
                                     }
-                                    // Screen-space guide; actual brush influence uses metres.
-                                    let pixel_radius=(radius /
-                                        (orbit.origin()-hit).length().max(1.0) *
-                                        rect.height()*1.20).clamp(4.0,160.0);
-                                    paint_brush_rings(ui,pointer,pixel_radius,state.hardness,
-                                        egui::Color32::from_rgb(250,209,99));
+                                    // World-space decal follows the actual sculpted
+                                    // height triangles, not a 2D cursor circle.
+                                    decal.show(hit,radius,state.hardness,state.falloff,
+                                        [1.0,0.74,0.24],false);
                                 }
                             }
                         }
@@ -1515,10 +1511,8 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                                 state.hardness,state.falloff,dt,restricted);
                                         }
                                     }
-                                    let visual_radius=(radius/(orbit.origin()-hit).length().max(1.0)
-                                        *rect.height()*1.20).clamp(4.0,160.0);
-                                    paint_brush_rings(ui,pointer,visual_radius,state.hardness,
-                                        egui::Color32::from_rgb(110,224,151));
+                                    decal.show(hit,radius,state.hardness,state.falloff,
+                                        [0.27,0.95,0.53],false);
                                 }
                             }
                         }
@@ -1545,12 +1539,10 @@ fn viewport(ui_root:&mut egui::Ui, state:&mut GenesisState,
                                             state.clutter_brush_action
                                         );
                                     }
-                                    let pixel_radius=(radius/
-                                        (orbit.origin()-hit).length().max(1.0)*
-                                        rect.height()*1.20).clamp(4.0,160.0);
-                                    ui.painter().circle_stroke(pointer,pixel_radius,
-                                        egui::Stroke::new(1.5,
-                                            egui::Color32::from_rgb(176,232,120)));
+                                    // Binary clutter paint projects a single outer
+                                    // ring; it does not use hardness attenuation.
+                                    decal.show(hit,radius,1.0,0.0,
+                                        [0.66,0.95,0.34],true);
                                 }
                             }
                         }

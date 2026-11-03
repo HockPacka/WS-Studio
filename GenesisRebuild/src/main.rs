@@ -934,8 +934,10 @@ fn load_scenes(ctx: &egui::Context, previews: &mut Viewports) {
     }
 }
 fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
-             mut edit: ResMut<terrain_edit::TerrainEdit>,
-             mut brush_preview:ResMut<brush_decal::BrushPreview>,
+             (mut edit,mut brush_preview):(
+                 ResMut<terrain_edit::TerrainEdit>,
+                 ResMut<brush_decal::BrushPreview>,
+             ),
              mut paint: ResMut<terrain_paint::TerrainPaint>,
              mut clutter_paint: ResMut<clutter_paint::ClutterPaint>,
              camera_query: Query<(&Camera,&GlobalTransform),With<GenesisCamera>>,

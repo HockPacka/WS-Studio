@@ -163,7 +163,7 @@ pub fn update(
         return;
     };
     let handle=if let Some(handle)=render.mesh.as_ref(){
-        if let Some(existing)=meshes.get_mut(handle){
+        if let Some(mut existing)=meshes.get_mut(handle){
             *existing=mesh;
             handle.clone()
         }else{

@@ -1,31 +1,26 @@
-# New AREA – erster Genesis-Test
+# New AREA in Genesis Editor
 
-Erzeugt native unkomprimierte aera-Dateien **ohne Vorlage und ohne TBL-Schreibzugriff**. Die Kompatibilität mit dem originalen WildStar-Spielclient ist bisher nicht bestätigt.
+File > New, File > New AREA... and the existing NewCentral toolbar control
+now open the same New AREA dialog. The previous menu action was a no-op.
 
-~~~powershell
-cd GenesisRebuild
-cargo run -p wildstar_formats --bin area_new -- --out "GenesisTest.4040.area"
-~~~
+Default output: WS-Studio/ClientFiles/Map/GenesisTest/GenesisTest.4040.area
+(when started from the GenesisRebuild folder). Output can be changed.
 
-Optional: --height 10 --layer-id 1234. Die ID 1234 ist nur ein Beispiel; für eine echte Textur muss sie in der vorhandenen WorldLayer.tbl existieren. Default-ID 0 bedeutet kein verpflichtender TBL-Bezug.
+Enter map name, tile X and Z, flat height in metres, optional WorldLayer ID.
+Create AREA writes 256 native cells with the existing AreaBuilder, re-reads
+the file from disk, and immediately loads its terrain with Standalone enabled.
+A height debug/colour view works without WildStar ClientData or TBL files.
+New uses create_new and refuses existing destination files.
 
-- 512 x 512 Meter, 256 Cells je 32 x 32 Meter.
-- Bit 0: 19x19 Height einschließlich Halo (u16; native Einheit 1/8 m).
-- Bit 1: vier Layer-IDs mit optionalem ersten Slot.
-- Bit 2: 65x65 Authoring-Gewichte, 100 % auf Slot 0.
-- Bit 3: 65x65 neutrale RGB565-Terrainfarbe.
-- Andere Originalmetadaten (Zone/Sky/Clutter/Props/LOD, unbekannte Bits) werden **nicht** erfunden.
-- New-File-Writer verwendet create_new und verhindert Überschreiben.
+The default map is an uncompressed Genesis-compatible test AREA; it does
+not automatically add TBL rows, new Sky/Zones, Clutter or retail-game
+specific optional blocks.
 
-Eine Kopie für den normalen Genesis-Importer/Streamer in einer **separaten ClientData-Arbeitskopie** ablegen:
+Validation: File > New opens dialog; Create makes file and visible terrain,
+including without ClientData; editing with Height Brush and Save As works.
+Second Create on the same path fails without overwriting.
+Check alternate tile coordinates, invalid paths, and Windows UI scaling.
 
-~~~text
-ClientData/
-  Map/
-    GenesisTest/
-      GenesisTest.4040.area
-~~~
-
-Die Koordinate 4040 ist Z=0x40, X=0x40 am Weltursprung. Für den ersten Test in Genesis Standalone AREA aktivieren und über File -> Open AREA laden. Ein indexierter ClientData-Root ist erforderlich. Danach Height-Sculpt, RGB-Preview/Color-Brush, Save-As auf eine Kopie und Reload testen.
-
-Alle Tests: cargo test -p wildstar_formats. Eine erfolgreiche Rust-Parser-Roundtrip-Prüfung sagt **noch nichts** über Pflichtblöcke des Originalclients aus. TBL-Registrierung kommt **nach** dem erfolgreichen ersten AREA-Test.
+Build: cargo test -p wildstar_formats; cargo check -p genesis;
+cargo check -p genesis --tests. Execute local editor unit tests with
+cargo test -p genesis new_area. Windows GPU/manual launch still required.

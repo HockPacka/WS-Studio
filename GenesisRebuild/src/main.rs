@@ -24,6 +24,7 @@ mod water;
 mod sky;
 mod genesis_icons;
 mod brush_profile;
+mod new_area;
 use bevy::prelude::*;
 use bevy::pbr::ExtendedMaterial;
 use bevy::light::CascadeShadowConfigBuilder;
@@ -74,6 +75,8 @@ struct GenesisState {
     status: String,
     raw_view: bool,
     open_area_dialog: bool,
+    new_area_dialog: bool,
+    new_area_options: new_area::Options,
     open_area_path_dialog: bool,
     open_model_dialog: bool,
     pending_model_load: Option<String>,
@@ -137,6 +140,8 @@ impl Default for GenesisState {
             status: "WildStar Genesis World Editor".to_string(),
             raw_view: true,
             open_area_dialog: false,
+            new_area_dialog: false,
+            new_area_options: new_area::Options::default(),
             open_area_path_dialog: false,
             open_model_dialog: false,
             pending_model_load: None,
@@ -1026,6 +1031,17 @@ fn editor_ui(mut contexts: EguiContexts, mut state: ResMut<GenesisState>,
         client.settings_open=true;
         state.change_client_root=false;
     }
+    let new_path={
+        let state_ref=state.as_mut();
+        new_area::show(ctx,&mut state_ref.new_area_dialog,&mut state_ref.new_area_options)
+    };
+    if let Some(path)=new_path{
+        state.area_standalone=true;
+        state.terrain_view=0; // visible native height preview without ClientData
+        state.area_path=path.to_string_lossy().into_owned();
+        state.pending_load=Some(state.area_path.clone());
+        state.status=format!("Created AREA: {}. Loading terrain...",path.display());
+    }
     if state.open_area_dialog {
         // Native file picker works offline, too. Only asset resolution/zone
         // streaming require a configured ClientData root.
@@ -1075,6 +1091,10 @@ fn command(state: &mut GenesisState, name: &'static str) {
     state.active = name;
     state.status = format!("{name}");
     match name {
+        "New" | "New AREA..." => {
+            state.new_area_dialog=true;
+            state.new_area_options.error.clear();
+        }
         "Undo" => {state.terrain_undo_request = true;}
         "Redo" => {state.terrain_redo_request = true;}
         "Save" | "Save As" | "Save Package" => {state.terrain_save_dialog = true;}
@@ -1202,7 +1222,7 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing.x=5.0;
                 for (title, entries) in [
-                    ("File",&["New","Open Zone (World Streaming)...","Open AREA...","Open Model (.m3/.i3)...","Open AREA by path...",
+                    ("File",&["New","New AREA...","Open Zone (World Streaming)...","Open AREA...","Open Model (.m3/.i3)...","Open AREA by path...",
                         "Save","Save As","Save Package","Exit"][..]),
                     ("Edit",&["Undo","Redo","Cut","Copy","Paste","Delete","Select","Align Selection"][..]),
                     ("View",&["3D AREA View","Land Wireframe","Object Wireframe","Land Chunk Grid",
@@ -1247,7 +1267,10 @@ fn menu_and_toolbars(ui_root:&mut egui::Ui, state:&mut GenesisState) {
             ui.separator();
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new("World").size(9.).strong());
-                ui.add_sized([83.,17.],egui::Button::new("NewCentral").frame(true));
+                if ui.add_sized([83.,17.],egui::Button::new("NewCentral").frame(true))
+                    .on_hover_text("Create new editable AREA").clicked() {
+                    command(state,"New");
+                }
                 ui.label(egui::RichText::new("Map").size(9.).strong());
                 ui.add_sized([52.,17.],egui::Button::new("Area 106").frame(true));
                 if ui.button("Open Zone...").clicked() {command(state,"Open Zone...");}
